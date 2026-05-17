@@ -98,13 +98,7 @@ export function App() {
           break
         }
         case 'close-repo': {
-          // ⌘W: close active repo tab if there is one. If no repo is
-          // open, fall through to closing the window — macOS convention.
-          if (state.activeId) {
-            closeRepo(state.activeId)
-          } else {
-            window.close()
-          }
+          if (state.activeId) closeRepo(state.activeId)
           break
         }
         case 'next-repo':

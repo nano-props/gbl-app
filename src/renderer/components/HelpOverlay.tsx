@@ -33,7 +33,7 @@ const SECTIONS: { titleKey: string; rows: { keys: string[]; labelKey: string }[]
     rows: [
       { keys: ['Enter'], labelKey: 'help.row.checkout' },
       { keys: ['⌘', 'O'], labelKey: 'help.row.openRepo' },
-      { keys: ['⌘', 'W'], labelKey: 'help.row.closeRepo' },
+      { keys: ['⌘', '⇧', 'W'], labelKey: 'help.row.closeRepo' },
       { keys: ['⌘', 'R'], labelKey: 'help.row.refresh' },
       { keys: ['⌘', ','], labelKey: 'help.row.settings' },
       { keys: ['?'], labelKey: 'help.row.thisHelp' },

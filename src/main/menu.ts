@@ -44,11 +44,12 @@ export function buildAppMenu(): void {
     label: t('menu.file'),
     submenu: [
       { label: t('menu.file.openRepo'), accelerator: 'CmdOrCtrl+O', click: () => send('open-repo') },
-      { label: t('menu.file.closeTab'), accelerator: 'CmdOrCtrl+W', click: () => send('close-repo') },
-      // Window close keeps the standard role so it works even if the
-      // renderer hasn't subscribed to menu actions yet (e.g. a hung
-      // renderer). ⌘⇧W to disambiguate from Close Tab.
-      { role: 'close', accelerator: 'CmdOrCtrl+Shift+W' },
+      // ⌘W is the standard OS shortcut for closing the window — keep
+      // the `role: 'close'` accelerator there so it still works even if
+      // the renderer hasn't subscribed to menu actions yet (e.g. hung
+      // renderer). Closing a repo tab moves to ⌘⇧W.
+      { role: 'close', accelerator: 'CmdOrCtrl+W' },
+      { label: t('menu.file.closeTab'), accelerator: 'CmdOrCtrl+Shift+W', click: () => send('close-repo') },
       { type: 'separator' },
       {
         label: t('menu.file.settings'),
