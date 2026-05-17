@@ -1,0 +1,77 @@
+/// <reference types="vite/client" />
+
+import type { BranchInfo, ExecResult, LogEntry, StatusEntry, WorktreeInfo } from '#/renderer/types.ts'
+import type {
+  CommitDetail,
+  I18nPayload,
+  LangPref,
+  MenuAction,
+  RecentEntry,
+  SessionState,
+  SettingsSnapshot,
+  ThemePref,
+  ThemeState,
+} from '#/renderer/types-bridge.ts'
+
+interface RepoSnapshot {
+  branches: BranchInfo[]
+  worktrees: WorktreeInfo[]
+  current: string
+}
+
+interface ProbeResult {
+  ok: boolean
+  root?: string
+  name?: string
+}
+
+interface GblBridge {
+  openDialog: () => Promise<string | null>
+  probe: (cwd: string) => Promise<ProbeResult>
+  snapshot: (cwd: string) => Promise<RepoSnapshot | null>
+  log: (cwd: string, branch: string, count?: number) => Promise<LogEntry[]>
+  status: (cwd: string) => Promise<StatusEntry[]>
+  worktrees: (cwd: string) => Promise<WorktreeInfo[]>
+  commit: (cwd: string, hash: string) => Promise<CommitDetail | null>
+  checkout: (cwd: string, branch: string) => Promise<ExecResult>
+  pull: (cwd: string, branch: string, worktreePath?: string) => Promise<ExecResult>
+  push: (cwd: string, branch: string) => Promise<ExecResult>
+  fetch: (cwd: string) => Promise<ExecResult>
+  abort: (cwd: string) => Promise<boolean>
+  openGitHub: (cwd: string) => Promise<ExecResult>
+  openInFinder: (path: string) => Promise<ExecResult>
+  openInGhostty: (path: string) => Promise<ExecResult>
+  ghosttyInstalled: () => Promise<boolean>
+  listRecents: () => Promise<RecentEntry[]>
+  recordRecent: (path: string, name: string) => Promise<RecentEntry[]>
+  forgetRecent: (path: string) => Promise<RecentEntry[]>
+  theme: {
+    get: () => Promise<ThemeState>
+    setPref: (pref: ThemePref) => Promise<ThemeState>
+    onChange: (cb: (state: ThemeState) => void) => () => void
+  }
+  settings: {
+    get: () => Promise<SettingsSnapshot>
+    setFetchInterval: (sec: number) => Promise<void>
+    onFetchIntervalChange: (cb: (sec: number) => void) => () => void
+    clearRecents: () => Promise<void>
+    saveSession: (session: SessionState) => Promise<void>
+    onWriteError: (cb: (message: string) => void) => () => void
+  }
+  onMenuAction: (cb: (action: MenuAction) => void) => () => void
+  i18n: {
+    get: () => Promise<I18nPayload>
+    setPref: (pref: LangPref) => Promise<I18nPayload | null>
+    onChange: (cb: (payload: I18nPayload) => void) => () => void
+  }
+}
+
+declare global {
+  interface Window {
+    gbl: GblBridge
+  }
+  /** Injected by vite.config.ts `define`. */
+  const __APP_VERSION__: string
+}
+
+export {}

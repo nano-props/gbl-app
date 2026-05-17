@@ -1,0 +1,222 @@
+// 日本語辞書。キーは en.ts と完全に一致させること。
+// スタイル：ボタン/メニューは短く、ヒント文は句点で終わる。
+// ブランド名（GBL / GitHub / Finder / Ghostty）は翻訳しない。
+
+import type { DictKey } from '#/main/i18n/en.ts'
+
+export const ja: Record<DictKey, string> = {
+  // ---- Menu --------------------------------------------------------------
+  'menu.file': 'ファイル',
+  'menu.edit': '編集',
+  'menu.view': '表示',
+  'menu.window': 'ウインドウ',
+  'menu.help': 'ヘルプ',
+
+  // ---- Menu — App (macOS) ------------------------------------------------
+  'menu.app.about': '{name} について',
+  'menu.app.services': 'サービス',
+  'menu.app.hide': '{name} を隠す',
+  'menu.app.hideOthers': 'ほかを隠す',
+  'menu.app.showAll': 'すべてを表示',
+  'menu.app.quit': '{name} を終了',
+  'menu.app.settings': '設定…',
+
+  // ---- Menu — Window (macOS) ---------------------------------------------
+  'menu.window.minimize': 'しまう',
+  'menu.window.zoom': '拡大/縮小',
+  'menu.window.front': 'すべてを手前に移動',
+
+  // ---- Menu — File -------------------------------------------------------
+  'menu.file.openRepo': 'リポジトリを開く…',
+  'menu.file.closeTab': 'タブを閉じる',
+  'menu.file.settings': '設定…',
+  'menu.file.quit': '終了',
+
+  // ---- Menu — Edit -------------------------------------------------------
+  'menu.edit.cut': 'カット',
+  'menu.edit.copy': 'コピー',
+  'menu.edit.paste': 'ペースト',
+  'menu.edit.selectAll': 'すべてを選択',
+
+  // ---- Menu — View -------------------------------------------------------
+  'menu.view.branches': 'ブランチ',
+  'menu.view.log': 'ログ',
+  'menu.view.status': 'ステータス',
+  'menu.view.worktrees': 'ワークツリー',
+  'menu.view.refresh': '更新',
+  'menu.view.toggleTheme': 'テーマを切替',
+  'menu.view.toggleDevTools': '開発者ツールを切替',
+
+  // ---- Menu — Window (gbl-specific) --------------------------------------
+  'menu.window.nextRepo': '次のリポジトリ',
+  'menu.window.prevRepo': '前のリポジトリ',
+
+  // ---- Menu — Help -------------------------------------------------------
+  'menu.help.shortcuts': 'キーボードショートカット',
+
+  // ---- Topbar ------------------------------------------------------------
+  'topbar.open': '開く',
+  'topbar.recents': '最近',
+  'topbar.recentsEmpty': '最近開いたリポジトリはありません。',
+  'topbar.help': 'キーボードショートカット (?)',
+  'topbar.settings': '設定 (⌘,)',
+
+  // ---- Sidebar -----------------------------------------------------------
+  'sidebar.repos': 'リポジトリ',
+  'sidebar.empty.before': 'ツールバーの ',
+  'sidebar.empty.openLabel': '開く',
+  'sidebar.empty.after': ' から git リポジトリを追加してください。',
+  'sidebar.close': '閉じる',
+  'sidebar.missingTitle': '{n} 件のリポジトリを再オープンできませんでした',
+  'sidebar.missingDismiss': '閉じる',
+
+  // ---- Empty state -------------------------------------------------------
+  'empty.title': 'リポジトリが開かれていません',
+  'empty.body.before': '上部ツールバーの ',
+  'empty.body.openLabel': '開く',
+  'empty.body.middle':
+    ' から git リポジトリを追加できます。複数のリポジトリを開いて、サイドバーで切り替えられます。 ',
+  'empty.body.after': ' でショートカットを表示します。',
+
+  // ---- Right-side tabs ---------------------------------------------------
+  'tab.branches': 'ブランチ',
+  'tab.log': 'ログ',
+  'tab.status': 'ステータス',
+  'tab.worktrees': 'ワークツリー',
+  'tab.fetching': 'fetch 中',
+  'tab.fetchingTitle': 'バックグラウンドの fetch 実行中',
+  'tab.fetchFailed': 'fetch 失敗',
+  'tab.fetchFailedTitle': '直近のバックグラウンド fetch が失敗しました — ネットワークやリモートを確認してください。',
+
+  // ---- Branches list -----------------------------------------------------
+  'branches.empty': 'このリポジトリにブランチがありません。',
+  'branches.gone': '消失',
+  'branches.dirty': '変更あり',
+  'branches.worktree': 'wt',
+  'branches.noUpstream': '上流なし',
+
+  // ---- Log list ----------------------------------------------------------
+  'log.empty': '表示できるコミットがありません。',
+  'log.emptyForBranch': '{branch} に表示できるコミットがありません。',
+
+  // ---- Status ------------------------------------------------------------
+  'status.cleanTitle': '作業ツリーはクリーンです',
+  'status.cleanBody': 'コミットすべき変更はありません。',
+  'status.staged': 'ステージ済み',
+  'status.stagedHint': 'コミット可能',
+  'status.unstaged': '未ステージ',
+  'status.unstagedHint': '作業ツリーで変更',
+  'status.untracked': '未追跡',
+  'status.untrackedHint': '未追加',
+  'status.label.untracked': '未追跡',
+  'status.label.ignored': '無視',
+  'status.label.added': '追加',
+  'status.label.deleted': '削除',
+  'status.label.modified': '変更',
+  'status.label.renamed': 'リネーム',
+  'status.label.copied': 'コピー',
+  'status.label.conflict': '競合',
+  'status.label.changed': '変更',
+
+  // ---- Worktrees ---------------------------------------------------------
+  'worktrees.empty': '登録されたワークツリーはありません。',
+  'worktrees.detached': '(detached)',
+  'worktrees.bare': 'bare',
+  'worktrees.dirtyCount': '{n} 件の変更',
+  'worktrees.reveal': '開く',
+  'worktrees.revealTitle': 'Finder で表示',
+  'worktrees.openInGhosttyTitle': 'Ghostty で開く',
+
+  // ---- Repo actions ------------------------------------------------------
+  'action.checkout': 'チェックアウト',
+  'action.pull': 'プル',
+  'action.push': 'プッシュ',
+  'action.fetch': 'フェッチ',
+  'action.github': 'GitHub',
+  'action.checkoutCurrent': 'すでにこのブランチです',
+  'action.checkoutInWorktree': '{path} のワークツリーですでにチェックアウト済み',
+  'action.checkoutTitle': '{branch} をチェックアウト',
+  'action.pullFrom': '{tracking} から取得',
+  'action.pullNoUpstream': '上流なし',
+  'action.pushTitle': '{branch} を origin にプッシュ',
+  'action.fetchTitle': 'git fetch --all --prune',
+  'action.githubTitle': 'リポジトリをブラウザで開く',
+  'action.resultOk': 'OK',
+  'action.resultError': 'エラー',
+  'action.confirmPushProtectedTitle': '{branch} にプッシュしますか？',
+  'action.confirmPushProtectedBody.before': 'このまま ',
+  'action.confirmPushProtectedBody.after':
+    ' に直接プッシュしようとしています。通常はプルリクエスト経由が望ましいですが、続行しますか？',
+  'action.confirmPushConfirm': 'プッシュを続行',
+  'action.cancel': 'キャンセル',
+  'action.cancelTitle': '{op} をキャンセル',
+
+  // ---- Errors / banners --------------------------------------------------
+  'error.notGitRepo': 'git リポジトリではありません',
+  'error.failedReadRepo': 'リポジトリの読み込みに失敗しました',
+  'error.openGithubNoOrigin': 'origin リモートがありません',
+  'error.invalidPath': '無効なパス',
+  'error.renderCrashTitle': 'このビューの描画中にエラーが発生しました',
+  'error.renderCrashUnknown': '不明な描画エラー。',
+  'error.tryAgain': '再試行',
+  'error.back': '戻る (Esc)',
+  'error.settingsWriteTitle': '設定の保存に失敗しました',
+
+  // ---- Settings panel ----------------------------------------------------
+  'settings.title': '設定',
+  'settings.appearance': '外観',
+  'settings.theme.auto': '自動',
+  'settings.theme.light': 'ライト',
+  'settings.theme.dark': 'ダーク',
+  'settings.lang': '言語',
+  'settings.lang.auto': '自動',
+  'settings.lang.en': 'English',
+  'settings.lang.zh': '中文',
+  'settings.lang.ko': '한국어',
+  'settings.lang.ja': '日本語',
+  'settings.fetch': '自動 fetch',
+  'settings.fetchHint':
+    'アクティブなリポジトリのバックグラウンド `git fetch`。低速なネットワークでは無効化してください。',
+  'settings.fetch.off': 'オフ',
+  'settings.fetch.30s': '30 秒',
+  'settings.fetch.1m': '1 分',
+  'settings.fetch.5m': '5 分',
+  'settings.fetch.15m': '15 分',
+  'settings.recents': '最近開いたリポジトリ',
+  'settings.recentsCount': '{n} 件',
+  'settings.clearRecents': '履歴をすべて削除',
+  'settings.clearRecentsConfirm': 'もう一度クリックで確定',
+
+  // ---- Help overlay ------------------------------------------------------
+  'help.title': 'キーボードショートカット',
+  'help.section.nav': 'ナビゲーション',
+  'help.section.views': 'ビュー',
+  'help.section.actions': 'アクション',
+  'help.row.nextBranch': '次のブランチ / コミット',
+  'help.row.prevBranch': '前のブランチ / コミット',
+  'help.row.nextRepo': '次のリポジトリ',
+  'help.row.prevRepo': '前のリポジトリ',
+  'help.row.viewBranches': 'ブランチ',
+  'help.row.viewLog': 'ログ',
+  'help.row.viewStatus': 'ステータス',
+  'help.row.viewWorktrees': 'ワークツリー',
+  'help.row.checkout': '選択中のブランチをチェックアウト',
+  'help.row.openRepo': 'リポジトリを開く',
+  'help.row.closeRepo': '現在のタブを閉じる',
+  'help.row.refresh': '更新',
+  'help.row.settings': '設定',
+  'help.row.thisHelp': 'このヘルプ',
+  'help.row.dismiss': 'オーバーレイを閉じる',
+
+  // ---- Generic dialog ----------------------------------------------------
+  'dialog.cancel': 'キャンセル',
+  'dialog.close': '閉じる (Esc)',
+
+  // ---- Commit detail -----------------------------------------------------
+  'commit.parent': '親コミット',
+  'commit.parents': '親コミット',
+  'commit.filesChanged': '{n} 件のファイル変更',
+  'commit.filesChangedPlural': '{n} 件のファイル変更',
+  'commit.empty': 'ファイル変更なし（マージまたは空コミット）。',
+  'commit.binary': 'バイナリ',
+}

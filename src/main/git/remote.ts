@@ -1,0 +1,76 @@
+import { git, gitResultWithOptions, NETWORK_TIMEOUT_MS } from '#/main/git/helper.ts'
+import type { ExecResult } from '#/main/git/types.ts'
+import { getCurrentBranch } from '#/main/git/branches.ts'
+
+function remoteUrlToHttps(url: string): string | null {
+  const sshUrl = url.match(/^ssh:\/\/(?:[^@]+@)?([^:/]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/)
+  if (sshUrl) return `https://${sshUrl[1]}/${sshUrl[2]}`
+
+  const httpsUrl = url.match(/^https?:\/\/(?:[^@/]+@)?([^/]+)\/(.+?)(?:\.git)?\/?$/)
+  if (httpsUrl) return `https://${httpsUrl[1]}/${httpsUrl[2]}`
+
+  const scpUrl = url.match(/^(?:[^@]+@)?([^:/\s]+):([^/].*?)(?:\.git)?\/?$/)
+  if (scpUrl) return `https://${scpUrl[1]}/${scpUrl[2]}`
+
+  return null
+}
+
+export async function getGitHubUrl(cwd: string): Promise<string | null> {
+  try {
+    const url = await git(cwd, ['remote', 'get-url', 'origin'])
+    if (!url) return null
+    return remoteUrlToHttps(url)
+  } catch {
+    return null
+  }
+}
+
+export async function getPullRequestUrl(cwd: string, branch: string): Promise<string | null> {
+  const repoUrl = await getGitHubUrl(cwd)
+  if (!repoUrl) return null
+  const encoded = branch.split('/').map(encodeURIComponent).join('/')
+  return `${repoUrl}/pull/${encoded}`
+}
+
+async function hasOrigin(cwd: string): Promise<boolean> {
+  try {
+    const url = await git(cwd, ['remote', 'get-url', 'origin'])
+    return url.length > 0
+  } catch {
+    return false
+  }
+}
+
+export async function fetchAll(cwd: string, signal?: AbortSignal): Promise<ExecResult> {
+  if (!(await hasOrigin(cwd))) return { ok: false, message: 'No origin remote configured' }
+  return gitResultWithOptions(cwd, { timeoutMs: NETWORK_TIMEOUT_MS, signal }, 'fetch', '--all', '--prune')
+}
+
+export async function pullBranch(
+  cwd: string,
+  branch: string,
+  worktreePath?: string,
+  signal?: AbortSignal,
+): Promise<ExecResult> {
+  if (!(await hasOrigin(worktreePath ?? cwd))) return { ok: false, message: 'No origin remote configured' }
+  if (worktreePath) {
+    return gitResultWithOptions(
+      worktreePath,
+      { timeoutMs: NETWORK_TIMEOUT_MS, signal },
+      'pull',
+      '--ff-only',
+      'origin',
+      branch,
+    )
+  }
+  const current = await getCurrentBranch(cwd)
+  if (branch === current) {
+    return gitResultWithOptions(cwd, { timeoutMs: NETWORK_TIMEOUT_MS, signal }, 'pull', '--ff-only', 'origin', branch)
+  }
+  return gitResultWithOptions(cwd, { timeoutMs: NETWORK_TIMEOUT_MS, signal }, 'fetch', 'origin', `${branch}:${branch}`)
+}
+
+export async function pushBranch(cwd: string, branch: string, signal?: AbortSignal): Promise<ExecResult> {
+  if (!(await hasOrigin(cwd))) return { ok: false, message: 'No origin remote configured' }
+  return gitResultWithOptions(cwd, { timeoutMs: NETWORK_TIMEOUT_MS, signal }, 'push', '-u', 'origin', branch)
+}

@@ -1,0 +1,74 @@
+// Re-exports for store/component imports. Centralizes bridge types so
+// stores don't need to redeclare them.
+
+export type ThemePref = 'auto' | 'light' | 'dark'
+export type ResolvedTheme = 'light' | 'dark'
+
+export interface ThemeState {
+  pref: ThemePref
+  resolved: ResolvedTheme
+}
+
+export type LangPref = 'auto' | 'en' | 'zh' | 'ko' | 'ja'
+export type Lang = 'en' | 'zh' | 'ko' | 'ja'
+
+export interface I18nPayload {
+  lang: Lang
+  pref: LangPref
+  dict: Record<string, string>
+}
+
+export interface RecentEntry {
+  path: string
+  name: string
+  openedAt: number
+}
+
+export interface SessionState {
+  openRepos: string[]
+  activeRepo: string | null
+}
+
+export interface SettingsSnapshot {
+  theme: ThemePref
+  fetchIntervalSec: number
+  recents: RecentEntry[]
+  session: SessionState
+}
+
+export type MenuAction =
+  | 'open-repo'
+  | 'close-repo'
+  | 'next-repo'
+  | 'prev-repo'
+  | 'refresh'
+  | 'tab-branches'
+  | 'tab-log'
+  | 'tab-status'
+  | 'tab-worktrees'
+  | 'toggle-theme'
+  | 'open-settings'
+  | 'show-help'
+
+export interface CommitMeta {
+  hash: string
+  shortHash: string
+  subject: string
+  body: string
+  author: string
+  email: string
+  date: string
+  parents: string[]
+}
+
+export interface CommitFileStat {
+  added: number
+  deleted: number
+  path: string
+  binary: boolean
+}
+
+export interface CommitDetail {
+  meta: CommitMeta
+  files: CommitFileStat[]
+}

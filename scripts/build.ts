@@ -1,0 +1,81 @@
+#!/usr/bin/env bun
+// Build and package GBL.
+//   default → GBL.app under release/mac*/ (via electron-builder mac dmg+dir)
+//   install → builds the `dir` target only (no dmg packaging) and moves
+//             GBL.app into ~/Applications, closing any running instance
+//             first. macOS-only.
+//
+// Usage: ./scripts/build.ts [install|i]
+import { $ } from 'bun'
+import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { parseArgs } from 'node:util'
+
+const repoRoot = path.resolve(import.meta.dirname, '..')
+process.chdir(repoRoot)
+$.cwd(repoRoot)
+
+const APP_NAME = 'GBL'
+
+const { positionals } = parseArgs({ allowPositionals: true })
+const mode = positionals[0]
+const shouldInstall = mode === 'install' || mode === 'i'
+
+async function findBuiltApp(): Promise<string | null> {
+  // mac dir target emits one directory per declared arch (`mac-arm64`,
+  // `mac` for x64). Pick the one matching the host so `install` puts the
+  // right binary in ~/Applications.
+  const hostDir = process.arch === 'arm64' ? 'mac-arm64' : 'mac'
+  const candidate = path.join(repoRoot, 'release', hostDir, `${APP_NAME}.app`)
+  return existsSync(candidate) ? candidate : null
+}
+
+// Clear any prior build output so `findBuiltApp` can't pick up a stale
+// artifact if electron-builder fails partway through. A matching rm
+// after a successful install is run below.
+rmSync(path.join(repoRoot, 'release'), { recursive: true, force: true })
+
+await $`bun install`
+await $`bun run typecheck`
+// Renderer bundle MUST exist before electron-builder packs it (the
+// `files` glob in electron-builder.ts expects `dist/renderer/`).
+await $`bun run build:renderer`
+// `dir` target skips dmg packaging — faster, and `install` only needs the .app.
+// In install mode we also pin to the host arch so we don't waste time
+// cross-building the other architecture's binaries when we're going to
+// throw them away.
+const archFlag = process.arch === 'arm64' ? '--arm64' : '--x64'
+const builderArgs = shouldInstall ? ['--mac', 'dir', archFlag] : ['--mac']
+await $`bun run build:electron -- ${builderArgs}`
+
+const srcApp = await findBuiltApp()
+if (!srcApp) {
+  console.error(`Error: could not find built ${APP_NAME}.app under release/`)
+  process.exit(1)
+}
+console.log(`Built: ${path.relative(repoRoot, srcApp)}`)
+
+if (shouldInstall) {
+  if (process.platform !== 'darwin') {
+    console.error('install mode is macOS-only')
+    process.exit(1)
+  }
+
+  console.log(`Installing ${APP_NAME}.app to ~/Applications...`)
+
+  // Imported for side-effects: the module's top-level await quits a
+  // running GBL.app (and no-ops on non-macOS). Relative path because
+  // scripts/ sits outside src/ and isn't covered by the `#/` alias.
+  await import('./close-app.ts')
+
+  const appsDir = path.join(os.homedir(), 'Applications')
+  mkdirSync(appsDir, { recursive: true })
+  const destApp = path.join(appsDir, `${APP_NAME}.app`)
+  rmSync(destApp, { recursive: true, force: true })
+  renameSync(srcApp, destApp)
+  console.log(`Installed: ${destApp}`)
+
+  rmSync(path.join(repoRoot, 'release'), { recursive: true, force: true })
+  console.log('Done.')
+}

@@ -1,0 +1,212 @@
+// 简体中文字典。键必须与 en.ts 完全一致。
+// 风格：按钮/菜单短句、提示句加句号；品牌名（GBL / GitHub / Finder）不翻译。
+
+import type { DictKey } from '#/main/i18n/en.ts'
+
+export const zh: Record<DictKey, string> = {
+  // ---- Menu --------------------------------------------------------------
+  'menu.file': '文件',
+  'menu.edit': '编辑',
+  'menu.view': '视图',
+  'menu.window': '窗口',
+  'menu.help': '帮助',
+
+  'menu.app.about': '关于 {name}',
+  'menu.app.services': '服务',
+  'menu.app.hide': '隐藏 {name}',
+  'menu.app.hideOthers': '隐藏其他',
+  'menu.app.showAll': '全部显示',
+  'menu.app.quit': '退出 {name}',
+  'menu.app.settings': '设置…',
+
+  'menu.window.minimize': '最小化',
+  'menu.window.zoom': '缩放',
+  'menu.window.front': '前置全部窗口',
+
+  'menu.file.openRepo': '打开仓库…',
+  'menu.file.closeTab': '关闭当前标签',
+  'menu.file.settings': '设置…',
+  'menu.file.quit': '退出',
+
+  'menu.edit.cut': '剪切',
+  'menu.edit.copy': '复制',
+  'menu.edit.paste': '粘贴',
+  'menu.edit.selectAll': '全选',
+
+  'menu.view.branches': '分支',
+  'menu.view.log': '提交历史',
+  'menu.view.status': '工作区状态',
+  'menu.view.worktrees': '工作树',
+  'menu.view.refresh': '刷新',
+  'menu.view.toggleTheme': '切换主题',
+  'menu.view.toggleDevTools': '切换开发者工具',
+
+  'menu.window.nextRepo': '下一个仓库',
+  'menu.window.prevRepo': '上一个仓库',
+
+  'menu.help.shortcuts': '键盘快捷键',
+
+  // ---- Topbar ------------------------------------------------------------
+  'topbar.open': '打开',
+  'topbar.recents': '最近',
+  'topbar.recentsEmpty': '没有最近打开的仓库。',
+  'topbar.help': '键盘快捷键 (?)',
+  'topbar.settings': '设置 (⌘,)',
+
+  // ---- Sidebar -----------------------------------------------------------
+  'sidebar.repos': '仓库',
+  'sidebar.empty.before': '点击工具栏的 ',
+  'sidebar.empty.openLabel': '打开',
+  'sidebar.empty.after': ' 添加一个 git 仓库。',
+  'sidebar.close': '关闭',
+  'sidebar.missingTitle': '{n} 个仓库未能恢复',
+  'sidebar.missingDismiss': '忽略',
+
+  // ---- Empty state -------------------------------------------------------
+  'empty.title': '没有打开的仓库',
+  'empty.body.before': '点击工具栏的 ',
+  'empty.body.openLabel': '打开',
+  'empty.body.middle': ' 添加一个 git 仓库。可以同时打开多个仓库，在侧栏切换。按 ',
+  'empty.body.after': ' 查看快捷键。',
+
+  // ---- Right-side tabs ---------------------------------------------------
+  'tab.branches': '分支',
+  'tab.log': '提交',
+  'tab.status': '状态',
+  'tab.worktrees': '工作树',
+  'tab.fetching': '同步',
+  'tab.fetchingTitle': '后台同步进行中',
+  'tab.fetchFailed': '同步失败',
+  'tab.fetchFailedTitle': '最近一次后台 fetch 失败 — 请检查网络或远程仓库。',
+
+  // ---- Branches list -----------------------------------------------------
+  'branches.empty': '该仓库暂无分支。',
+  'branches.gone': '已失联',
+  'branches.dirty': '有改动',
+  'branches.worktree': 'wt',
+  'branches.noUpstream': '未设置上游',
+
+  // ---- Log list ----------------------------------------------------------
+  'log.empty': '暂无提交可显示。',
+  'log.emptyForBranch': '{branch} 暂无提交可显示。',
+
+  // ---- Status ------------------------------------------------------------
+  'status.cleanTitle': '工作区已清空',
+  'status.cleanBody': '没有待提交的改动。',
+  'status.staged': '已暂存',
+  'status.stagedHint': '可提交',
+  'status.unstaged': '未暂存',
+  'status.unstagedHint': '工作区已修改',
+  'status.untracked': '未跟踪',
+  'status.untrackedHint': '尚未添加',
+  'status.label.untracked': '未跟踪',
+  'status.label.ignored': '忽略',
+  'status.label.added': '新增',
+  'status.label.deleted': '删除',
+  'status.label.modified': '修改',
+  'status.label.renamed': '重命名',
+  'status.label.copied': '复制',
+  'status.label.conflict': '冲突',
+  'status.label.changed': '改动',
+
+  // ---- Worktrees ---------------------------------------------------------
+  'worktrees.empty': '尚未注册任何工作树。',
+  'worktrees.detached': '(游离)',
+  'worktrees.bare': '裸仓库',
+  'worktrees.dirtyCount': '{n} 处改动',
+  'worktrees.reveal': '打开',
+  'worktrees.revealTitle': '在访达中显示',
+  'worktrees.openInGhosttyTitle': '在 Ghostty 中打开',
+
+  // ---- Repo actions ------------------------------------------------------
+  'action.checkout': '切换',
+  'action.pull': '拉取',
+  'action.push': '推送',
+  'action.fetch': '同步',
+  'action.github': 'GitHub',
+  'action.checkoutCurrent': '已是当前分支',
+  'action.checkoutInWorktree': '已在工作树 {path} 中检出',
+  'action.checkoutTitle': '切换到 {branch}',
+  'action.pullFrom': '从 {tracking} 拉取',
+  'action.pullNoUpstream': '未设置上游',
+  'action.pushTitle': '推送 {branch} 到 origin',
+  'action.fetchTitle': 'git fetch --all --prune',
+  'action.githubTitle': '在浏览器中打开仓库',
+  'action.resultOk': '成功',
+  'action.resultError': '错误',
+  'action.confirmPushProtectedTitle': '推送到 {branch}？',
+  'action.confirmPushProtectedBody.before': '你正准备直接推送到 ',
+  'action.confirmPushProtectedBody.after': '，通常这种分支应该走 PR。继续吗？',
+  'action.confirmPushConfirm': '仍然推送',
+  'action.cancel': '取消',
+  'action.cancelTitle': '取消 {op}',
+
+  // ---- Errors / banners --------------------------------------------------
+  'error.notGitRepo': '不是 git 仓库',
+  'error.failedReadRepo': '读取仓库失败',
+  'error.openGithubNoOrigin': '没有 origin 远程',
+  'error.invalidPath': '路径无效',
+  'error.renderCrashTitle': '渲染该视图时出错',
+  'error.renderCrashUnknown': '未知渲染错误。',
+  'error.tryAgain': '重试',
+  'error.back': '返回 (Esc)',
+  'error.settingsWriteTitle': '设置保存失败',
+
+  // ---- Settings panel ----------------------------------------------------
+  'settings.title': '设置',
+  'settings.appearance': '外观',
+  'settings.theme.auto': '跟随系统',
+  'settings.theme.light': '浅色',
+  'settings.theme.dark': '深色',
+  'settings.lang': '语言',
+  'settings.lang.auto': '跟随系统',
+  'settings.lang.en': 'English',
+  'settings.lang.zh': '中文',
+  'settings.lang.ko': '한국어',
+  'settings.lang.ja': '日本語',
+  'settings.fetch': '自动同步',
+  'settings.fetchHint':
+    '在后台对当前仓库执行 `git fetch`。网络较慢时可关闭。',
+  'settings.fetch.off': '关闭',
+  'settings.fetch.30s': '30 秒',
+  'settings.fetch.1m': '1 分钟',
+  'settings.fetch.5m': '5 分钟',
+  'settings.fetch.15m': '15 分钟',
+  'settings.recents': '最近打开',
+  'settings.recentsCount': '共 {n} 条',
+  'settings.clearRecents': '清空所有最近记录',
+  'settings.clearRecentsConfirm': '再点一次确认',
+
+  // ---- Help overlay ------------------------------------------------------
+  'help.title': '键盘快捷键',
+  'help.section.nav': '导航',
+  'help.section.views': '视图',
+  'help.section.actions': '操作',
+  'help.row.nextBranch': '下一个分支 / 提交',
+  'help.row.prevBranch': '上一个分支 / 提交',
+  'help.row.nextRepo': '下一个仓库',
+  'help.row.prevRepo': '上一个仓库',
+  'help.row.viewBranches': '分支',
+  'help.row.viewLog': '提交历史',
+  'help.row.viewStatus': '工作区状态',
+  'help.row.viewWorktrees': '工作树',
+  'help.row.checkout': '切换到选中分支',
+  'help.row.openRepo': '打开仓库',
+  'help.row.closeRepo': '关闭当前标签',
+  'help.row.refresh': '刷新',
+  'help.row.settings': '设置',
+  'help.row.thisHelp': '当前帮助',
+  'help.row.dismiss': '关闭弹层',
+
+  // ---- Generic dialog ----------------------------------------------------
+  'dialog.cancel': '取消',
+  'dialog.close': '关闭 (Esc)',
+
+  // ---- Commit detail -----------------------------------------------------
+  'commit.parent': '父提交',
+  'commit.parents': '父提交',
+  'commit.filesChanged': '{n} 个文件有改动',
+  'commit.filesChangedPlural': '{n} 个文件有改动',
+  'commit.empty': '没有文件改动（合并或空提交）。',
+  'commit.binary': '二进制',
+}

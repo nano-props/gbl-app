@@ -1,0 +1,213 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(html[data-theme='dark'] *));
+
+/* Manrope 800 — display face for the GBL wordmark + logo. Bundled
+ * locally (no Google Fonts fetch) so the renderer's CSP stays clean
+ * and the font is available offline / first paint. */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 800;
+  font-display: block;
+  src: url('./assets/fonts/manrope-800-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@theme {
+  --color-bg: #ffffff;
+  --color-bg-deep: #f5f5f5;
+  --color-surface: #ffffff;
+
+  --color-ink: #0a0a0a;
+  --color-ink-2: #404040;
+  --color-ink-3: #737373;
+  --color-ink-4: #a3a3a3;
+  --color-ink-5: #d4d4d4;
+
+  --color-line: rgb(10 10 10 / 0.08);
+  --color-line-2: rgb(10 10 10 / 0.12);
+
+  /* Brand accent — saturated blue, matches the dock icon's outer ring
+   * (#1474ff). The text-on-white form is shifted one notch darker
+   * (#1268ee) so accent-coloured small text (commit hashes, worktree
+   * chips) clears WCAG AA 4.5:1 — the icon's #1474ff itself is
+   * visually identical to the eye but doesn't pass the contrast bar
+   * for body text. */
+  --color-accent: #1268ee;
+  --color-accent-rgb: 18 104 238;
+
+  /* Salmon — the wordmark's companion dot. Used as `warning` so all
+   * existing call sites (status modified / behind / dirty markers)
+   * pick it up without renaming. */
+  --color-warning: #ff8a65;
+  --color-warning-rgb: 255 138 101;
+
+  --color-btn-solid: #0a0a0a;
+  --color-btn-solid-hover: #1f1f1f;
+  --color-btn-solid-text: #fafafa;
+
+  --color-danger: #c43a3a;
+  --color-danger-rgb: 196 58 58;
+  --color-success: #2f855a;
+  --color-success-rgb: 47 133 90;
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-display: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --shadow-sm: 0 1px 2px rgb(10 10 10 / 0.04);
+  --shadow-card:
+    0 1px 2px rgb(10 10 10 / 0.03), 0 10px 30px -12px rgb(10 10 10 / 0.12);
+  --shadow-btn: 0 1px 2px rgb(10 10 10 / 0.12);
+}
+
+html[data-theme='dark'] {
+  --color-bg: #0c0d0f;
+  --color-bg-deep: #16181c;
+  --color-surface: #121417;
+
+  --color-ink: #f2f3f5;
+  --color-ink-2: #c9cbce;
+  --color-ink-3: #8a8e95;
+  --color-ink-4: #6a6e75;
+  --color-ink-5: #353942;
+
+  --color-line: rgb(255 255 255 / 0.09);
+  --color-line-2: rgb(255 255 255 / 0.16);
+
+  /* Dark-mode accent — the icon's inner-bead pale blue. Light enough
+   * to clear AA contrast on the dark surface; same hue family as the
+   * light-mode #1474ff so the brand stays consistent. */
+  --color-accent: #7fb3ff;
+  --color-accent-rgb: 127 179 255;
+
+  /* Warm salmon stays warm in dark mode — slight bump for clarity. */
+  --color-warning: #ff9c7a;
+  --color-warning-rgb: 255 156 122;
+
+  --color-btn-solid: #1474ff;
+  --color-btn-solid-hover: #2c89ff;
+  --color-btn-solid-text: #ffffff;
+
+  --color-danger: #ff7a7a;
+  --color-danger-rgb: 255 122 122;
+  --color-success: #6ddb9a;
+  --color-success-rgb: 109 219 154;
+}
+
+:root {
+  color-scheme: light dark;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+* {
+  box-sizing: border-box;
+}
+
+/* Topbar — leaves room for macOS traffic lights on the left.
+ * Acts as the Electron drag region; child buttons opt out via
+ * -webkit-app-region: no-drag (set on `button` and `[data-interactive]`). */
+.topbar {
+  -webkit-app-region: drag;
+  padding: 0 16px 0 80px;
+}
+button,
+[data-interactive] {
+  -webkit-app-region: no-drag;
+}
+
+/* Visible focus ring for keyboard users. Tailwind v4 preflight removes
+ * the browser default; without an explicit rule, Tab navigation
+ * silently moves the cursor with no on-screen indication. We use the
+ * accent colour at 2px offset so it's readable against both light
+ * and dark surfaces. `:focus:not(:focus-visible)` keeps mouse-clicks
+ * from showing the ring (which would feel noisy). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button:focus:not(:focus-visible),
+[data-interactive]:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Inline keycap chip — used by the help overlay. Defined as plain CSS
+ * (not @utility) so it's reachable even without Tailwind seeing every
+ * call site. */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-line-2);
+  background: var(--color-bg-deep);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-ink-2);
+  min-width: 1.5rem;
+  justify-content: center;
+}
+
+/* Radix-style enter animation utilities used by Modal. Tailwind v4
+ * doesn't ship the v3 `tailwindcss-animate` plugin, so we shim the
+ * subset of utilities we use. Each utility writes one custom property
+ * read by the shared `enter` keyframe. */
+@keyframes enter {
+  from {
+    opacity: var(--enter-opacity, 1);
+    transform: translate3d(var(--enter-translate-x, 0), var(--enter-translate-y, 0), 0) scale(var(--enter-scale, 1));
+  }
+}
+@utility animate-in {
+  animation: enter 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@utility fade-in-0 {
+  --enter-opacity: 0;
+}
+@utility zoom-in-95 {
+  --enter-scale: 0.95;
+}
+
+/* Honor the OS-level "reduce motion" preference. Replacing the keyframe
+ * with a no-op duration keeps the layout (no jump) without animating. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Thin scrollbars in scrollable areas — webkit-only, native fallback elsewhere. */
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--color-line-2);
+  border-radius: 4px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
