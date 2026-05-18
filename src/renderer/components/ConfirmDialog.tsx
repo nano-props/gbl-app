@@ -1,10 +1,23 @@
-// Inline confirm dialog — used by RepoActions to gate destructive
-// operations (push to a protected branch, checkout with dirty tree).
-// Built on Modal so Esc + click-outside both cancel.
+// Confirm dialog for destructive operations (push to a protected
+// branch, checkout with dirty tree). Built on shadcn/ui AlertDialog
+// rather than Dialog so it gets the right semantics for AT users:
+//   - role=alertdialog (vs role=dialog)
+//   - focus lands on the cancel action by default, not the confirm
+//   - Esc + outside-click both cancel
+// The `destructive` flag swaps the confirm button's variant so an
+// irreversible action reads as red rather than neutral.
 
-import { Modal } from '#/renderer/components/Modal.tsx'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '#/renderer/components/ui/alert-dialog.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
-import { cn } from '#/renderer/lib/cn.ts'
 
 interface Props {
   open: boolean
@@ -20,32 +33,24 @@ interface Props {
 export function ConfirmDialog({ open, title, message, confirmLabel, destructive, onCancel, onConfirm }: Props) {
   const t = useT()
   return (
-    <Modal open={open} title={title} onClose={onCancel} widthClass="max-w-sm">
-      <div className="space-y-4">
-        <div className="text-sm text-ink-2 leading-relaxed">{message}</div>
-        <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-8 inline-flex items-center rounded-md border border-line-2 bg-surface px-3 text-xs text-ink-2 hover:text-ink hover:bg-bg-deep"
-          >
-            {t('dialog.cancel')}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={cn(
-              'h-8 inline-flex items-center rounded-md px-3 text-xs font-medium shadow-sm hover:opacity-90',
-              'text-[var(--color-btn-solid-text)]',
-            )}
-            style={{
-              background: destructive ? 'var(--color-danger)' : 'var(--color-btn-solid)',
-            }}
-          >
+    <AlertDialog open={open} onOpenChange={(o) => !o && onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          {/* AlertDialogDescription wants string or inline content; we
+           * pass arbitrary ReactNode so we render the body as a child
+           * of the description for AT, but keep ours rich-content. */}
+          <AlertDialogDescription asChild>
+            <div className="text-sm text-muted-foreground leading-relaxed">{message}</div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>{t('dialog.cancel')}</AlertDialogCancel>
+          <AlertDialogAction variant={destructive ? 'destructive' : 'default'} onClick={onConfirm}>
             {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </Modal>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

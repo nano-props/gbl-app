@@ -2,8 +2,8 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 // All `ipcRenderer.invoke` returns a promise that rejects when the main
-// handler throws. Renderer code often `void`s these results (recents
-// recording, openInFinder, saveSession), which would otherwise turn
+// handler throws. Renderer code often `void`s these results (openInFinder,
+// saveSession), which would otherwise turn
 // every transient main-side error into an unhandled rejection. Wrapping
 // once at the bridge keeps the renderer's call sites tidy.
 function safeInvoke(channel, ...args) {
@@ -22,23 +22,21 @@ contextBridge.exposeInMainWorld('gbl', {
   snapshot: (cwd) => safeInvoke('repo:snapshot', cwd),
   log: (cwd, branch, count) => safeInvoke('repo:log', cwd, branch, count),
   status: (cwd) => safeInvoke('repo:status', cwd),
+  patch: (cwd, worktreePath) => safeInvoke('repo:patch', cwd, worktreePath),
   commit: (cwd, hash) => safeInvoke('repo:commit', cwd, hash),
 
   // ---- Mutating ----------------------------------------------------------
   checkout: (cwd, branch) => safeInvoke('repo:checkout', cwd, branch),
+  deleteBranch: (cwd, branch) => safeInvoke('repo:delete-branch', cwd, branch),
+  removeWorktree: (cwd, branch, worktreePath) => safeInvoke('repo:remove-worktree', cwd, branch, worktreePath),
   pull: (cwd, branch, worktreePath) => safeInvoke('repo:pull', cwd, branch, worktreePath),
   push: (cwd, branch) => safeInvoke('repo:push', cwd, branch),
   fetch: (cwd) => safeInvoke('repo:fetch', cwd),
   abort: (cwd) => safeInvoke('repo:abort', cwd),
-  openGitHub: (cwd) => safeInvoke('repo:open-github', cwd),
+  openGitHub: (cwd, branch) => safeInvoke('repo:open-github', cwd, branch),
   openInFinder: (path) => safeInvoke('repo:open-in-finder', path),
   openInGhostty: (path) => safeInvoke('repo:open-in-ghostty', path),
   ghosttyInstalled: () => safeInvoke('repo:ghostty-installed'),
-
-  // ---- Recents -----------------------------------------------------------
-  listRecents: () => safeInvoke('recents:list'),
-  recordRecent: (path, name) => safeInvoke('recents:record', path, name),
-  forgetRecent: (path) => safeInvoke('recents:forget', path),
 
   // ---- Theme -------------------------------------------------------------
   theme: {
@@ -60,7 +58,6 @@ contextBridge.exposeInMainWorld('gbl', {
       ipcRenderer.on('app:fetch-interval-changed', listener)
       return () => ipcRenderer.off('app:fetch-interval-changed', listener)
     },
-    clearRecents: () => safeInvoke('settings:clear-recents'),
     saveSession: (session) => safeInvoke('settings:save-session', session),
     onWriteError: (cb) => {
       const listener = (_event, message) => cb(message)

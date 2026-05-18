@@ -1,5 +1,5 @@
-import { app } from 'electron'
-import { createMainWindow, getMainWindow } from '#/main/window.ts'
+import { app, globalShortcut } from 'electron'
+import { activateMainWindow, createMainWindow, getMainWindow } from '#/main/window.ts'
 import { initTheme } from '#/main/theme.ts'
 import { loadSettings, flushSettings } from '#/main/settings.ts'
 import { buildAppMenu } from '#/main/menu.ts'
@@ -28,6 +28,10 @@ async function main(): Promise<void> {
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
+  })
+
+  app.on('will-quit', () => {
+    globalShortcut.unregister('Alt+G')
   })
 
   app.on('activate', () => {
@@ -69,6 +73,9 @@ async function main(): Promise<void> {
   wireI18nIpc()
 
   buildAppMenu()
+  globalShortcut.register('Alt+G', () => {
+    void activateMainWindow()
+  })
 
   await createMainWindow()
 }

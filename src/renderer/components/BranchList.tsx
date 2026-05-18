@@ -11,42 +11,41 @@
 // previous design buried the marker inside a row of small chips.
 
 import { useEffect, useRef, useState } from 'react'
-import {
-  AlertTriangle,
-  ArrowDown,
-  ArrowUp,
-  Check,
-  FolderOpen,
-  FolderTree,
-  GitBranch,
-  Terminal,
-} from 'lucide-react'
-import { useReposStore } from '#/renderer/stores/repos.ts'
+import { AlertTriangle, ArrowDown, ArrowUp, Check, FolderTree, GitBranch } from 'lucide-react'
+import { useReposStore, type RepoState } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
+import { Badge } from '#/renderer/components/ui/badge.tsx'
+import { BranchActionsMenu } from '#/renderer/components/BranchActionsMenu.tsx'
 import { cn } from '#/renderer/lib/cn.ts'
 import { lastPathSegment } from '#/renderer/lib/paths.ts'
-import type { BranchInfo } from '#/renderer/types.ts'
 
 interface Props {
-  repoId: string
-  branches: BranchInfo[]
-  selected: string | null
-  current: string
+  repo: RepoState
 }
 
-export function BranchList({ repoId, branches, selected, current }: Props) {
+export function BranchList({ repo }: Props) {
   const t = useT()
   const selectBranch = useReposStore((s) => s.selectBranch)
   const selectedRef = useRef<HTMLLIElement | null>(null)
+  const branches = repo.branches
+  const selected = repo.selectedBranch
+  const current = repo.currentBranch
 
-  // Probe ghostty once. Same pattern as the old WorktreeList — cheap and
-  // doesn't change mid-session, so a ref-style mount probe is enough.
+  // Probe ghostty once. Cheap and doesn't change mid-session, so a
+  // mount-time check is enough. The result is threaded into every
+  // BranchActionsMenu so the menu can show / hide its Ghostty entry.
   const [ghosttyInstalled, setGhosttyInstalled] = useState(false)
   useEffect(() => {
     let cancelled = false
-    void window.gbl.ghosttyInstalled().then((ok) => {
-      if (!cancelled) setGhosttyInstalled(ok)
-    })
+    void window.gbl
+      .ghosttyInstalled()
+      .then((ok) => {
+        if (!cancelled) setGhosttyInstalled(ok)
+      })
+      .catch((err) => {
+        console.warn('[ghosttyInstalled] failed', err)
+        if (!cancelled) setGhosttyInstalled(false)
+      })
     return () => {
       cancelled = true
     }
@@ -58,11 +57,11 @@ export function BranchList({ repoId, branches, selected, current }: Props) {
   }, [selected])
 
   if (branches.length === 0) {
-    return <div className="p-6 text-center text-sm text-ink-3">{t('branches.empty')}</div>
+    return <div className="p-6 text-center text-sm text-muted-foreground">{t('branches.empty')}</div>
   }
 
   return (
-    <ul className="overflow-y-auto scroll-thin flex-1 divide-y divide-line">
+    <ul className="overflow-y-auto scroll-thin flex-1 divide-y divide-border">
       {branches.map((b) => {
         const isSelected = b.name === selected
         const isCurrent = b.name === current
@@ -75,64 +74,79 @@ export function BranchList({ repoId, branches, selected, current }: Props) {
             role="button"
             tabIndex={0}
             aria-pressed={isSelected}
-            onClick={() => selectBranch(repoId, b.name)}
+            onClick={() => selectBranch(repo.id, b.name)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
-                selectBranch(repoId, b.name)
+                selectBranch(repo.id, b.name)
               }
             }}
             className={cn(
-              'group flex cursor-pointer items-start gap-2 px-4 py-2.5 border-l-2',
-              isSelected
-                ? 'bg-bg-deep border-accent'
-                : 'border-transparent hover:bg-bg-deep',
-              // Worktree rows get a faint accent-tinted background so
-              // the eye groups them away from "normal" branches.
-              isWorktree && !isSelected && 'bg-[rgb(var(--color-accent-rgb)/0.04)]',
-              isWorktree && isSelected && 'bg-[rgb(var(--color-accent-rgb)/0.08)]',
+              'flex cursor-pointer items-start gap-2 px-4 py-2.5 border-l-2',
+              // No focus ring on the row itself: the j/k keyboard
+              // navigator already updates `selected`, so the selected
+              // visual (bg-muted + border-brand) doubles as the focus
+              // indicator. The global :focus-visible rule in styles.css
+              // would otherwise paint a 2px outline around the row,
+              // which renders as a blue line along the bottom edge
+              // (the only edge not visually absorbed by the row's own
+              // surface) — outline goes outside the box, so adjacent
+              // rows get a stray brand-coloured separator.
+              'focus:outline-none focus-visible:outline-none',
+              // `border-l-brand` (not `border-brand`) so we only set the
+              // colour of the left edge: the parent <ul> uses
+              // `divide-y divide-border` which paints a 1px bottom
+              // border on every row except the last. That bottom
+              // border picks up its colour from `border-color`. If we
+              // set `border-brand` (the shorthand for all 4 edges),
+              // it overrides the divide-border colour and the row's
+              // own bottom-divider goes brand-blue — visible as a
+              // stray blue line under the selected row.
+              // Selected = left brand bar (current branch has its own ✓
+              // glyph elsewhere in the row). row-hover paints bg-muted;
+              // the BranchActionsMenu button inside uses bg-accent on
+              // its own hover, and accent is now one step deeper than
+              // muted in the token layer so hover-on-hover still reads.
+              'transition-colors duration-100',
+              isSelected ? 'border-l-brand hover:bg-muted' : 'border-l-transparent hover:bg-muted',
+              // Worktree rows get a faint brand-tinted background so
+              // the eye groups them away from "normal" branches. Single
+              // tint regardless of selected state — the left brand bar
+              // (set above) already tells the user which row is selected.
+              isWorktree && 'bg-[rgb(var(--color-brand-rgb)/0.05)]',
             )}
           >
             <div className="w-4 pt-0.5 shrink-0">
               {isCurrent ? (
                 <Check size={14} className="text-success" />
               ) : isWorktree ? (
-                <FolderTree size={14} className="text-accent" />
+                <FolderTree size={14} className="text-brand" />
               ) : (
-                <GitBranch size={14} className="text-ink-3" />
+                <GitBranch size={14} className="text-muted-foreground" />
               )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="truncate font-medium text-ink">{b.name}</span>
+                <span className="truncate font-medium text-foreground">{b.name}</span>
                 {isWorktree && b.worktreePath && (
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-sm px-1.5 py-0 text-[10px] font-medium',
-                      b.worktreeDirty
-                        ? 'bg-[rgb(var(--color-warning-rgb)/0.14)] text-warning'
-                        : 'bg-[rgb(var(--color-accent-rgb)/0.12)] text-accent',
-                    )}
-                    title={b.worktreePath}
-                  >
+                  <Badge variant={b.worktreeDirty ? 'warning' : 'brand'} className="gap-1" title={b.worktreePath}>
                     <FolderTree size={10} />
                     {lastPathSegment(b.worktreePath)}
                     {b.worktreeDirty && (
                       <span className="ml-0.5 uppercase tracking-wide">· {t('branches.dirty')}</span>
                     )}
-                  </span>
+                  </Badge>
                 )}
                 {b.tracking && (
-                  <span
+                  <Badge
+                    variant="outline"
                     className={cn(
-                      'rounded-sm border border-line-2 px-1 py-0 text-[10px] font-mono leading-4',
-                      b.trackingGone
-                        ? 'text-warning border-[rgb(var(--color-warning-rgb)/0.4)]'
-                        : 'text-ink-3',
+                      'font-mono leading-4',
+                      b.trackingGone && 'text-warning border-[rgb(var(--color-warning-rgb)/0.4)]',
                     )}
                   >
                     {b.trackingGone ? `${b.tracking} (${t('branches.gone')})` : b.tracking}
-                  </span>
+                  </Badge>
                 )}
                 {b.ahead > 0 && (
                   <span className="inline-flex items-center gap-0.5 text-xs text-success">
@@ -147,48 +161,19 @@ export function BranchList({ repoId, branches, selected, current }: Props) {
                   </span>
                 )}
               </div>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-ink-3">
+              <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-mono shrink-0">{b.lastCommitHash}</span>
                 <span className="truncate">{b.lastCommitMessage || '—'}</span>
               </div>
-              <div className="mt-0.5 text-xs text-ink-4">
+              <div className="mt-0.5 text-xs text-muted-foreground/60">
                 {b.lastCommitAuthor} · {b.lastCommitDate}
               </div>
             </div>
             <div className="shrink-0 flex items-start gap-1 pt-0.5">
-              {b.worktreePath && (
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {ghosttyInstalled && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        void window.gbl.openInGhostty(b.worktreePath!)
-                      }}
-                      className="p-1 rounded text-ink-3 hover:text-ink hover:bg-bg"
-                      title={t('worktrees.openInGhosttyTitle')}
-                      aria-label={t('worktrees.openInGhosttyTitle')}
-                    >
-                      <Terminal size={13} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      void window.gbl.openInFinder(b.worktreePath!)
-                    }}
-                    className="p-1 rounded text-ink-3 hover:text-ink hover:bg-bg"
-                    title={t('worktrees.revealTitle')}
-                    aria-label={t('worktrees.revealTitle')}
-                  >
-                    <FolderOpen size={13} />
-                  </button>
-                </div>
-              )}
               {!b.tracking && (
-                <AlertTriangle size={12} className="mt-1 text-ink-4" aria-label={t('branches.noUpstream')} />
+                <AlertTriangle size={12} className="mt-1 text-muted-foreground/60" aria-label={t('branches.noUpstream')} />
               )}
+              <BranchActionsMenu repo={repo} branch={b} ghosttyInstalled={ghosttyInstalled} />
             </div>
           </li>
         )

@@ -21,6 +21,18 @@ export function getMainWindow(): BrowserWindow | null {
   return mainWindow
 }
 
+export async function activateMainWindow(): Promise<BrowserWindow> {
+  const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : await createMainWindow()
+  if (win.isMinimized()) win.restore()
+  if (!win.isVisible()) win.show()
+  if (process.platform === 'darwin') {
+    app.show()
+    app.focus({ steal: true })
+  }
+  win.focus()
+  return win
+}
+
 /** Constrain saved bounds against current display geometry — a window
  *  saved on an external monitor that's no longer connected would
  *  otherwise open offscreen. */

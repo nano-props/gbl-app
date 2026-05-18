@@ -1,11 +1,12 @@
-// Thin wrapper around Radix Tooltip with the project's styling. Wrap
-// any element that needs a hover label; the tooltip renders into a
-// portal and survives `position: fixed` ancestors. Use this instead
-// of the native `title=` attribute for any tooltip we want to style
-// or compose with kbd chips.
+// Thin wrapper around shadcn/ui Tooltip with the project's preferred
+// defaults (200ms open delay, anchor below the trigger). Wrap any
+// element that needs a hover label; Radix renders into a portal and
+// survives `position: fixed` ancestors. Use this instead of the
+// native `title=` attribute for any tooltip we want to style or
+// compose with kbd chips.
 
-import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import type { ReactNode } from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '#/renderer/components/ui/tooltip.tsx'
 
 interface Props {
   label: ReactNode
@@ -18,20 +19,13 @@ interface Props {
 
 export function Tip({ label, side = 'bottom', delayMs = 200, children }: Props) {
   return (
-    <TooltipPrimitive.Provider delayDuration={delayMs}>
-      <TooltipPrimitive.Root>
-        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
-        <TooltipPrimitive.Portal>
-          <TooltipPrimitive.Content
-            side={side}
-            sideOffset={6}
-            className="z-50 rounded-md border border-line-2 bg-surface px-2 py-1 text-xs text-ink-2 shadow-card animate-in fade-in-0 zoom-in-95"
-          >
-            {label}
-            <TooltipPrimitive.Arrow className="fill-[var(--color-surface)] stroke-[var(--color-line-2)]" />
-          </TooltipPrimitive.Content>
-        </TooltipPrimitive.Portal>
-      </TooltipPrimitive.Root>
-    </TooltipPrimitive.Provider>
+    <TooltipProvider delayDuration={delayMs}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side} sideOffset={6}>
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }

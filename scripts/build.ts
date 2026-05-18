@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// Build and package GBL.
-//   default → GBL.app under release/mac*/ (via electron-builder mac dmg+dir)
+// Build and package Goblin.
+//   default → Goblin.app under release/mac*/ (via electron-builder mac dmg+dir)
 //   install → builds the `dir` target only (no dmg packaging) and moves
-//             GBL.app into ~/Applications, closing any running instance
+//             Goblin.app into ~/Applications, closing any running instance
 //             first. macOS-only.
 //
 // Usage: ./scripts/build.ts [install|i]
@@ -16,7 +16,7 @@ const repoRoot = path.resolve(import.meta.dirname, '..')
 process.chdir(repoRoot)
 $.cwd(repoRoot)
 
-const APP_NAME = 'GBL'
+const APP_NAME = 'Goblin'
 
 const { positionals } = parseArgs({ allowPositionals: true })
 const mode = positionals[0]
@@ -65,7 +65,7 @@ if (shouldInstall) {
   console.log(`Installing ${APP_NAME}.app to ~/Applications...`)
 
   // Imported for side-effects: the module's top-level await quits a
-  // running GBL.app (and no-ops on non-macOS). Relative path because
+  // running Goblin.app (and no-ops on non-macOS). Relative path because
   // scripts/ sits outside src/ and isn't covered by the `#/` alias.
   await import('./close-app.ts')
 

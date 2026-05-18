@@ -1,6 +1,7 @@
 import { git, gitResultWithOptions, NETWORK_TIMEOUT_MS } from '#/main/git/helper.ts'
 import type { ExecResult } from '#/main/git/types.ts'
 import { getCurrentBranch } from '#/main/git/branches.ts'
+import { isSafeBranchName } from '#/main/git/refnames.ts'
 
 function remoteUrlToHttps(url: string): string | null {
   const sshUrl = url.match(/^ssh:\/\/(?:[^@]+@)?([^:/]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/)
@@ -29,7 +30,12 @@ export async function getPullRequestUrl(cwd: string, branch: string): Promise<st
   const repoUrl = await getGitHubUrl(cwd)
   if (!repoUrl) return null
   const encoded = branch.split('/').map(encodeURIComponent).join('/')
-  return `${repoUrl}/pull/${encoded}`
+  // `/pull/new/{branch}` redirects to the existing open PR if one is
+  // associated with the branch; otherwise it lands on GitHub's "create
+  // pull request" page pre-populated with that branch as the head. This
+  // single URL covers both intents the user has when clicking "Open in
+  // GitHub" from a branch row — see an existing PR, or start one.
+  return `${repoUrl}/pull/new/${encoded}`
 }
 
 async function hasOrigin(cwd: string): Promise<boolean> {
@@ -52,6 +58,7 @@ export async function pullBranch(
   worktreePath?: string,
   signal?: AbortSignal,
 ): Promise<ExecResult> {
+  if (!isSafeBranchName(branch)) return { ok: false, message: 'error.invalidArguments' }
   if (!(await hasOrigin(worktreePath ?? cwd))) return { ok: false, message: 'No origin remote configured' }
   if (worktreePath) {
     return gitResultWithOptions(
@@ -71,6 +78,7 @@ export async function pullBranch(
 }
 
 export async function pushBranch(cwd: string, branch: string, signal?: AbortSignal): Promise<ExecResult> {
+  if (!isSafeBranchName(branch)) return { ok: false, message: 'error.invalidArguments' }
   if (!(await hasOrigin(cwd))) return { ok: false, message: 'No origin remote configured' }
   return gitResultWithOptions(cwd, { timeoutMs: NETWORK_TIMEOUT_MS, signal }, 'push', '-u', 'origin', branch)
 }

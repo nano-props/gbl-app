@@ -1,8 +1,8 @@
 import type { Configuration } from 'electron-builder'
 
 const config: Configuration = {
-  appId: 'com.gbl.app',
-  productName: 'GBL',
+  appId: 'gbl.app',
+  productName: 'Goblin',
   // Point at the .icns directly so the multi-resolution variants
   // electron-builder embeds match what we authored. Re-generate via
   // `bun run icon` after editing assets/icon.svg.
@@ -28,8 +28,8 @@ const config: Configuration = {
     ],
     identity: null,
     // Force arch into the filename. electron-builder's default omits the
-    // suffix on x64, which would make `GBL-0.1.0.dmg` (intel) and
-    // `GBL-0.1.0-arm64.dmg` (apple silicon) sort next to each other in
+    // suffix on x64, which would make `Goblin-0.1.0.dmg` (intel) and
+    // `Goblin-0.1.0-arm64.dmg` (apple silicon) sort next to each other in
     // releases with no hint of which is which.
     artifactName: '${productName}-${version}-${arch}.${ext}',
   },

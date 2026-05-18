@@ -32,7 +32,7 @@ export async function getWorkingStatus(cwd: string): Promise<WorktreeStatus[]> {
         return {
           path: wt.path,
           branch: wt.branch,
-          isMain: wt.path === cwd,
+          isMain: wt.isPrimary,
           entries,
         }
       } catch {

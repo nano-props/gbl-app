@@ -1,5 +1,5 @@
 // Settings IPC. Exposes the subset of `settings.ts` that the renderer
-// needs — theme pref + fetch interval + recents + session state.
+// needs — theme pref + fetch interval + session state.
 // Theme has its own `theme:*` channel pair (set + broadcast) defined in
 // `ipc/theme.ts`; here we expose the simpler one-shot setters.
 //
@@ -8,14 +8,8 @@
 // userData is read-only / iCloud holds the lock.
 
 import { ipcMain, BrowserWindow } from 'electron'
-import {
-  clearRecents,
-  loadSettings,
-  onSettingsWriteError,
-  setFetchInterval,
-  setSession,
-  type SessionState,
-} from '#/main/settings.ts'
+import path from 'node:path'
+import { loadSettings, onSettingsWriteError, setFetchInterval, setSession, type SessionState } from '#/main/settings.ts'
 
 export function wireSettingsIpc(): void {
   // Hydrate the renderer at boot. The full settings blob is small
@@ -25,7 +19,6 @@ export function wireSettingsIpc(): void {
     return {
       theme: s.theme,
       fetchIntervalSec: s.fetchIntervalSec,
-      recents: s.recents,
       session: s.session,
     }
   })
@@ -36,15 +29,13 @@ export function wireSettingsIpc(): void {
     broadcastFetchInterval(sec)
   })
 
-  ipcMain.handle('settings:clear-recents', async () => {
-    await clearRecents()
-  })
-
   ipcMain.handle('settings:save-session', async (_e, session: SessionState) => {
     if (!session || !Array.isArray(session.openRepos)) return
+    const openRepos = session.openRepos.map(toSafeSessionPath).filter((p): p is string => p !== null)
+    const activeRepo = toSafeSessionPath(session.activeRepo)
     const cleaned: SessionState = {
-      openRepos: session.openRepos.filter((p) => typeof p === 'string'),
-      activeRepo: typeof session.activeRepo === 'string' ? session.activeRepo : null,
+      openRepos,
+      activeRepo: activeRepo && openRepos.includes(activeRepo) ? activeRepo : null,
     }
     await setSession(cleaned)
   })
@@ -57,6 +48,11 @@ export function wireSettingsIpc(): void {
       if (!win.isDestroyed()) win.webContents.send('app:settings-write-error', message)
     }
   })
+}
+
+function toSafeSessionPath(p: unknown): string | null {
+  if (typeof p !== 'string' || p.length === 0 || p.includes('\0') || !path.isAbsolute(p)) return null
+  return path.normalize(p)
 }
 
 function broadcastFetchInterval(sec: number): void {

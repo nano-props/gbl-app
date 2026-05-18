@@ -1,8 +1,13 @@
 @import 'tailwindcss';
+/* tailwindcss-animate replacement for Tailwind v4. Provides the
+ * shadcn/ui motion utilities (animate-in, fade-in-0, zoom-in-95,
+ * slide-in-from-*, animate-out + their -out variants) that shadcn
+ * components reference for Radix open/close transitions. */
+@import 'tw-animate-css';
 
 @custom-variant dark (&:where(html[data-theme='dark'] *));
 
-/* Manrope 800 — display face for the GBL wordmark + logo. Bundled
+/* Manrope 800 — display face for the Goblin wordmark + logo. Bundled
  * locally (no Google Fonts fetch) so the renderer's CSP stays clean
  * and the font is available offline / first paint. */
 @font-face {
@@ -14,92 +19,126 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* Design tokens. Two layers:
+ *
+ * 1. shadcn/ui semantic tokens (`--color-background`, `--color-foreground`,
+ *    `--color-muted-foreground`, …) — these drive every utility class
+ *    used by the app and by `components/ui/*` (Button, Dialog, Tooltip…).
+ *    We name them with shadcn's vocabulary so the upstream component
+ *    code works unchanged after `npx shadcn add`.
+ *
+ * 2. Project-specific extras that shadcn doesn't have:
+ *      `--color-brand`   — saturated blue, dock-icon outer ring. Used
+ *                          for worktree markers, commit-hash mono text,
+ *                          the active-row left border. Distinct from
+ *                          `--color-accent` (a *hover surface* in
+ *                          shadcn) and `--color-ring` (focus ring).
+ *      `--color-warning` — salmon, the wordmark's companion dot.
+ *                          shadcn has no warning slot; mapped here so
+ *                          status-modified / behind / dirty markers
+ *                          read consistently.
+ *      `--color-success` — green, used in `<Badge variant="success">`
+ *                          and ahead/added counts. Like warning, no
+ *                          shadcn equivalent. */
 @theme {
-  --color-bg: #ffffff;
-  --color-bg-deep: #f5f5f5;
-  --color-surface: #ffffff;
+  /* shadcn/ui core */
+  --color-background: #ffffff;
+  --color-foreground: #0a0a0a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0a0a0a;
+  --color-primary: #0a0a0a;
+  --color-primary-foreground: #fafafa;
+  --color-secondary: #f5f5f5;
+  --color-secondary-foreground: #404040;
+  --color-muted: #f5f5f5;
+  --color-muted-foreground: #737373;
+  /* accent is shadcn's hover/active surface — intentionally a touch
+   * deeper than muted so a Button's hover:bg-accent reads even when it
+   * sits inside a `bg-muted` row (selected branch row, status header
+   * etc.). The default neutral palette ships them at the same value
+   * which makes hover-on-hover invisible. */
+  --color-accent: #ececec;
+  --color-accent-foreground: #0a0a0a;
+  --color-border: rgb(10 10 10 / 0.12);
+  --color-input: rgb(10 10 10 / 0.12);
+  --color-ring: #1268ee;
+  --color-destructive: #c43a3a;
+  --color-destructive-foreground: #ffffff;
 
-  --color-ink: #0a0a0a;
-  --color-ink-2: #404040;
-  --color-ink-3: #737373;
-  --color-ink-4: #a3a3a3;
-  --color-ink-5: #d4d4d4;
-
-  --color-line: rgb(10 10 10 / 0.08);
-  --color-line-2: rgb(10 10 10 / 0.12);
-
-  /* Brand accent — saturated blue, matches the dock icon's outer ring
-   * (#1474ff). The text-on-white form is shifted one notch darker
-   * (#1268ee) so accent-coloured small text (commit hashes, worktree
-   * chips) clears WCAG AA 4.5:1 — the icon's #1474ff itself is
-   * visually identical to the eye but doesn't pass the contrast bar
-   * for body text. */
-  --color-accent: #1268ee;
-  --color-accent-rgb: 18 104 238;
-
-  /* Salmon — the wordmark's companion dot. Used as `warning` so all
-   * existing call sites (status modified / behind / dirty markers)
-   * pick it up without renaming. */
+  /* Project extras */
+  --color-brand: #1268ee;
+  --color-brand-rgb: 18 104 238;
   --color-warning: #ff8a65;
   --color-warning-rgb: 255 138 101;
-
-  --color-btn-solid: #0a0a0a;
-  --color-btn-solid-hover: #1f1f1f;
-  --color-btn-solid-text: #fafafa;
-
-  --color-danger: #c43a3a;
-  --color-danger-rgb: 196 58 58;
   --color-success: #2f855a;
   --color-success-rgb: 47 133 90;
+  /* `--color-danger` is an alias of `--color-destructive` for sites
+   * that already render destructive content with a translucent fill
+   * (they reach for the rgb-channel form `--color-danger-rgb` to
+   * compose their own alpha). Kept separate so the destructive token
+   * stays a single source of truth — both names point at the same
+   * value. */
+  --color-danger: var(--color-destructive);
+  --color-danger-rgb: 196 58 58;
 
+  /* Type / shadows / radius — shadcn radius scale, project shadow
+   * and font stacks. */
   --font-sans:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
   --font-display: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --shadow-sm: 0 1px 2px rgb(10 10 10 / 0.04);
-  --shadow-card:
-    0 1px 2px rgb(10 10 10 / 0.03), 0 10px 30px -12px rgb(10 10 10 / 0.12);
-  --shadow-btn: 0 1px 2px rgb(10 10 10 / 0.12);
+
+  /* shadcn-style radius scale. `rounded-md` is the workhorse for
+   * buttons / inputs; `rounded-lg` for cards / dialogs; `rounded-sm`
+   * for badges. */
+  --radius: 0.5rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
 }
 
 html[data-theme='dark'] {
-  --color-bg: #0c0d0f;
-  --color-bg-deep: #16181c;
-  --color-surface: #121417;
+  --color-background: #0c0d0f;
+  --color-foreground: #f2f3f5;
+  --color-card: #121417;
+  --color-card-foreground: #f2f3f5;
+  --color-popover: #121417;
+  --color-popover-foreground: #f2f3f5;
+  --color-primary: #1474ff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #16181c;
+  --color-secondary-foreground: #c9cbce;
+  --color-muted: #16181c;
+  --color-muted-foreground: #8a8e95;
+  /* In dark mode hover surfaces go *up* in lightness — accent sits one
+   * step above muted so the same hover-on-hover composition reads. */
+  --color-accent: #1d2025;
+  --color-accent-foreground: #f2f3f5;
+  --color-border: rgb(255 255 255 / 0.16);
+  --color-input: rgb(255 255 255 / 0.16);
+  --color-ring: #7fb3ff;
+  --color-destructive: #ff7a7a;
+  /* On the dark surface a bright salmon-on-red is hard to read; pick
+   * the deepest near-black that still passes contrast against the
+   * solid destructive button. */
+  --color-destructive-foreground: #1a0606;
 
-  --color-ink: #f2f3f5;
-  --color-ink-2: #c9cbce;
-  --color-ink-3: #8a8e95;
-  --color-ink-4: #6a6e75;
-  --color-ink-5: #353942;
-
-  --color-line: rgb(255 255 255 / 0.09);
-  --color-line-2: rgb(255 255 255 / 0.16);
-
-  /* Dark-mode accent — the icon's inner-bead pale blue. Light enough
-   * to clear AA contrast on the dark surface; same hue family as the
-   * light-mode #1474ff so the brand stays consistent. */
-  --color-accent: #7fb3ff;
-  --color-accent-rgb: 127 179 255;
-
+  --color-brand: #7fb3ff;
+  --color-brand-rgb: 127 179 255;
   /* Warm salmon stays warm in dark mode — slight bump for clarity. */
   --color-warning: #ff9c7a;
   --color-warning-rgb: 255 156 122;
-
-  --color-btn-solid: #1474ff;
-  --color-btn-solid-hover: #2c89ff;
-  --color-btn-solid-text: #ffffff;
-
-  --color-danger: #ff7a7a;
-  --color-danger-rgb: 255 122 122;
   --color-success: #6ddb9a;
   --color-success-rgb: 109 219 154;
+  --color-danger-rgb: 255 122 122;
 }
 
 :root {
   color-scheme: light dark;
-  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 html[data-theme='dark'] {
   color-scheme: dark;
@@ -110,8 +149,8 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  background: var(--color-bg);
-  color: var(--color-ink);
+  background: var(--color-background);
+  color: var(--color-foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -135,18 +174,47 @@ button,
 
 /* Visible focus ring for keyboard users. Tailwind v4 preflight removes
  * the browser default; without an explicit rule, Tab navigation
- * silently moves the cursor with no on-screen indication. We use the
- * accent colour at 2px offset so it's readable against both light
- * and dark surfaces. `:focus:not(:focus-visible)` keeps mouse-clicks
- * from showing the ring (which would feel noisy). */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-button:focus:not(:focus-visible),
-[data-interactive]:focus:not(:focus-visible) {
-  outline: none;
+ * silently moves the cursor with no on-screen indication.
+ *
+ * Scoped to elements WITHOUT `data-slot` so shadcn-generated
+ * components (which already render their own ring via
+ * `focus-visible:ring-*`) don't get a redundant second ring stacked
+ * on top — that's the source of the "double blue line" around buttons
+ * and selected list rows. shadcn's ring is the single source of truth
+ * for those; this rule covers everything else (kbd chips, anchor
+ * links, plain <button> with no shadcn data-slot, etc).
+ *
+ * Placed in @layer base so Tailwind utilities (which sit in @layer
+ * utilities, defined later) win when a specific element opts out via
+ * `focus-visible:outline-none`. Without the explicit layer, this
+ * rule lands in an unlayered block that comes *after* utilities in
+ * source order, defeating any utility-level override at equal
+ * specificity. */
+@layer base {
+  /* Tailwind v4 preflight resets borders with `border: 0 solid` — no
+   * color, which means any `border` / `border-t` utility (used heavily
+   * by shadcn components: DropdownMenuContent, Card, Input…) falls
+   * back to `currentColor` and paints near-black against the text
+   * color, not the intended muted `--color-border` (12% black). The
+   * canonical shadcn template fixes this by setting border-color on
+   * everything to the token. */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentcolor);
+  }
+
+  :focus-visible:not([data-slot]) {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  button:focus:not(:focus-visible),
+  [data-interactive]:focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 /* Inline keycap chip — used by the help overlay. Defined as plain CSS
@@ -157,34 +225,14 @@ button:focus:not(:focus-visible),
   align-items: center;
   padding: 0 0.35rem;
   border-radius: 4px;
-  border: 1px solid var(--color-line-2);
-  background: var(--color-bg-deep);
+  border: 1px solid var(--color-border);
+  background: var(--color-muted);
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.4;
-  color: var(--color-ink-2);
+  color: var(--color-foreground);
   min-width: 1.5rem;
   justify-content: center;
-}
-
-/* Radix-style enter animation utilities used by Modal. Tailwind v4
- * doesn't ship the v3 `tailwindcss-animate` plugin, so we shim the
- * subset of utilities we use. Each utility writes one custom property
- * read by the shared `enter` keyframe. */
-@keyframes enter {
-  from {
-    opacity: var(--enter-opacity, 1);
-    transform: translate3d(var(--enter-translate-x, 0), var(--enter-translate-y, 0), 0) scale(var(--enter-scale, 1));
-  }
-}
-@utility animate-in {
-  animation: enter 150ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-@utility fade-in-0 {
-  --enter-opacity: 0;
-}
-@utility zoom-in-95 {
-  --enter-scale: 0.95;
 }
 
 /* Honor the OS-level "reduce motion" preference. Replacing the keyframe
@@ -205,7 +253,7 @@ button:focus:not(:focus-visible),
   height: 8px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: var(--color-line-2);
+  background: var(--color-border);
   border-radius: 4px;
 }
 .scroll-thin::-webkit-scrollbar-track {

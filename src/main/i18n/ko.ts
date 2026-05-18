@@ -1,6 +1,6 @@
 // 한국어 사전. en.ts 와 키가 1:1 로 일치해야 합니다.
 // 스타일: 간결한 어휘, 버튼/메뉴는 종결어미 없이, 안내 문장은 평어.
-// 브랜드명(GBL / GitHub / Finder)은 번역하지 않음.
+// 브랜드명(Goblin / GitHub / Finder)은 번역하지 않음.
 
 import type { DictKey } from '#/main/i18n/en.ts'
 
@@ -48,8 +48,6 @@ export const ko: Record<DictKey, string> = {
 
   // ---- Topbar ------------------------------------------------------------
   'topbar.open': '열기',
-  'topbar.recents': '최근',
-  'topbar.recentsEmpty': '최근에 연 리포지토리가 없습니다.',
   'topbar.help': '키보드 단축키 (?)',
   'topbar.settings': '설정 (⌘,)',
 
@@ -110,10 +108,15 @@ export const ko: Record<DictKey, string> = {
   'status.label.copied': '복사',
   'status.label.conflict': '충돌',
   'status.label.changed': '변경',
+  'status.copyPatch': '패치 복사',
+  'status.copyPatchTitle': '이 워크트리의 git apply --binary 패치를 클립보드에 복사',
+  'status.copyPatchOk': '패치를 클립보드에 복사했습니다',
+  'status.copyPatchEmpty': '복사할 내용 없음 — 워크트리가 깨끗합니다',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.revealTitle': 'Finder 에서 보기',
   'worktrees.openInGhosttyTitle': 'Ghostty에서 열기',
+  'worktrees.openInGhosttyLabel': 'Ghostty',
 
   // ---- Repo actions ------------------------------------------------------
   'action.checkout': '체크아웃',
@@ -121,6 +124,8 @@ export const ko: Record<DictKey, string> = {
   'action.push': '푸시',
   'action.fetch': '페치',
   'action.github': 'GitHub',
+  'action.deleteBranch': '브랜치 삭제',
+  'action.removeWorktree': '워크트리 제거',
   'action.checkoutCurrent': '이미 이 브랜치에 있습니다',
   'action.checkoutInWorktree': '{path} 워크트리에서 이미 체크아웃됨',
   'action.checkoutTitle': '{branch} 체크아웃',
@@ -135,7 +140,18 @@ export const ko: Record<DictKey, string> = {
   'action.confirmPushProtectedBody.before': '',
   'action.confirmPushProtectedBody.after': ' 로 직접 푸시하려고 합니다. 보통은 PR 을 거치는 게 좋습니다. 계속할까요?',
   'action.confirmPushConfirm': '그래도 푸시',
+  'action.confirmDeleteBranchTitle': '{branch} 을(를) 삭제할까요?',
+  'action.confirmDeleteBranchBody.before': '로컬 브랜치 ',
+  'action.confirmDeleteBranchBody.after': ' 을(를) 삭제합니다. 완전히 병합되지 않았다면 Git 이 거부합니다.',
+  'action.confirmDeleteBranchConfirm': '브랜치 삭제',
+  'action.confirmRemoveWorktreeTitle': '{branch} 의 워크트리를 정리할까요?',
+  'action.confirmRemoveWorktreeBody.before': '워크트리 경로 ',
+  'action.confirmRemoveWorktreeBody.after': ' 을(를) 제거합니다. 로컬 변경이 있으면 Git 이 거부합니다.',
+  'action.confirmRemoveWorktreeConfirm': '워크트리 제거',
   'action.cancel': '취소',
+  'action.menu': '작업',
+  'action.refresh': '새로 고침',
+  'action.refreshTitle': '브랜치·상태·로그를 디스크에서 다시 읽기',
   'action.cancelTitle': '{op} 취소',
 
   // ---- Errors / banners --------------------------------------------------
@@ -143,6 +159,15 @@ export const ko: Record<DictKey, string> = {
   'error.failedReadRepo': '리포지토리 읽기 실패',
   'error.openGithubNoOrigin': 'origin 원격이 없습니다',
   'error.invalidPath': '경로가 올바르지 않습니다',
+  'error.invalidWorktreePath': '워크트리 경로가 올바르지 않습니다',
+  'error.invalidArguments': '인수가 올바르지 않습니다',
+  'error.unknown': '알 수 없는 오류',
+  'error.cannotDeleteCurrentBranch': '현재 브랜치는 삭제할 수 없습니다',
+  'error.cannotDeleteProtectedBranch': '보호된 브랜치는 삭제할 수 없습니다',
+  'error.cannotDeleteCheckedOutBranch': '워크트리에서 체크아웃된 브랜치는 삭제할 수 없습니다',
+  'error.cannotRemoveMainWorktree': '메인 워크트리는 제거할 수 없습니다',
+  'error.worktreeNotFoundForBranch': '브랜치에 해당하는 워크트리를 찾을 수 없습니다',
+  'error.ghosttyNotInstalled': 'Ghostty가 설치되어 있지 않습니다',
   'error.renderCrashTitle': '이 화면을 렌더링하는 중에 오류가 발생했습니다',
   'error.renderCrashUnknown': '알 수 없는 렌더 오류.',
   'error.tryAgain': '다시 시도',
@@ -169,10 +194,6 @@ export const ko: Record<DictKey, string> = {
   'settings.fetch.1m': '1 분',
   'settings.fetch.5m': '5 분',
   'settings.fetch.15m': '15 분',
-  'settings.recents': '최근 리포지토리',
-  'settings.recentsCount': '{n} 항목',
-  'settings.clearRecents': '최근 항목 모두 지우기',
-  'settings.clearRecentsConfirm': '한 번 더 누르면 확인',
 
   // ---- Help overlay ------------------------------------------------------
   'help.title': '키보드 단축키',
@@ -186,8 +207,9 @@ export const ko: Record<DictKey, string> = {
   'help.row.viewBranches': '브랜치',
   'help.row.viewStatus': '워킹 트리 상태',
   'help.row.viewLog': '커밋 로그',
-  'help.row.checkout': '선택한 브랜치로 체크아웃',
+  'help.row.checkout': '브랜치 체크아웃 / 커밋 열기',
   'help.row.openRepo': '리포지토리 열기',
+  'help.row.activateWindow': 'Goblin 창 보이기',
   'help.row.closeRepo': '현재 탭 닫기',
   'help.row.refresh': '새로 고침',
   'help.row.settings': '설정',

@@ -55,14 +55,14 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgb(var(--color-danger-rgb)/0.1)] text-danger">
             <AlertTriangle size={22} />
           </div>
-          <div className="text-sm font-semibold text-ink mb-1">{tx('error.renderCrashTitle')}</div>
-          <div className="text-xs text-ink-3 mb-4 leading-relaxed">
+          <div className="text-sm font-semibold text-foreground mb-1">{tx('error.renderCrashTitle')}</div>
+          <div className="text-xs text-muted-foreground mb-4 leading-relaxed">
             {this.state.error.message || tx('error.renderCrashUnknown')}
           </div>
           <button
             type="button"
             onClick={this.handleRetry}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line-2 bg-surface px-3 text-xs text-ink-2 hover:text-ink hover:bg-bg-deep shadow-sm"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs text-foreground cursor-pointer hover:text-foreground hover:bg-muted shadow-sm transition-colors duration-100"
           >
             <RefreshCw size={12} />
             {tx('error.tryAgain')}

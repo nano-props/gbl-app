@@ -1,4 +1,4 @@
-# GBL
+# Goblin
 
 Git Branch List — desktop edition. Open multiple git repositories in tabs and browse branches, log, and status.
 
@@ -17,4 +17,4 @@ bun run dev
 ./install.sh
 ```
 
-Builds an arm64 `.app` and installs it to `~/Applications`.
+Builds a host-architecture `.app` and installs it to `~/Applications`.

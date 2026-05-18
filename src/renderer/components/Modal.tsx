@@ -1,4 +1,4 @@
-// Lightweight modal — Radix Dialog under the hood. Radix gives us:
+// Lightweight modal — shadcn/ui Dialog under the hood. Radix gives us:
 //   - proper focus trap (Tab/Shift+Tab cycle stays inside the panel)
 //   - focus restoration to the triggering element on close
 //   - aria-modal + aria-labelledby wiring
@@ -6,10 +6,8 @@
 // Without those, keyboard users could Tab into the dimmed background
 // and end up clicking buttons they couldn't see.
 
-import * as Dialog from '@radix-ui/react-dialog'
 import { type ReactNode } from 'react'
-import { X } from 'lucide-react'
-import { useT } from '#/renderer/stores/i18n.ts'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '#/renderer/components/ui/dialog.tsx'
 import { cn } from '#/renderer/lib/cn.ts'
 
 interface Props {
@@ -22,37 +20,19 @@ interface Props {
 }
 
 export function Modal({ open, title, onClose, children, widthClass = 'max-w-md' }: Props) {
-  const t = useT()
-
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
-      <Dialog.Portal>
-        <Dialog.Overlay
-          className="fixed inset-0 z-40 bg-black/40 animate-in fade-in-0"
-          // Radix already wires Esc / outside-click; we only need
-          // styling here.
-        />
-        <Dialog.Content
-          className={cn(
-            'fixed left-1/2 top-1/2 z-50 w-[90vw] -translate-x-1/2 -translate-y-1/2',
-            'rounded-lg border border-line-2 bg-surface shadow-card',
-            'animate-in zoom-in-95 fade-in-0 focus:outline-none',
-            widthClass,
-          )}
-          // Default Radix behaviour focuses the first focusable child.
-          // We keep that — overrides go on a per-modal basis if needed.
-        >
-          <header className="flex items-center justify-between border-b border-line px-4 py-3">
-            <Dialog.Title className="text-sm font-semibold text-ink">{title}</Dialog.Title>
-            <Dialog.Close asChild>
-              <button type="button" className="text-ink-3 hover:text-ink" title={t('dialog.close')} aria-label={t('dialog.close')}>
-                <X size={16} />
-              </button>
-            </Dialog.Close>
-          </header>
-          <div className="p-4 max-h-[70vh] overflow-y-auto scroll-thin">{children}</div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      {/* p-0 + gap-0 to take full control: shadcn's default p-4 gap-3
+       * works for marketing-style dialogs but we want a section-style
+       * layout (bordered header on top, scrollable body below) for
+       * Settings / Help, where the title is a list-section header
+       * rather than a hero. */}
+      <DialogContent className={cn('p-0 gap-0', widthClass)}>
+        <DialogHeader className="px-4 py-3 border-b border-border text-left">
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="p-4 max-h-[70vh] overflow-y-auto scroll-thin">{children}</div>
+      </DialogContent>
+    </Dialog>
   )
 }

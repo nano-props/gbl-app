@@ -1,6 +1,6 @@
 // 日本語辞書。キーは en.ts と完全に一致させること。
 // スタイル：ボタン/メニューは短く、ヒント文は句点で終わる。
-// ブランド名（GBL / GitHub / Finder / Ghostty）は翻訳しない。
+// ブランド名（Goblin / GitHub / Finder / Ghostty）は翻訳しない。
 
 import type { DictKey } from '#/main/i18n/en.ts'
 
@@ -55,8 +55,6 @@ export const ja: Record<DictKey, string> = {
 
   // ---- Topbar ------------------------------------------------------------
   'topbar.open': '開く',
-  'topbar.recents': '最近',
-  'topbar.recentsEmpty': '最近開いたリポジトリはありません。',
   'topbar.help': 'キーボードショートカット (?)',
   'topbar.settings': '設定 (⌘,)',
 
@@ -118,10 +116,15 @@ export const ja: Record<DictKey, string> = {
   'status.label.copied': 'コピー',
   'status.label.conflict': '競合',
   'status.label.changed': '変更',
+  'status.copyPatch': 'パッチをコピー',
+  'status.copyPatchTitle': 'このワークツリーの git apply --binary 用パッチをクリップボードにコピー',
+  'status.copyPatchOk': 'パッチをクリップボードにコピーしました',
+  'status.copyPatchEmpty': 'コピー対象なし — ワークツリーはクリーンです',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.revealTitle': 'Finder で表示',
   'worktrees.openInGhosttyTitle': 'Ghostty で開く',
+  'worktrees.openInGhosttyLabel': 'Ghostty',
 
   // ---- Repo actions ------------------------------------------------------
   'action.checkout': 'チェックアウト',
@@ -129,6 +132,8 @@ export const ja: Record<DictKey, string> = {
   'action.push': 'プッシュ',
   'action.fetch': 'フェッチ',
   'action.github': 'GitHub',
+  'action.deleteBranch': 'ブランチを削除',
+  'action.removeWorktree': 'ワークツリーを削除',
   'action.checkoutCurrent': 'すでにこのブランチです',
   'action.checkoutInWorktree': '{path} のワークツリーですでにチェックアウト済み',
   'action.checkoutTitle': '{branch} をチェックアウト',
@@ -144,7 +149,18 @@ export const ja: Record<DictKey, string> = {
   'action.confirmPushProtectedBody.after':
     ' に直接プッシュしようとしています。通常はプルリクエスト経由が望ましいですが、続行しますか？',
   'action.confirmPushConfirm': 'プッシュを続行',
+  'action.confirmDeleteBranchTitle': '{branch} を削除しますか？',
+  'action.confirmDeleteBranchBody.before': 'ローカルブランチ ',
+  'action.confirmDeleteBranchBody.after': ' を削除します。完全にマージされていない場合、Git が拒否します。',
+  'action.confirmDeleteBranchConfirm': 'ブランチを削除',
+  'action.confirmRemoveWorktreeTitle': '{branch} のワークツリーを削除しますか？',
+  'action.confirmRemoveWorktreeBody.before': 'ワークツリー ',
+  'action.confirmRemoveWorktreeBody.after': ' を削除します。ローカル変更がある場合、Git が拒否します。',
+  'action.confirmRemoveWorktreeConfirm': 'ワークツリーを削除',
   'action.cancel': 'キャンセル',
+  'action.menu': '操作',
+  'action.refresh': '更新',
+  'action.refreshTitle': 'ブランチ・状態・ログをディスクから再読込',
   'action.cancelTitle': '{op} をキャンセル',
 
   // ---- Errors / banners --------------------------------------------------
@@ -152,6 +168,15 @@ export const ja: Record<DictKey, string> = {
   'error.failedReadRepo': 'リポジトリの読み込みに失敗しました',
   'error.openGithubNoOrigin': 'origin リモートがありません',
   'error.invalidPath': '無効なパス',
+  'error.invalidWorktreePath': '無効なワークツリーパス',
+  'error.invalidArguments': '無効な引数',
+  'error.unknown': '不明なエラー',
+  'error.cannotDeleteCurrentBranch': '現在のブランチは削除できません',
+  'error.cannotDeleteProtectedBranch': '保護されたブランチは削除できません',
+  'error.cannotDeleteCheckedOutBranch': 'ワークツリーでチェックアウト済みのブランチは削除できません',
+  'error.cannotRemoveMainWorktree': 'メインワークツリーは削除できません',
+  'error.worktreeNotFoundForBranch': 'このブランチのワークツリーが見つかりません',
+  'error.ghosttyNotInstalled': 'Ghostty がインストールされていません',
   'error.renderCrashTitle': 'このビューの描画中にエラーが発生しました',
   'error.renderCrashUnknown': '不明な描画エラー。',
   'error.tryAgain': '再試行',
@@ -178,10 +203,6 @@ export const ja: Record<DictKey, string> = {
   'settings.fetch.1m': '1 分',
   'settings.fetch.5m': '5 分',
   'settings.fetch.15m': '15 分',
-  'settings.recents': '最近開いたリポジトリ',
-  'settings.recentsCount': '{n} 件',
-  'settings.clearRecents': '履歴をすべて削除',
-  'settings.clearRecentsConfirm': 'もう一度クリックで確定',
 
   // ---- Help overlay ------------------------------------------------------
   'help.title': 'キーボードショートカット',
@@ -195,8 +216,9 @@ export const ja: Record<DictKey, string> = {
   'help.row.viewBranches': 'ブランチ',
   'help.row.viewStatus': 'ステータス',
   'help.row.viewLog': 'ログ',
-  'help.row.checkout': '選択中のブランチをチェックアウト',
+  'help.row.checkout': 'ブランチを切替 / コミットを開く',
   'help.row.openRepo': 'リポジトリを開く',
+  'help.row.activateWindow': 'Goblin ウィンドウを表示',
   'help.row.closeRepo': '現在のタブを閉じる',
   'help.row.refresh': '更新',
   'help.row.settings': '設定',

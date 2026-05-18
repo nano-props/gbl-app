@@ -1,14 +1,12 @@
-// Settings overlay — theme pref, language, auto-fetch interval, recents
-// management. Mounted unconditionally and gated by `open`; the modal
-// itself returns null when closed.
+// Settings overlay — theme pref, language, auto-fetch interval.
+// Mounted unconditionally and gated by `open`; the modal itself
+// returns null when closed.
 
-import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
 import { Modal } from '#/renderer/components/Modal.tsx'
+import { ToggleGroup, ToggleGroupItem } from '#/renderer/components/ui/toggle-group.tsx'
 import { useThemeStore } from '#/renderer/stores/theme.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
-import { cn } from '#/renderer/lib/cn.ts'
 import type { LangPref, ThemePref } from '#/renderer/types-bridge.ts'
 
 interface Props {
@@ -24,9 +22,6 @@ export function SettingsPanel({ open, onClose }: Props) {
   const setLangPref = useI18nStore((s) => s.setPref)
   const fetchInterval = useSettingsStore((s) => s.fetchIntervalSec)
   const setFetchInterval = useSettingsStore((s) => s.setFetchInterval)
-  const recents = useSettingsStore((s) => s.recents)
-  const clearRecents = useSettingsStore((s) => s.clearRecents)
-  const [confirming, setConfirming] = useState(false)
 
   const themeOptions: { value: ThemePref; labelKey: string }[] = [
     { value: 'auto', labelKey: 'settings.theme.auto' },
@@ -48,7 +43,7 @@ export function SettingsPanel({ open, onClose }: Props) {
     { value: 900, labelKey: 'settings.fetch.15m' },
   ]
 
-  const buildInfo = `GBL · v${__APP_VERSION__}`
+  const buildInfo = `Goblin · v${__APP_VERSION__}`
 
   return (
     <Modal open={open} title={t('settings.title')} onClose={onClose} widthClass="max-w-lg">
@@ -57,7 +52,7 @@ export function SettingsPanel({ open, onClose }: Props) {
           <SegmentedControl
             value={themePref}
             options={themeOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-            onChange={(v) => void setThemePref(v as ThemePref)}
+            onChange={(v) => void setThemePref(v)}
           />
         </Section>
 
@@ -65,7 +60,7 @@ export function SettingsPanel({ open, onClose }: Props) {
           <SegmentedControl
             value={langPref}
             options={langOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-            onChange={(v) => void setLangPref(v as LangPref)}
+            onChange={(v) => void setLangPref(v)}
           />
         </Section>
 
@@ -73,38 +68,11 @@ export function SettingsPanel({ open, onClose }: Props) {
           <SegmentedControl
             value={fetchInterval}
             options={intervalOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-            onChange={(v) => void setFetchInterval(v as number)}
+            onChange={(v) => void setFetchInterval(v)}
           />
         </Section>
 
-        <Section label={t('settings.recents')} hint={t('settings.recentsCount', { n: recents.length })}>
-          <button
-            type="button"
-            disabled={recents.length === 0}
-            onClick={() => {
-              if (confirming) {
-                void clearRecents()
-                setConfirming(false)
-              } else {
-                setConfirming(true)
-              }
-            }}
-            onBlur={() => setConfirming(false)}
-            className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs',
-              recents.length === 0
-                ? 'border-line-2 text-ink-4 cursor-not-allowed'
-                : confirming
-                  ? 'border-[rgb(var(--color-danger-rgb)/0.4)] bg-[rgb(var(--color-danger-rgb)/0.08)] text-danger'
-                  : 'border-line-2 text-ink-2 hover:text-ink hover:bg-bg-deep',
-            )}
-          >
-            <Trash2 size={12} />
-            {confirming ? t('settings.clearRecentsConfirm') : t('settings.clearRecents')}
-          </button>
-        </Section>
-
-        <div className="border-t border-line pt-3 text-xs text-ink-4">{buildInfo}</div>
+        <div className="border-t border-border pt-3 text-xs text-muted-foreground/60">{buildInfo}</div>
       </div>
     </Modal>
   )
@@ -113,8 +81,8 @@ export function SettingsPanel({ open, onClose }: Props) {
 function Section({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-3">{label}</div>
-      {hint && <div className="mb-2 text-xs text-ink-3">{hint}</div>}
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      {hint && <div className="mb-2 text-xs text-muted-foreground">{hint}</div>}
       {children}
     </div>
   )
@@ -127,21 +95,31 @@ interface SegmentedProps<T extends string | number> {
 }
 
 function SegmentedControl<T extends string | number>({ value, options, onChange }: SegmentedProps<T>) {
+  // ToggleGroup is a Radix primitive: single-select gives us
+  // arrow-key navigation, aria-pressed, and proper roving-tabindex
+  // for free. We render it as `outline` + `spacing=0` so the items
+  // sit flush in a bordered pill — same visual idiom as the previous
+  // hand-rolled SegmentedControl, but with Radix wiring under it.
   return (
-    <div className="inline-flex rounded-md border border-line-2 bg-bg-deep p-0.5">
+    <ToggleGroup
+      type="single"
+      value={String(value)}
+      onValueChange={(v) => {
+        if (!v) return
+        // ToggleGroup gives back a string; cast it to whichever shape
+        // the caller specified (string | number) by matching against
+        // the original options.
+        const matched = options.find((o) => String(o.value) === v)
+        if (matched) onChange(matched.value)
+      }}
+      variant="outline"
+      size="sm"
+    >
       {options.map((opt) => (
-        <button
-          key={String(opt.value)}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            'h-7 px-3 rounded text-xs',
-            opt.value === value ? 'bg-surface text-ink shadow-sm' : 'text-ink-3 hover:text-ink',
-          )}
-        >
+        <ToggleGroupItem key={String(opt.value)} value={String(opt.value)}>
           {opt.label}
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   )
 }

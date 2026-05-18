@@ -9,7 +9,7 @@ import { describe, expect, test } from 'bun:test'
 // Relative import: bun's test runner doesn't resolve the package.json
 // `imports` (#/...) field for .ts subpaths the way the Electron/Vite
 // builds do. Same module either way.
-import { FIELD_SEP, parseBranches, parseLog, parseStatus, parseWorktrees } from './parsers.ts'
+import { FIELD_SEP, parseBranches, parseLog, parseStatus, parseWorktrees } from '#/main/git/parsers.ts'
 
 const SEP = FIELD_SEP
 
@@ -54,10 +54,9 @@ describe('parseBranches', () => {
   })
 
   test('marks isCurrent only for the matching branch', () => {
-    const out = [
-      ['main', 'a', 's', 'd', 'a1', '', ''].join(SEP),
-      ['dev', 'b', 's', 'd', 'a1', '', ''].join(SEP),
-    ].join('\n')
+    const out = [['main', 'a', 's', 'd', 'a1', '', ''].join(SEP), ['dev', 'b', 's', 'd', 'a1', '', ''].join(SEP)].join(
+      '\n',
+    )
     const result = parseBranches(out, 'dev')
     expect(result.find((b) => b.name === 'main')?.isCurrent).toBe(false)
     expect(result.find((b) => b.name === 'dev')?.isCurrent).toBe(true)
@@ -66,10 +65,18 @@ describe('parseBranches', () => {
   test('attaches worktree info when branch matches', () => {
     const line = ['feat', 'h', 's', 'd', 'a', '', ''].join(SEP)
     const result = parseBranches(line, 'main', [
-      { path: '/wt/feat', branch: 'feat', isBare: false, isDirty: true },
+      { path: '/wt/feat', branch: 'feat', isBare: false, isPrimary: false, isDirty: true },
     ])
     expect(result[0]?.worktreePath).toBe('/wt/feat')
     expect(result[0]?.worktreeDirty).toBe(true)
+    expect(result[0]?.worktreeIsPrimary).toBe(false)
+  })
+
+  test('attaches primary worktree marker when branch matches the main worktree', () => {
+    const line = ['main', 'h', 's', 'd', 'a', '', ''].join(SEP)
+    const [branch] = parseBranches(line, 'feature', [{ path: '/repo', branch: 'main', isBare: false, isPrimary: true }])
+    expect(branch?.worktreePath).toBe('/repo')
+    expect(branch?.worktreeIsPrimary).toBe(true)
   })
 
   test('preserves SEP-free subjects with spaces and unicode', () => {
@@ -177,7 +184,7 @@ describe('parseWorktrees', () => {
     const out = ['worktree /repo', 'HEAD abc123', 'branch refs/heads/main'].join('\n')
     const result = parseWorktrees(out)
     expect(result).toHaveLength(1)
-    expect(result[0]).toEqual({ path: '/repo', branch: 'main', isBare: false })
+    expect(result[0]).toEqual({ path: '/repo', branch: 'main', isBare: false, isPrimary: true })
   })
 
   test('detached HEAD has no branch line — branch left undefined', () => {
@@ -186,12 +193,14 @@ describe('parseWorktrees', () => {
     expect(w?.path).toBe('/repo/wt-detached')
     expect(w?.branch).toBeUndefined()
     expect(w?.isBare).toBe(false)
+    expect(w?.isPrimary).toBe(true)
   })
 
   test('flags bare worktrees', () => {
     const out = ['worktree /repo/bare', 'HEAD 0000000', 'bare'].join('\n')
     const [w] = parseWorktrees(out)
     expect(w?.isBare).toBe(true)
+    expect(w?.isPrimary).toBe(true)
     expect(w?.branch).toBeUndefined()
   })
 
@@ -208,6 +217,7 @@ describe('parseWorktrees', () => {
     const result = parseWorktrees(out)
     expect(result).toHaveLength(2)
     expect(result.map((w) => w.branch)).toEqual(['main', 'feat'])
+    expect(result.map((w) => w.isPrimary)).toEqual([true, false])
   })
 
   test('strips refs/heads/ prefix from branch ref', () => {

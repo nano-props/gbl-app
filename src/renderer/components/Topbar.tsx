@@ -1,16 +1,14 @@
-// Top app bar. Holds the Open button and Recents dropdown.
+// Top app bar. Holds the Open button + ambient utilities (help / settings).
 // The .topbar CSS rule turns this into the OS drag region; child buttons
 // opt out via -webkit-app-region: no-drag (set globally on `button` and
 // any element with `data-interactive`).
 
-import { useEffect, useState } from 'react'
-import * as Popover from '@radix-ui/react-popover'
-import { Folder, HelpCircle, Settings } from 'lucide-react'
+import { FolderOpen, HelpCircle, Settings } from 'lucide-react'
 import { useReposStore } from '#/renderer/stores/repos.ts'
-import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { Tip } from '#/renderer/components/Tip.tsx'
-import { cn } from '#/renderer/lib/cn.ts'
+import { Logo } from '#/renderer/components/Logo.tsx'
+import { Button } from '#/renderer/components/ui/button.tsx'
 
 interface Props {
   onOpenSettings: () => void
@@ -20,99 +18,51 @@ interface Props {
 export function Topbar({ onOpenSettings, onShowHelp }: Props) {
   const t = useT()
   const openRepo = useReposStore((s) => s.openRepo)
-  const recents = useSettingsStore((s) => s.recents)
-  const refreshRecents = useSettingsStore((s) => s.refreshRecents)
-  const [recentsOpen, setRecentsOpen] = useState(false)
-
-  useEffect(() => {
-    void refreshRecents()
-  }, [refreshRecents])
 
   async function handleOpen() {
     const path = await window.gbl.openDialog()
     if (!path) return
     await openRepo(path)
-    void refreshRecents()
-  }
-
-  async function handleOpenRecent(p: string) {
-    setRecentsOpen(false)
-    await openRepo(p)
-    void refreshRecents()
   }
 
   return (
-    <div className="topbar flex h-10 items-center gap-2 border-b border-line bg-bg-deep text-sm">
+    <div className="topbar relative flex h-10 items-center gap-2 border-b border-border bg-background text-sm">
+      {/* Brand wordmark, centred over the title bar like a native macOS
+       * window chrome (cf. Apple's HIG title-bar layout). Absolute so
+       * its position is independent of how many action buttons sit on
+       * the right; pointer-events-none keeps the OS drag region
+       * unblocked beneath it. Hidden below md (≥768px) so the wordmark
+       * doesn't overlap the right-side action cluster on a narrow
+       * window — the project's minWidth is 800px, so this only kicks
+       * in if the user resizes mid-session. */}
+      <div className="pointer-events-none absolute inset-0 hidden md:flex items-center justify-center">
+        <Logo />
+      </div>
+
       <div className="flex-1" />
 
-      <button
-        type="button"
-        onClick={handleOpen}
-        className="inline-flex h-7 items-center gap-1.5 rounded-md border border-line-2 bg-surface px-2.5 text-ink-2 hover:text-ink hover:bg-bg shadow-sm"
-      >
-        <Folder size={14} />
-        <span>{t('topbar.open')}</span>
-      </button>
-
-      {/* Recents popover. Radix wires Esc, click-outside, focus
-       * management and arrow-key navigation for free, replacing the
-       * earlier hand-rolled `useState + onClick` toggle. */}
-      <Popover.Root open={recentsOpen} onOpenChange={setRecentsOpen}>
-        <Popover.Trigger asChild>
-          <button
-            type="button"
-            className="inline-flex h-7 items-center rounded-md border border-line-2 bg-surface px-2.5 text-ink-2 hover:text-ink hover:bg-bg shadow-sm"
-          >
-            {t('topbar.recents')}
-          </button>
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content
-            sideOffset={6}
-            align="end"
-            className="z-40 w-80 rounded-md border border-line-2 bg-surface shadow-card scroll-thin overflow-auto max-h-80 animate-in fade-in-0 zoom-in-95"
-          >
-            {recents.length === 0 ? (
-              <div className="p-3 text-ink-3 text-xs">{t('topbar.recentsEmpty')}</div>
-            ) : (
-              recents.map((r) => (
-                <button
-                  key={r.path}
-                  type="button"
-                  onClick={() => handleOpenRecent(r.path)}
-                  className={cn(
-                    'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left',
-                    'hover:bg-bg-deep border-b border-line last:border-b-0',
-                  )}
-                >
-                  <span className="text-ink truncate w-full">{r.name}</span>
-                  <span className="text-ink-3 text-xs truncate w-full">{r.path}</span>
-                </button>
-              ))
-            )}
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
+      {/* Topbar actions are ghost-icon-only — same idiom as macOS title
+       * bars and the deck-app reference: hover surfaces the button,
+       * tooltips name the action. Keeping all three to one visual class
+       * (no mixed text+icon buttons) reads as a single chrome cluster
+       * rather than a "primary action + utilities" split, which fits
+       * a tool whose primary action lives in the repo body, not the
+       * top bar. */}
+      <Tip label={t('topbar.open')}>
+        <Button variant="ghost" size="icon" onClick={handleOpen} aria-label={t('topbar.open')}>
+          <FolderOpen />
+        </Button>
+      </Tip>
 
       <Tip label={t('topbar.help')}>
-        <button
-          type="button"
-          onClick={onShowHelp}
-          aria-label={t('topbar.help')}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line-2 bg-surface text-ink-2 hover:text-ink hover:bg-bg shadow-sm"
-        >
-          <HelpCircle size={14} />
-        </button>
+        <Button variant="ghost" size="icon" onClick={onShowHelp} aria-label={t('topbar.help')}>
+          <HelpCircle />
+        </Button>
       </Tip>
       <Tip label={t('topbar.settings')}>
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          aria-label={t('topbar.settings')}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line-2 bg-surface text-ink-2 hover:text-ink hover:bg-bg shadow-sm"
-        >
-          <Settings size={14} />
-        </button>
+        <Button variant="ghost" size="icon" onClick={onOpenSettings} aria-label={t('topbar.settings')}>
+          <Settings />
+        </Button>
       </Tip>
     </div>
   )

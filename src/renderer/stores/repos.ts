@@ -38,6 +38,10 @@ export interface RepoState {
   selectedBranch: string | null
   /** Log/status are tab-specific — only fetched when the user opens that tab. */
   log: LogEntry[]
+  /** j/k cursor in the Log tab. Null until the user enters the tab or
+   *  log is refreshed; first entry is auto-selected then. Discarded
+   *  whenever a log refresh produces a list that doesn't contain it. */
+  selectedLogHash: string | null
   /** Working-tree status grouped by worktree (main worktree first). */
   status: WorktreeStatus[]
   rightTab: RightTab
@@ -85,12 +89,14 @@ interface ReposStore {
   reorderRepos: (fromId: string, toId: string) => void
   setRightTab: (id: string, tab: RightTab) => void
   selectBranch: (id: string, branch: string) => void
+  selectLog: (id: string, hash: string) => void
   cycleActive: (direction: 1 | -1) => void
   /** Keyboard-driven checkout of the active repo's selected branch.
    *  Centralizes the eligibility checks the keyboard hook used to do. */
   checkoutSelected: () => Promise<void>
-
-  refreshSnapshot: (id: string, options?: { silent?: boolean }) => Promise<void>
+  /** Keyboard-driven open of the active repo's selected log entry. */
+  openSelectedCommit: () => Promise<void>
+  refreshSnapshot: (id: string, options?: { silent?: boolean; skipLogBackfill?: boolean; token?: number }) => Promise<void>
   refreshLog: (id: string) => Promise<void>
   refreshStatus: (id: string) => Promise<void>
   refreshAll: (id: string) => Promise<void>
@@ -100,6 +106,10 @@ interface ReposStore {
   closeCommit: (id: string) => void
 
   setLastResult: (id: string, result: { ok: boolean; message: string } | null) => void
+  /** Reset the repo-level error string. Used by the toast bridge to
+   *  clear the value once it has been surfaced, so dismissing the
+   *  toast doesn't immediately re-fire on the next render. */
+  setError: (id: string, error: string | null) => void
   hydrateSession: (openRepos: string[], activeRepo: string | null) => Promise<void>
   /** Drop the "missing" indicator for paths that failed to restore — the
    *  user has acknowledged them. */
@@ -122,6 +132,7 @@ function emptyRepo(id: string, name: string): RepoState {
     currentBranch: '',
     selectedBranch: null,
     log: [],
+    selectedLogHash: null,
     status: [],
     rightTab: 'branches',
     openCommit: null,
@@ -179,10 +190,11 @@ export const useReposStore = create<ReposStore>((set, get) => ({
       }
     })
 
-    void window.gbl.recordRecent(id, name).catch(() => {
-      /* recents are advisory; failure is fine */
-    })
     void get().refreshSnapshot(id)
+    // Status drives the per-tab badge in the repo header, which is
+    // visible from every tab — load it eagerly so the count appears
+    // before the user clicks into the Status tab.
+    void get().refreshStatus(id)
     return { ok: true }
   },
 
@@ -251,11 +263,21 @@ export const useReposStore = create<ReposStore>((set, get) => ({
     set((s) => {
       const repo = s.repos[id]
       if (!repo) return s
-      return { repos: { ...s.repos, [id]: { ...repo, selectedBranch: branch } } }
+      // Branch change invalidates the Log cursor — the new branch's log
+      // probably doesn't contain the old hash.
+      return { repos: { ...s.repos, [id]: { ...repo, selectedBranch: branch, selectedLogHash: null } } }
     })
     // Refresh log against the new branch if the Log tab is showing.
     const repo = get().repos[id]
     if (repo?.rightTab === 'log') void get().refreshLog(id)
+  },
+
+  selectLog(id, hash) {
+    set((s) => {
+      const repo = s.repos[id]
+      if (!repo) return s
+      return { repos: { ...s.repos, [id]: { ...repo, selectedLogHash: hash } } }
+    })
   },
 
   async checkoutSelected() {
@@ -272,15 +294,28 @@ export const useReposStore = create<ReposStore>((set, get) => ({
       const result = await window.gbl.checkout(id, branch)
       get().setLastResult(id, result)
       await get().refreshSnapshot(id)
+      await get().refreshStatus(id)
     } catch (err) {
       get().setLastResult(id, { ok: false, message: err instanceof Error ? err.message : String(err) })
     }
   },
 
+  async openSelectedCommit() {
+    const state = get()
+    const id = state.activeId
+    if (!id) return
+    const repo = state.repos[id]
+    if (!repo || repo.rightTab !== 'log') return
+    const hash = repo.selectedLogHash ?? repo.log[0]?.hash
+    if (!hash) return
+    await get().openCommit(id, hash)
+  },
+
   async refreshSnapshot(id, options) {
     const repoBefore = get().repos[id]
     if (!repoBefore) return
-    const token = repoBefore.instanceToken
+    const token = options?.token ?? repoBefore.instanceToken
+    if (repoBefore.instanceToken !== token) return
     const silent = options?.silent === true
     if (!silent) {
       updateIfFresh(get(), set, id, token, (r) => ({ ...r, loading: true, error: null }))
@@ -295,15 +330,19 @@ export const useReposStore = create<ReposStore>((set, get) => ({
         // Default selection: current branch on first load. Keep the
         // user's pick if it still exists, otherwise fall back so the
         // right pane never points at a stale name.
-        let selected = r.selectedBranch
+        const previousSelected = r.selectedBranch
+        let selected = previousSelected
         if (!selected || !snap.branches.some((b) => b.name === selected)) {
           selected = snap.branches.find((b) => b.name === snap.current)?.name ?? snap.branches[0]?.name ?? null
         }
+        const branchChanged = selected !== previousSelected
         return {
           ...r,
           branches: snap.branches,
           currentBranch: snap.current,
           selectedBranch: selected,
+          log: branchChanged ? [] : r.log,
+          selectedLogHash: branchChanged ? null : r.selectedLogHash,
           loading: false,
         }
       })
@@ -312,14 +351,8 @@ export const useReposStore = create<ReposStore>((set, get) => ({
       // selectedBranch was still null. Now that we have it, backfill
       // the data they're actually looking at.
       //
-      // Note: refreshAll also chains its own `await refreshLog(id)`
-      // after this snapshot, so on the ⌘R path log will fetch twice.
-      // That's a few-millisecond redundancy; not worth the state
-      // machine to deduplicate, since the second fetch's result
-      // overwrites the first identically and `updateIfFresh` keeps
-      // both writes safe.
       const after = get().repos[id]
-      if (after && after.instanceToken === token && after.rightTab === 'log' && after.log.length === 0) {
+      if (after && after.instanceToken === token && after.rightTab === 'log' && !options?.skipLogBackfill) {
         void get().refreshLog(id)
       }
     } catch (err) {
@@ -345,7 +378,12 @@ export const useReposStore = create<ReposStore>((set, get) => ({
         // overwrite the current one.
         const stillBranch = r.selectedBranch ?? r.currentBranch
         if (stillBranch !== branch) return r
-        return { ...r, log }
+        // Re-anchor the j/k cursor: keep it if the selected hash is
+        // still in the new log, otherwise auto-select the head so j/k
+        // is immediately usable when the user enters the tab.
+        const stillHas = r.selectedLogHash && log.some((e) => e.hash === r.selectedLogHash)
+        const selectedLogHash = stillHas ? r.selectedLogHash : (log[0]?.hash ?? null)
+        return { ...r, log, selectedLogHash }
       })
     } catch (err) {
       console.warn('[refreshLog] failed', err)
@@ -374,14 +412,16 @@ export const useReposStore = create<ReposStore>((set, get) => ({
 
   async refreshAll(id) {
     if (!get().repos[id]) return
-    await get().refreshSnapshot(id)
-    // Re-read rightTab after the snapshot resolves: the user can switch
-    // tabs while ⌘R is in flight, and we want to load the data they're
-    // looking at now, not the tab they were on when they pressed it.
+    await get().refreshSnapshot(id, { skipLogBackfill: true })
+    // Status is always refreshed (regardless of which tab is active)
+    // because the tab badge in the repo header surfaces the dirty file
+    // count on every view — without this, the badge would be empty
+    // until the user clicks into the Status tab. Log only matters when
+    // it's visible, so we keep its refresh tab-gated.
     const after = get().repos[id]
     if (!after) return
+    await get().refreshStatus(id)
     if (after.rightTab === 'log') await get().refreshLog(id)
-    if (after.rightTab === 'status') await get().refreshStatus(id)
   },
 
   async backgroundFetch(id) {
@@ -411,7 +451,7 @@ export const useReposStore = create<ReposStore>((set, get) => ({
         }
         // Success — clear the fail flag and refresh the snapshot.
         updateIfFresh(get(), set, id, token, (r) => ({ ...r, fetchFailed: false, fetchError: null }))
-        await get().refreshSnapshot(id, { silent: true })
+        await get().refreshSnapshot(id, { silent: true, token })
       } catch (err) {
         console.warn('[backgroundFetch] threw:', err)
         const message = err instanceof Error ? err.message : String(err)
@@ -443,6 +483,10 @@ export const useReposStore = create<ReposStore>((set, get) => ({
       updateIfFresh(get(), set, id, token, (r) => ({ ...r, openCommit: detail }))
     } catch (err) {
       console.warn('[openCommit] failed', err)
+      updateIfFresh(get(), set, id, token, (r) => ({
+        ...r,
+        error: err instanceof Error ? err.message : String(err),
+      }))
     }
   },
 
@@ -459,6 +503,14 @@ export const useReposStore = create<ReposStore>((set, get) => ({
       const repo = s.repos[id]
       if (!repo) return s
       return { repos: { ...s.repos, [id]: { ...repo, lastResult: result } } }
+    })
+  },
+
+  setError(id, error) {
+    set((s) => {
+      const repo = s.repos[id]
+      if (!repo) return s
+      return { repos: { ...s.repos, [id]: { ...repo, error } } }
     })
   },
 
@@ -514,7 +566,13 @@ export const useReposStore = create<ReposStore>((set, get) => ({
       }
     })
 
-    for (const { id } of valid) void get().refreshSnapshot(id)
+    for (const { id } of valid) {
+      void get().refreshSnapshot(id)
+      // See `openRepo`: status backs the always-visible header badge,
+      // so we hydrate it for every restored repo, not just the active
+      // one — switching tabs after boot shouldn't reveal a stale 0.
+      void get().refreshStatus(id)
+    }
   },
 
   dismissMissing() {

@@ -32,6 +32,7 @@ const SECTIONS: { titleKey: string; rows: { keys: string[]; labelKey: string }[]
     rows: [
       { keys: ['Enter'], labelKey: 'help.row.checkout' },
       { keys: ['⌘', 'O'], labelKey: 'help.row.openRepo' },
+      { keys: ['⌥', 'G'], labelKey: 'help.row.activateWindow' },
       { keys: ['⌘', '⇧', 'W'], labelKey: 'help.row.closeRepo' },
       { keys: ['⌘', 'R'], labelKey: 'help.row.refresh' },
       { keys: ['⌘', ','], labelKey: 'help.row.settings' },
@@ -48,11 +49,11 @@ export function HelpOverlay({ open, onClose }: Props) {
       <div className="space-y-4">
         {SECTIONS.map((section) => (
           <div key={section.titleKey}>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-3">{t(section.titleKey)}</div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t(section.titleKey)}</div>
             <ul className="space-y-1.5">
               {section.rows.map((row) => (
                 <li key={row.labelKey} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-ink-2">{t(row.labelKey)}</span>
+                  <span className="text-foreground">{t(row.labelKey)}</span>
                   <span className="flex gap-1 shrink-0">
                     {row.keys.map((k, i) => (
                       <span key={i} className="kbd">

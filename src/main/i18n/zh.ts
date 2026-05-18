@@ -1,5 +1,5 @@
 // 简体中文字典。键必须与 en.ts 完全一致。
-// 风格：按钮/菜单短句、提示句加句号；品牌名（GBL / GitHub / Finder）不翻译。
+// 风格：按钮/菜单短句、提示句加句号；品牌名（Goblin / GitHub / Finder）不翻译。
 
 import type { DictKey } from '#/main/i18n/en.ts'
 
@@ -47,8 +47,6 @@ export const zh: Record<DictKey, string> = {
 
   // ---- Topbar ------------------------------------------------------------
   'topbar.open': '打开',
-  'topbar.recents': '最近',
-  'topbar.recentsEmpty': '没有最近打开的仓库。',
   'topbar.help': '键盘快捷键 (?)',
   'topbar.settings': '设置 (⌘,)',
 
@@ -109,10 +107,15 @@ export const zh: Record<DictKey, string> = {
   'status.label.copied': '复制',
   'status.label.conflict': '冲突',
   'status.label.changed': '改动',
+  'status.copyPatch': '复制补丁',
+  'status.copyPatchTitle': '将该工作树的 git apply --binary 补丁复制到剪贴板',
+  'status.copyPatchOk': '补丁已复制到剪贴板',
+  'status.copyPatchEmpty': '无需复制 — 工作树是干净的',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.revealTitle': '在访达中显示',
   'worktrees.openInGhosttyTitle': '在 Ghostty 中打开',
+  'worktrees.openInGhosttyLabel': 'Ghostty',
 
   // ---- Repo actions ------------------------------------------------------
   'action.checkout': '切换',
@@ -120,6 +123,8 @@ export const zh: Record<DictKey, string> = {
   'action.push': '推送',
   'action.fetch': '同步',
   'action.github': 'GitHub',
+  'action.deleteBranch': '删除分支',
+  'action.removeWorktree': '移除工作树',
   'action.checkoutCurrent': '已是当前分支',
   'action.checkoutInWorktree': '已在工作树 {path} 中检出',
   'action.checkoutTitle': '切换到 {branch}',
@@ -134,7 +139,18 @@ export const zh: Record<DictKey, string> = {
   'action.confirmPushProtectedBody.before': '你正准备直接推送到 ',
   'action.confirmPushProtectedBody.after': '，通常这种分支应该走 PR。继续吗？',
   'action.confirmPushConfirm': '仍然推送',
+  'action.confirmDeleteBranchTitle': '删除 {branch}？',
+  'action.confirmDeleteBranchBody.before': '这会删除本地分支 ',
+  'action.confirmDeleteBranchBody.after': '。如果分支尚未完全合并，Git 会拒绝删除。',
+  'action.confirmDeleteBranchConfirm': '删除分支',
+  'action.confirmRemoveWorktreeTitle': '移除 {branch} 的工作树？',
+  'action.confirmRemoveWorktreeBody.before': '这会移除工作树路径 ',
+  'action.confirmRemoveWorktreeBody.after': '。如果里面有本地改动，Git 会拒绝移除。',
+  'action.confirmRemoveWorktreeConfirm': '移除工作树',
   'action.cancel': '取消',
+  'action.menu': '操作',
+  'action.refresh': '刷新',
+  'action.refreshTitle': '重新读取本地分支、状态和提交记录',
   'action.cancelTitle': '取消 {op}',
 
   // ---- Errors / banners --------------------------------------------------
@@ -142,6 +158,15 @@ export const zh: Record<DictKey, string> = {
   'error.failedReadRepo': '读取仓库失败',
   'error.openGithubNoOrigin': '没有 origin 远程',
   'error.invalidPath': '路径无效',
+  'error.invalidWorktreePath': '工作树路径无效',
+  'error.invalidArguments': '参数无效',
+  'error.unknown': '未知错误',
+  'error.cannotDeleteCurrentBranch': '不能删除当前分支',
+  'error.cannotDeleteProtectedBranch': '不能删除受保护分支',
+  'error.cannotDeleteCheckedOutBranch': '不能删除已在工作树中检出的分支',
+  'error.cannotRemoveMainWorktree': '不能移除主工作树',
+  'error.worktreeNotFoundForBranch': '未找到该分支对应的工作树',
+  'error.ghosttyNotInstalled': '未安装 Ghostty',
   'error.renderCrashTitle': '渲染该视图时出错',
   'error.renderCrashUnknown': '未知渲染错误。',
   'error.tryAgain': '重试',
@@ -168,10 +193,6 @@ export const zh: Record<DictKey, string> = {
   'settings.fetch.1m': '1 分钟',
   'settings.fetch.5m': '5 分钟',
   'settings.fetch.15m': '15 分钟',
-  'settings.recents': '最近打开',
-  'settings.recentsCount': '共 {n} 条',
-  'settings.clearRecents': '清空所有最近记录',
-  'settings.clearRecentsConfirm': '再点一次确认',
 
   // ---- Help overlay ------------------------------------------------------
   'help.title': '键盘快捷键',
@@ -185,8 +206,9 @@ export const zh: Record<DictKey, string> = {
   'help.row.viewBranches': '分支',
   'help.row.viewStatus': '工作区状态',
   'help.row.viewLog': '提交历史',
-  'help.row.checkout': '切换到选中分支',
+  'help.row.checkout': '切换分支 / 打开提交',
   'help.row.openRepo': '打开仓库',
+  'help.row.activateWindow': '唤出 Goblin 窗口',
   'help.row.closeRepo': '关闭当前标签',
   'help.row.refresh': '刷新',
   'help.row.settings': '设置',

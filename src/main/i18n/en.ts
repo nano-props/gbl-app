@@ -1,7 +1,7 @@
 // English dictionary. Keep keys in sync with zh.ts and ko.ts.
 //
 // Style: terse, sentence case for buttons/menu items, period-terminated
-// sentences for hints. Brand names (GBL / GitHub / Finder) are not
+// sentences for hints. Brand names (Goblin / GitHub / Finder) are not
 // translated.
 
 export const en = {
@@ -55,8 +55,6 @@ export const en = {
 
   // ---- Topbar -------------------------------------------------------------
   'topbar.open': 'Open',
-  'topbar.recents': 'Recents',
-  'topbar.recentsEmpty': 'No recent repositories.',
   'topbar.help': 'Keyboard shortcuts (?)',
   'topbar.settings': 'Settings (⌘,)',
 
@@ -120,10 +118,15 @@ export const en = {
   'status.label.copied': 'copied',
   'status.label.conflict': 'conflict',
   'status.label.changed': 'changed',
+  'status.copyPatch': 'Copy patch',
+  'status.copyPatchTitle': 'Copy a git apply --binary patch of this worktree to the clipboard',
+  'status.copyPatchOk': 'Patch copied to clipboard',
+  'status.copyPatchEmpty': 'Nothing to copy — worktree is clean',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) ---
   'worktrees.revealTitle': 'Reveal in Finder',
   'worktrees.openInGhosttyTitle': 'Open in Ghostty',
+  'worktrees.openInGhosttyLabel': 'Ghostty',
 
   // ---- Repo actions -------------------------------------------------------
   'action.checkout': 'Checkout',
@@ -131,6 +134,8 @@ export const en = {
   'action.push': 'Push',
   'action.fetch': 'Fetch',
   'action.github': 'GitHub',
+  'action.deleteBranch': 'Delete branch',
+  'action.removeWorktree': 'Remove worktree',
   'action.checkoutCurrent': 'Already on this branch',
   'action.checkoutInWorktree': 'Already checked out in worktree at {path}',
   'action.checkoutTitle': 'Checkout {branch}',
@@ -145,7 +150,18 @@ export const en = {
   'action.confirmPushProtectedBody.before': 'You are about to push directly to ',
   'action.confirmPushProtectedBody.after': ', which usually deserves a pull request. Continue?',
   'action.confirmPushConfirm': 'Push anyway',
+  'action.confirmDeleteBranchTitle': 'Delete {branch}?',
+  'action.confirmDeleteBranchBody.before': 'This will delete local branch ',
+  'action.confirmDeleteBranchBody.after': '. Git will refuse if it is not fully merged.',
+  'action.confirmDeleteBranchConfirm': 'Delete branch',
+  'action.confirmRemoveWorktreeTitle': 'Remove worktree for {branch}?',
+  'action.confirmRemoveWorktreeBody.before': 'This will remove the worktree at ',
+  'action.confirmRemoveWorktreeBody.after': '. Git will refuse if it has local changes.',
+  'action.confirmRemoveWorktreeConfirm': 'Remove worktree',
   'action.cancel': 'Cancel',
+  'action.menu': 'Actions',
+  'action.refresh': 'Refresh',
+  'action.refreshTitle': 'Re-read branches, status and log from disk',
   'action.cancelTitle': 'Cancel {op}',
 
   // ---- Errors / banners ---------------------------------------------------
@@ -153,6 +169,15 @@ export const en = {
   'error.failedReadRepo': 'Failed to read repository',
   'error.openGithubNoOrigin': 'No origin remote',
   'error.invalidPath': 'Invalid path',
+  'error.invalidWorktreePath': 'Invalid worktree path',
+  'error.invalidArguments': 'Invalid arguments',
+  'error.unknown': 'Unknown error',
+  'error.cannotDeleteCurrentBranch': 'Cannot delete the current branch',
+  'error.cannotDeleteProtectedBranch': 'Cannot delete a protected branch',
+  'error.cannotDeleteCheckedOutBranch': 'Cannot delete a branch checked out in a worktree',
+  'error.cannotRemoveMainWorktree': 'Cannot remove the main worktree',
+  'error.worktreeNotFoundForBranch': 'Worktree not found for branch',
+  'error.ghosttyNotInstalled': 'Ghostty not installed',
   'error.renderCrashTitle': 'Something broke while rendering this view',
   'error.renderCrashUnknown': 'Unknown render error.',
   'error.tryAgain': 'Try again',
@@ -179,10 +204,6 @@ export const en = {
   'settings.fetch.1m': '1 min',
   'settings.fetch.5m': '5 min',
   'settings.fetch.15m': '15 min',
-  'settings.recents': 'Recent repositories',
-  'settings.recentsCount': '{n} entries',
-  'settings.clearRecents': 'Clear all recents',
-  'settings.clearRecentsConfirm': 'Click again to confirm',
 
   // ---- Help overlay -------------------------------------------------------
   'help.title': 'Keyboard shortcuts',
@@ -196,8 +217,9 @@ export const en = {
   'help.row.viewBranches': 'Branches',
   'help.row.viewStatus': 'Status',
   'help.row.viewLog': 'Log',
-  'help.row.checkout': 'Checkout selected branch',
+  'help.row.checkout': 'Checkout branch / open commit',
   'help.row.openRepo': 'Open repository',
+  'help.row.activateWindow': 'Show Goblin window',
   'help.row.closeRepo': 'Close current tab',
   'help.row.refresh': 'Refresh',
   'help.row.settings': 'Settings',

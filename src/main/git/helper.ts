@@ -2,7 +2,7 @@ import { execFile, type ChildProcess } from 'node:child_process'
 import type { ExecResult } from '#/main/git/types.ts'
 
 /** Default per-call timeout. Network ops (push/pull/fetch) override via opts. */
-const DEFAULT_TIMEOUT_MS = 15_000
+const DEFAULT_TIMEOUT_MS = 30_000
 /** Network-bound ops get a longer ceiling — slow remotes / VPN reconnect / SSH
  *  setup can legitimately take a while. Beyond this we'd rather surface a
  *  cancellable failure than let the UI's busy lock hold forever. */

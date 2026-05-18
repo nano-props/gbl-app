@@ -39,11 +39,11 @@ export function CommitDetail({ repoId, detail }: Props) {
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
-      <div className="flex items-start gap-3 border-b border-line bg-bg-deep px-4 py-3">
+      <div className="flex items-start gap-3 border-b border-border bg-muted px-4 py-3">
         <button
           type="button"
           onClick={() => closeCommit(repoId)}
-          className="mt-0.5 shrink-0 text-ink-3 hover:text-ink"
+          className="mt-0.5 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-100"
           aria-label={t('error.back')}
           title={t('error.back')}
         >
@@ -51,45 +51,45 @@ export function CommitDetail({ repoId, detail }: Props) {
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="font-mono text-xs text-accent shrink-0">{meta.shortHash}</span>
-            <span className="text-sm font-semibold text-ink">{meta.subject}</span>
+            <span className="font-mono text-xs text-brand shrink-0">{meta.shortHash}</span>
+            <span className="text-sm font-semibold text-foreground">{meta.subject}</span>
           </div>
-          <div className="mt-1 text-xs text-ink-3">
+          <div className="mt-1 text-xs text-muted-foreground">
             {meta.author} &lt;{meta.email}&gt; · {meta.date}
           </div>
           {meta.parents.length > 0 && (
-            <div className="mt-0.5 text-xs text-ink-4 font-mono">
+            <div className="mt-0.5 text-xs text-muted-foreground/60 font-mono">
               {meta.parents.length > 1 ? t('commit.parents') : t('commit.parent')}:{' '}
               {meta.parents.map((p) => p.slice(0, 7)).join(', ')}
             </div>
           )}
           {meta.body && (
-            <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-xs text-ink-2 leading-relaxed">
+            <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-xs text-foreground leading-relaxed">
               {meta.body}
             </pre>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-1.5 text-xs text-ink-3">
+      <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-1.5 text-xs text-muted-foreground">
         <span>{t(files.length === 1 ? 'commit.filesChanged' : 'commit.filesChangedPlural', { n: files.length })}</span>
         {totalAdded > 0 && <span className="text-success">+{totalAdded}</span>}
         {totalDeleted > 0 && <span className="text-danger">−{totalDeleted}</span>}
       </div>
 
       {files.length === 0 ? (
-        <div className="p-6 text-center text-sm text-ink-3">{t('commit.empty')}</div>
+        <div className="p-6 text-center text-sm text-muted-foreground">{t('commit.empty')}</div>
       ) : (
-        <ul className="overflow-y-auto scroll-thin flex-1 divide-y divide-line">
+        <ul className="overflow-y-auto scroll-thin flex-1 divide-y divide-border">
           {files.map((f) => (
             <li key={f.path} className="px-4 py-2 flex items-center gap-3">
-              <span className="shrink-0 text-ink-3">
+              <span className="shrink-0 text-muted-foreground">
                 {f.binary ? <FileWarning size={14} /> : <FileText size={14} />}
               </span>
-              <span className="truncate text-sm text-ink-2 font-mono flex-1 min-w-0">{f.path}</span>
+              <span className="truncate text-sm text-foreground font-mono flex-1 min-w-0">{f.path}</span>
               <span className="shrink-0 font-mono text-xs">
                 {f.binary ? (
-                  <span className="text-ink-4">{t('commit.binary')}</span>
+                  <span className="text-muted-foreground/60">{t('commit.binary')}</span>
                 ) : (
                   <>
                     <span className="text-success">+{f.added}</span>{' '}

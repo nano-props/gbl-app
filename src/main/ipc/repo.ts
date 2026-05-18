@@ -4,12 +4,13 @@
 // crash main.
 
 import { ipcMain, dialog, shell, BrowserWindow, app } from 'electron'
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { spawn, execFile } from 'node:child_process'
 import { getMainWindow } from '#/main/window.ts'
 import {
   checkoutBranch,
+  deleteBranch,
   getBranches,
   getCurrentBranch,
   getLog,
@@ -17,25 +18,34 @@ import {
   getRepoRoot,
   isGitRepo,
 } from '#/main/git/branches.ts'
-import { fetchAll, getGitHubUrl, pullBranch, pushBranch } from '#/main/git/remote.ts'
+import { fetchAll, getGitHubUrl, getPullRequestUrl, pullBranch, pushBranch } from '#/main/git/remote.ts'
 import { getWorkingStatus } from '#/main/git/status.ts'
-import { getWorktrees } from '#/main/git/worktrees.ts'
+import { getWorktreePatch } from '#/main/git/patch.ts'
+import { resolveKnownWorktree, resolveRemovableWorktree } from '#/main/git/guards.ts'
+import { getWorktrees, removeWorktree } from '#/main/git/worktrees.ts'
 import { getCommitFileStats, getCommitMeta } from '#/main/git/log.ts'
-import { forgetRecent, listRecents, recordOpen } from '#/main/settings.ts'
 
 /** Whether Ghostty.app exists in either of the two locations macOS users
  *  install GUI apps to. Probed on demand (not cached) so installing or
- *  removing Ghostty while GBL is running takes effect immediately —
+ *  removing Ghostty while Goblin is running takes effect immediately —
  *  cheap enough that an `existsSync` per call is fine. */
 function isGhosttyInstalled(): boolean {
-  const candidates = [
-    path.join(app.getPath('home'), 'Applications/Ghostty.app'),
-    '/Applications/Ghostty.app',
-  ]
+  const candidates = [path.join(app.getPath('home'), 'Applications/Ghostty.app'), '/Applications/Ghostty.app']
   return candidates.some((p) => existsSync(p))
 }
 
+function isUsableDirectory(p: string): boolean {
+  if (!path.isAbsolute(p) || p.includes('\0')) return false
+  try {
+    return statSync(p).isDirectory()
+  } catch {
+    return false
+  }
+}
+
 const GHOSTTY_BUNDLE_ID = 'com.mitchellh.ghostty'
+const PROTECTED_BRANCHES = new Set(['main', 'master', 'develop', 'trunk'])
+const GIT_HASH_RE = /^[0-9a-fA-F]{7,64}$/
 
 /** Whether a Ghostty process is currently running. We ask System Events
  *  by bundle id rather than pgrep'ing a binary name — bundle id is the
@@ -151,9 +161,31 @@ export function wireRepoIpc(): void {
     return getWorkingStatus(cwd)
   })
 
+  // ---- Patch (worktree → git apply --binary -friendly text) --------------
+  // Caller passes a worktree path (NOT necessarily the repo root) so we
+  // generate the patch against that specific worktree's HEAD. Returned
+  // shape mirrors ExecResult so the renderer can surface git errors via
+  // the existing toast machinery without needing a separate code path.
+  ipcMain.handle('repo:patch', async (_e, cwd: string, worktreePath: string) => {
+    if (typeof cwd !== 'string' || !cwd || typeof worktreePath !== 'string' || !worktreePath) {
+      return { ok: false, message: 'error.invalidWorktreePath' }
+    }
+    try {
+      const target = resolveKnownWorktree(await getWorktrees(cwd), worktreePath)
+      if (!target.ok) return target
+      const patch = await getWorktreePatch(target.path)
+      return { ok: true, message: patch }
+    } catch (err: unknown) {
+      const e = err as { stderr?: string; message?: string }
+      const msg = (typeof e.stderr === 'string' && e.stderr.trim()) || e.message || 'error.unknown'
+      return { ok: false, message: msg }
+    }
+  })
+
   // ---- Commit detail ------------------------------------------------------
   ipcMain.handle('repo:commit', async (_e, cwd: string, hash: string) => {
     if (typeof cwd !== 'string' || !cwd || typeof hash !== 'string' || !hash) return null
+    if (!GIT_HASH_RE.test(hash)) return null
     const [meta, files] = await Promise.all([getCommitMeta(cwd, hash), getCommitFileStats(cwd, hash)])
     if (!meta) return null
     return { meta, files }
@@ -162,29 +194,64 @@ export function wireRepoIpc(): void {
   // ---- Mutating operations ------------------------------------------------
   ipcMain.handle('repo:checkout', async (_e, cwd: string, branch: string) => {
     if (typeof cwd !== 'string' || typeof branch !== 'string' || !cwd || !branch) {
-      return { ok: false, message: 'Invalid arguments' }
+      return { ok: false, message: 'error.invalidArguments' }
     }
     return checkoutBranch(cwd, branch)
   })
 
+  ipcMain.handle('repo:delete-branch', async (_e, cwd: string, branch: string) => {
+    if (typeof cwd !== 'string' || typeof branch !== 'string' || !cwd || !branch) {
+      return { ok: false, message: 'error.invalidArguments' }
+    }
+    const current = await getCurrentBranch(cwd)
+    if (branch === current) return { ok: false, message: 'error.cannotDeleteCurrentBranch' }
+    if (PROTECTED_BRANCHES.has(branch)) return { ok: false, message: 'error.cannotDeleteProtectedBranch' }
+    const worktrees = await getWorktrees(cwd)
+    if (worktrees.some((wt) => wt.branch === branch)) {
+      return { ok: false, message: 'error.cannotDeleteCheckedOutBranch' }
+    }
+    return deleteBranch(cwd, branch)
+  })
+
+  ipcMain.handle('repo:remove-worktree', async (_e, cwd: string, branch: string, worktreePath: string) => {
+    if (
+      typeof cwd !== 'string' ||
+      typeof branch !== 'string' ||
+      typeof worktreePath !== 'string' ||
+      !cwd ||
+      !branch ||
+      !worktreePath
+    ) {
+      return { ok: false, message: 'error.invalidArguments' }
+    }
+    const root = await getRepoRoot(cwd)
+    const target = resolveRemovableWorktree(await getWorktrees(cwd), branch, worktreePath, root)
+    if (!target.ok) return target
+    return removeWorktree(cwd, target.path)
+  })
+
   ipcMain.handle('repo:pull', async (_e, cwd: string, branch: string, worktreePath?: string) => {
     if (typeof cwd !== 'string' || typeof branch !== 'string' || !cwd || !branch) {
-      return { ok: false, message: 'Invalid arguments' }
+      return { ok: false, message: 'error.invalidArguments' }
     }
-    return runCancellable(cwd, (signal) =>
-      pullBranch(cwd, branch, typeof worktreePath === 'string' ? worktreePath : undefined, signal),
-    )
+    let targetPath: string | undefined
+    if (typeof worktreePath === 'string' && worktreePath) {
+      const target = resolveKnownWorktree(await getWorktrees(cwd), worktreePath, branch)
+      if (!target.ok) return target
+      targetPath = target.path
+    }
+    return runCancellable(cwd, (signal) => pullBranch(cwd, branch, targetPath, signal))
   })
 
   ipcMain.handle('repo:push', async (_e, cwd: string, branch: string) => {
     if (typeof cwd !== 'string' || typeof branch !== 'string' || !cwd || !branch) {
-      return { ok: false, message: 'Invalid arguments' }
+      return { ok: false, message: 'error.invalidArguments' }
     }
     return runCancellable(cwd, (signal) => pushBranch(cwd, branch, signal))
   })
 
   ipcMain.handle('repo:fetch', async (_e, cwd: string) => {
-    if (typeof cwd !== 'string' || !cwd) return { ok: false, message: 'Invalid arguments' }
+    if (typeof cwd !== 'string' || !cwd) return { ok: false, message: 'error.invalidArguments' }
     return runCancellable(cwd, (signal) => fetchAll(cwd, signal))
   })
 
@@ -200,9 +267,24 @@ export function wireRepoIpc(): void {
     return true
   })
 
-  ipcMain.handle('repo:open-github', async (_e, cwd: string) => {
+  ipcMain.handle('repo:open-github', async (_e, cwd: string, branch?: string) => {
+    // Prefer a PR-shaped URL when we know the branch: GitHub's
+    // `/pull/new/{branch}` redirects to the existing open PR if one
+    // exists, otherwise lands on the create-PR page. That covers
+    // both "show me the PR for this branch" and "start a PR" with a
+    // single URL. Fall back to the repo home for callers that don't
+    // pass a branch (or the default branch, where a PR doesn't make
+    // sense).
+    const isDefaultBranch = branch === 'main' || branch === 'master' || branch === 'trunk'
+    if (typeof branch === 'string' && branch && !isDefaultBranch) {
+      const prUrl = await getPullRequestUrl(cwd, branch)
+      if (prUrl) {
+        void shell.openExternal(prUrl)
+        return { ok: true, message: prUrl }
+      }
+    }
     const url = await getGitHubUrl(cwd)
-    if (!url) return { ok: false, message: 'No origin remote' }
+    if (!url) return { ok: false, message: 'error.openGithubNoOrigin' }
     void shell.openExternal(url)
     return { ok: true, message: url }
   })
@@ -214,7 +296,7 @@ export function wireRepoIpc(): void {
   // but defending against future callers / a malicious renderer is
   // cheap and worth it given the IPC bridge surface.
   ipcMain.handle('repo:open-in-finder', async (_e, p: string) => {
-    if (typeof p !== 'string' || !p) return { ok: false, message: 'Invalid path' }
+    if (typeof p !== 'string' || !p) return { ok: false, message: 'error.invalidPath' }
     shell.showItemInFolder(p)
     return { ok: true, message: p }
   })
@@ -235,11 +317,12 @@ export function wireRepoIpc(): void {
   // --args via ghostty_init(argc, argv) at launch — so -n is needed
   // to ensure the args are read instead of dropped on activation.
   //
-  // Spawned children are detached + unref'd so quitting GBL doesn't
+  // Spawned children are detached + unref'd so quitting Goblin doesn't
   // bring the terminal down with it.
   ipcMain.handle('repo:open-in-ghostty', async (_e, p: string) => {
-    if (typeof p !== 'string' || !p) return { ok: false, message: 'Invalid path' }
-    if (!isGhosttyInstalled()) return { ok: false, message: 'Ghostty not installed' }
+    if (typeof p !== 'string' || !p) return { ok: false, message: 'error.invalidPath' }
+    if (!isUsableDirectory(p)) return { ok: false, message: 'error.invalidPath' }
+    if (!isGhosttyInstalled()) return { ok: false, message: 'error.ghosttyNotInstalled' }
 
     const running = await isGhosttyRunning()
     if (running) {
@@ -252,20 +335,14 @@ export function wireRepoIpc(): void {
     }
 
     try {
-      const child = spawn(
-        'open',
-        ['-na', 'Ghostty.app', '--args', `--working-directory=${p}`],
-        { detached: true, stdio: 'ignore' },
-      )
+      const child = spawn('open', ['-na', 'Ghostty.app', '--args', `--working-directory=${p}`], {
+        detached: true,
+        stdio: 'ignore',
+      })
       child.unref()
       return { ok: true, message: p }
     } catch (err) {
       return { ok: false, message: err instanceof Error ? err.message : String(err) }
     }
   })
-
-  // ---- Recents ------------------------------------------------------------
-  ipcMain.handle('recents:list', () => listRecents())
-  ipcMain.handle('recents:record', (_e, repoPath: string, name: string) => recordOpen(repoPath, name))
-  ipcMain.handle('recents:forget', (_e, repoPath: string) => forgetRecent(repoPath))
 }

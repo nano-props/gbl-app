@@ -18,12 +18,6 @@ export interface I18nPayload {
   dict: Record<string, string>
 }
 
-export interface RecentEntry {
-  path: string
-  name: string
-  openedAt: number
-}
-
 export interface SessionState {
   openRepos: string[]
   activeRepo: string | null
@@ -32,7 +26,6 @@ export interface SessionState {
 export interface SettingsSnapshot {
   theme: ThemePref
   fetchIntervalSec: number
-  recents: RecentEntry[]
   session: SessionState
 }
 

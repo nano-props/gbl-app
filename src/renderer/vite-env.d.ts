@@ -6,7 +6,6 @@ import type {
   I18nPayload,
   LangPref,
   MenuAction,
-  RecentEntry,
   SessionState,
   SettingsSnapshot,
   ThemePref,
@@ -30,19 +29,19 @@ interface GblBridge {
   snapshot: (cwd: string) => Promise<RepoSnapshot | null>
   log: (cwd: string, branch: string, count?: number) => Promise<LogEntry[]>
   status: (cwd: string) => Promise<WorktreeStatus[]>
+  patch: (cwd: string, worktreePath: string) => Promise<ExecResult>
   commit: (cwd: string, hash: string) => Promise<CommitDetail | null>
   checkout: (cwd: string, branch: string) => Promise<ExecResult>
+  deleteBranch: (cwd: string, branch: string) => Promise<ExecResult>
+  removeWorktree: (cwd: string, branch: string, worktreePath: string) => Promise<ExecResult>
   pull: (cwd: string, branch: string, worktreePath?: string) => Promise<ExecResult>
   push: (cwd: string, branch: string) => Promise<ExecResult>
   fetch: (cwd: string) => Promise<ExecResult>
   abort: (cwd: string) => Promise<boolean>
-  openGitHub: (cwd: string) => Promise<ExecResult>
+  openGitHub: (cwd: string, branch?: string) => Promise<ExecResult>
   openInFinder: (path: string) => Promise<ExecResult>
   openInGhostty: (path: string) => Promise<ExecResult>
   ghosttyInstalled: () => Promise<boolean>
-  listRecents: () => Promise<RecentEntry[]>
-  recordRecent: (path: string, name: string) => Promise<RecentEntry[]>
-  forgetRecent: (path: string) => Promise<RecentEntry[]>
   theme: {
     get: () => Promise<ThemeState>
     setPref: (pref: ThemePref) => Promise<ThemeState>
@@ -52,7 +51,6 @@ interface GblBridge {
     get: () => Promise<SettingsSnapshot>
     setFetchInterval: (sec: number) => Promise<void>
     onFetchIntervalChange: (cb: (sec: number) => void) => () => void
-    clearRecents: () => Promise<void>
     saveSession: (session: SessionState) => Promise<void>
     onWriteError: (cb: (message: string) => void) => () => void
   }

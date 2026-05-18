@@ -90,13 +90,13 @@ function SortableRow({ repo, isActive, onActivate, onClose, closeLabel, dragLabe
         }
       }}
       className={cn(
-        'group flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 text-sm',
+        'group flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 text-sm transition-colors duration-100',
         isActive
-          ? 'border-accent bg-surface text-ink'
-          : 'border-transparent text-ink-2 hover:bg-bg hover:text-ink',
+          ? 'border-brand bg-card text-foreground'
+          : 'border-transparent text-foreground hover:bg-background hover:text-foreground',
         // Lift the dragged row a hair so it visually separates from the
         // list while moving — also ensures it sits on top during overlap.
-        isDragging && 'shadow-md ring-1 ring-line z-10 relative bg-surface',
+        isDragging && 'shadow-md ring-1 ring-border z-10 relative bg-card',
       )}
     >
       <button
@@ -109,7 +109,7 @@ function SortableRow({ repo, isActive, onActivate, onClose, closeLabel, dragLabe
         // Stop click bubbling to the row's onClick — we don't want the
         // handle press to also re-activate the repo.
         onClick={(e) => e.stopPropagation()}
-        className="cursor-grab active:cursor-grabbing text-ink-3 hover:text-ink p-0.5 -ml-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus:outline-none"
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5 -ml-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus:outline-none"
         aria-label={dragLabel}
         title={dragLabel}
       >
@@ -117,7 +117,7 @@ function SortableRow({ repo, isActive, onActivate, onClose, closeLabel, dragLabe
       </button>
       <div className="flex-1 min-w-0">
         <div className="truncate font-medium">{repo.name}</div>
-        <div className="truncate text-xs text-ink-3">{repo.currentBranch || repo.id}</div>
+        <div className="truncate text-xs text-muted-foreground">{repo.currentBranch || repo.id}</div>
       </div>
       <button
         type="button"
@@ -125,7 +125,7 @@ function SortableRow({ repo, isActive, onActivate, onClose, closeLabel, dragLabe
           e.stopPropagation()
           onClose(repo.id)
         }}
-        className="opacity-0 group-hover:opacity-100 text-ink-3 hover:text-ink p-0.5 rounded"
+        className="opacity-0 group-hover:opacity-100 cursor-pointer text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors duration-100"
         title={closeLabel}
         aria-label={closeLabel}
       >
@@ -179,15 +179,15 @@ export function RepoTabs() {
   const ids = summaries.map((s) => s.id)
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-bg-deep">
-      <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-ink-3 border-b border-line">
+    <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-muted">
+      <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
         {t('sidebar.repos')}
       </div>
       <div className="flex-1 overflow-y-auto scroll-thin">
         {summaries.length === 0 ? (
-          <div className="px-3 py-6 text-xs text-ink-3 leading-relaxed">
+          <div className="px-3 py-6 text-xs text-muted-foreground leading-relaxed">
             {t('sidebar.empty.before')}
-            <span className="text-ink-2">{t('sidebar.empty.openLabel')}</span>
+            <span className="text-foreground">{t('sidebar.empty.openLabel')}</span>
             {t('sidebar.empty.after')}
           </div>
         ) : (
@@ -209,16 +209,16 @@ export function RepoTabs() {
         )}
 
         {missing.length > 0 && (
-          <div className="border-t border-line mt-2 pt-2 px-3 pb-3">
+          <div className="border-t border-border mt-2 pt-2 px-3 pb-3">
             <div className="flex items-start gap-1.5 text-xs">
               <AlertCircle size={12} className="mt-0.5 shrink-0 text-warning" />
               <div className="flex-1 min-w-0">
-                <div className="text-ink-2 font-medium mb-1">
+                <div className="text-foreground font-medium mb-1">
                   {t('sidebar.missingTitle', { n: missing.length })}
                 </div>
                 <ul className="space-y-0.5 mb-2">
                   {missing.map((p) => (
-                    <li key={p} className="truncate font-mono text-[11px] text-ink-3" title={p}>
+                    <li key={p} className="truncate font-mono text-[11px] text-muted-foreground" title={p}>
                       {p}
                     </li>
                   ))}
@@ -226,7 +226,7 @@ export function RepoTabs() {
                 <button
                   type="button"
                   onClick={dismissMissing}
-                  className="text-[11px] text-ink-3 hover:text-ink underline-offset-2 hover:underline"
+                  className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors duration-100"
                 >
                   {t('sidebar.missingDismiss')}
                 </button>

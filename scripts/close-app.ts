@@ -1,15 +1,15 @@
 #!/usr/bin/env bun
-// Gracefully quit a running GBL.app, force-killing if it doesn't respond.
+// Gracefully quit a running Goblin.app, force-killing if it doesn't respond.
 // macOS-only (uses AppleScript + pgrep); on other platforms this is a no-op,
 // since the install flow it serves only runs on macOS.
 import { $ } from 'bun'
 import { setTimeout as sleep } from 'node:timers/promises'
 
-const APP_NAME = 'GBL'
+const APP_NAME = 'Goblin'
 
 // Match only the packaged binary launched by launchd/Finder. A loose
 // pattern like `${APP_NAME}.app` would also match unrelated shells and
-// tools whose argv happens to contain the path to GBL.app.
+// tools whose argv happens to contain the path to Goblin.app.
 const BINARY_PATH_FRAGMENT = `/${APP_NAME}.app/Contents/MacOS/`
 
 async function isRunning(): Promise<boolean> {

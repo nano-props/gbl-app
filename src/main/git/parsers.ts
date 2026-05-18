@@ -17,16 +17,12 @@ export const FIELD_SEP = '\x1f'
  * Fields, in order: refname:short, objectname:short, subject,
  * authordate:relative, authorname, upstream:short, upstream:track.
  */
-export function parseBranches(
-  output: string,
-  currentBranch: string,
-  worktrees: WorktreeInfo[] = [],
-): BranchInfo[] {
+export function parseBranches(output: string, currentBranch: string, worktrees: WorktreeInfo[] = []): BranchInfo[] {
   if (!output) return []
 
-  const worktreeMap = new Map<string, { path: string; isDirty?: boolean }>()
+  const worktreeMap = new Map<string, { path: string; isDirty?: boolean; isPrimary: boolean }>()
   for (const wt of worktrees) {
-    if (wt.branch) worktreeMap.set(wt.branch, { path: wt.path, isDirty: wt.isDirty })
+    if (wt.branch) worktreeMap.set(wt.branch, { path: wt.path, isDirty: wt.isDirty, isPrimary: wt.isPrimary })
   }
 
   const lines = output.split('\n').filter(Boolean)
@@ -69,6 +65,7 @@ export function parseBranches(
     if (wtInfo) {
       branchInfo.worktreePath = wtInfo.path
       branchInfo.worktreeDirty = wtInfo.isDirty
+      branchInfo.worktreeIsPrimary = wtInfo.isPrimary
     }
 
     branches.push(branchInfo)
@@ -151,7 +148,7 @@ export function parseWorktrees(output: string): WorktreeInfo[] {
       }
     }
 
-    if (path) worktrees.push({ path, branch, isBare })
+    if (path) worktrees.push({ path, branch, isBare, isPrimary: worktrees.length === 0 })
   }
 
   return worktrees

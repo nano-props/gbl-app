@@ -17,7 +17,7 @@ interface Props {
 
 export function ListSkeleton({ rows = 6, variant = 'branch' }: Props) {
   return (
-    <ul className="flex-1 divide-y divide-line">
+    <ul className="flex-1 divide-y divide-border">
       {Array.from({ length: rows }).map((_, i) => (
         <li key={i} className="px-4 py-2.5 flex items-start gap-2">
           {variant === 'status' ? (
@@ -58,7 +58,7 @@ function Bar({
 }) {
   return (
     <span
-      className={cn('block bg-bg-deep animate-pulse', round ? 'rounded-full' : 'rounded', className)}
+      className={cn('block bg-muted animate-pulse', round ? 'rounded-full' : 'rounded', className)}
       style={{ width: w, height: h }}
     />
   )

@@ -7,10 +7,10 @@
 // modifier" keys here (j/k/?/Enter/Esc) so we don't fight the menu.
 //
 // Modal awareness: when an overlay is open (Settings / Help / commit
-// detail) the j/k/Enter shortcuts are suppressed — otherwise typing
-// j with the help dialog open would jump rows in the list behind it.
+// detail) every shortcut is suppressed — including `?`, otherwise
+// pressing it with Settings open would stack the Help modal on top.
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useReposStore } from '#/renderer/stores/repos.ts'
 
 interface Options {
@@ -27,6 +27,14 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
+  // Stash the latest closures in refs so the effect deps can be `[]` —
+  // otherwise React adds + removes the window listener on every App
+  // render (both options are recreated each render).
+  const onShowHelpRef = useRef(onShowHelp)
+  const isOverlayOpenRef = useRef(isOverlayOpen)
+  onShowHelpRef.current = onShowHelp
+  isOverlayOpenRef.current = isOverlayOpen
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
@@ -35,18 +43,16 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
       const state = useReposStore.getState()
       const repoId = state.activeId
       const repo = repoId ? state.repos[repoId] : null
+      const overlayOpen = isOverlayOpenRef.current() || !!repo?.openCommit
 
-      // Help (?) is allowed at any time — even with a modal open it's
-      // a useful escape hatch (Modal will handle its own Esc; ? lets
-      // the user discover other shortcuts).
+      // `?` honours the overlay gate so it doesn't stack a second modal
+      // on top of Settings/Help/commit-detail. Modal owns Esc.
       if (e.key === '?') {
+        if (overlayOpen) return
         e.preventDefault()
-        onShowHelp()
+        onShowHelpRef.current()
         return
       }
-
-      // Block list-movement / Enter when overlays are visible.
-      const overlayOpen = isOverlayOpen() || !!repo?.openCommit
 
       switch (e.key) {
         case 'j':
@@ -58,6 +64,12 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
             const nextIdx = Math.min(repo.branches.length - 1, idx < 0 ? 0 : idx + 1)
             const next = repo.branches[nextIdx]
             if (next) state.selectBranch(repo.id, next.name)
+          } else if (repo.rightTab === 'log' && repo.log.length > 0) {
+            e.preventDefault()
+            const idx = repo.log.findIndex((c) => c.hash === repo.selectedLogHash)
+            const nextIdx = Math.min(repo.log.length - 1, idx < 0 ? 0 : idx + 1)
+            const next = repo.log[nextIdx]
+            if (next) state.selectLog(repo.id, next.hash)
           }
           break
         }
@@ -70,21 +82,31 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
             const nextIdx = Math.max(0, idx < 0 ? 0 : idx - 1)
             const next = repo.branches[nextIdx]
             if (next) state.selectBranch(repo.id, next.name)
+          } else if (repo.rightTab === 'log' && repo.log.length > 0) {
+            e.preventDefault()
+            const idx = repo.log.findIndex((c) => c.hash === repo.selectedLogHash)
+            const nextIdx = Math.max(0, idx < 0 ? 0 : idx - 1)
+            const next = repo.log[nextIdx]
+            if (next) state.selectLog(repo.id, next.hash)
           }
           break
         }
         case 'Enter': {
-          if (overlayOpen) break
-          if (!repo || repo.rightTab !== 'branches') break
-          e.preventDefault()
-          // Eligibility (current branch / worktree-occupied) is
-          // checked inside the store action — keep this tight.
-          void state.checkoutSelected()
+          if (overlayOpen || !repo) break
+          if (repo.rightTab === 'branches') {
+            e.preventDefault()
+            // Eligibility (current branch / worktree-occupied) is
+            // checked inside the store action — keep this tight.
+            void state.checkoutSelected()
+          } else if (repo.rightTab === 'log') {
+            e.preventDefault()
+            void state.openSelectedCommit()
+          }
           break
         }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onShowHelp, isOverlayOpen])
+  }, [])
 }

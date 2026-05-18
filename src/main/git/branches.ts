@@ -1,5 +1,6 @@
 import { git, gitResult } from '#/main/git/helper.ts'
 import { FIELD_SEP, parseBranches, parseLog } from '#/main/git/parsers.ts'
+import { isSafeBranchName } from '#/main/git/refnames.ts'
 import type { BranchInfo, ExecResult, LogEntry, WorktreeInfo } from '#/main/git/types.ts'
 
 export async function isGitRepo(cwd: string): Promise<boolean> {
@@ -69,5 +70,11 @@ export async function getLog(cwd: string, branch: string, count = 100): Promise<
 }
 
 export async function checkoutBranch(cwd: string, name: string): Promise<ExecResult> {
-  return gitResult(cwd, 'checkout', name)
+  if (!isSafeBranchName(name)) return { ok: false, message: 'error.invalidArguments' }
+  return gitResult(cwd, 'switch', '--', name)
+}
+
+export async function deleteBranch(cwd: string, name: string): Promise<ExecResult> {
+  if (!isSafeBranchName(name)) return { ok: false, message: 'error.invalidArguments' }
+  return gitResult(cwd, 'branch', '-d', '--', name)
 }

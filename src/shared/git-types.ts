@@ -16,12 +16,14 @@ export interface BranchInfo {
   lastCommitAuthor: string
   worktreePath?: string
   worktreeDirty?: boolean
+  worktreeIsPrimary?: boolean
 }
 
 export interface WorktreeInfo {
   path: string
   branch?: string
   isBare: boolean
+  isPrimary: boolean
   isDirty?: boolean
   changeCount?: number
 }
