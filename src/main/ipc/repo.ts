@@ -124,13 +124,17 @@ export function wireRepoIpc(): void {
     return { ok: true, root, name }
   })
 
-  // ---- Snapshot of branches + worktrees + current branch ------------------
+  // ---- Snapshot of branches + current branch -----------------------------
+  // Worktrees are queried internally so `getBranches` can mark which
+  // branches are checked out elsewhere, but we don't return them — the
+  // BranchList rows already carry per-branch worktree info, and the
+  // dedicated Worktrees tab was retired.
   ipcMain.handle('repo:snapshot', async (_e, cwd: string) => {
     if (typeof cwd !== 'string' || !cwd) return null
     const worktrees = await getWorktrees(cwd)
     const branches = await getBranches(cwd, worktrees)
     const current = await getCurrentBranch(cwd)
-    return { branches, worktrees, current }
+    return { branches, current }
   })
 
   ipcMain.handle('repo:log', async (_e, cwd: string, branch: string, count?: number) => {
@@ -145,11 +149,6 @@ export function wireRepoIpc(): void {
   ipcMain.handle('repo:status', async (_e, cwd: string) => {
     if (typeof cwd !== 'string' || !cwd) return []
     return getWorkingStatus(cwd)
-  })
-
-  ipcMain.handle('repo:worktrees', async (_e, cwd: string) => {
-    if (typeof cwd !== 'string' || !cwd) return []
-    return getWorktrees(cwd)
   })
 
   // ---- Commit detail ------------------------------------------------------

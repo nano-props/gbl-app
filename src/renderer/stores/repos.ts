@@ -20,11 +20,12 @@
 //     same repo, no matter how often `App.tsx`'s effect re-runs.
 
 import { create } from 'zustand'
-import type { BranchInfo, LogEntry, StatusEntry, WorktreeInfo } from '#/renderer/types.ts'
+import { arrayMove } from '@dnd-kit/sortable'
+import type { BranchInfo, LogEntry, WorktreeStatus } from '#/renderer/types.ts'
 import type { CommitDetail } from '#/renderer/types-bridge.ts'
 import { lastPathSegment } from '#/renderer/lib/paths.ts'
 
-export type RightTab = 'branches' | 'log' | 'status' | 'worktrees'
+export type RightTab = 'branches' | 'log' | 'status'
 
 export interface RepoState {
   /** Absolute repo root — also the unique id. */
@@ -33,12 +34,12 @@ export interface RepoState {
   /** Bumped on every fresh open so async writers can detect close-and-reopen. */
   instanceToken: number
   branches: BranchInfo[]
-  worktrees: WorktreeInfo[]
   currentBranch: string
   selectedBranch: string | null
   /** Log/status are tab-specific — only fetched when the user opens that tab. */
   log: LogEntry[]
-  status: StatusEntry[]
+  /** Working-tree status grouped by worktree (main worktree first). */
+  status: WorktreeStatus[]
   rightTab: RightTab
   /** When set, the log view shows the commit detail overlay. */
   openCommit: CommitDetail | null
@@ -77,6 +78,11 @@ interface ReposStore {
   openRepo: (path: string) => Promise<{ ok: boolean; message?: string }>
   closeRepo: (id: string) => void
   setActive: (id: string) => void
+  /** Reorder the sidebar so `fromId` lands at `toId`'s position, using
+   *  the same shift semantics as dnd-kit's `arrayMove` (the rest of the
+   *  list closes the gap; later items shift up if `from < to`, down if
+   *  `from > to`). No-op if either id is unknown or they're identical. */
+  reorderRepos: (fromId: string, toId: string) => void
   setRightTab: (id: string, tab: RightTab) => void
   selectBranch: (id: string, branch: string) => void
   cycleActive: (direction: 1 | -1) => void
@@ -87,7 +93,6 @@ interface ReposStore {
   refreshSnapshot: (id: string, options?: { silent?: boolean }) => Promise<void>
   refreshLog: (id: string) => Promise<void>
   refreshStatus: (id: string) => Promise<void>
-  refreshWorktrees: (id: string) => Promise<void>
   refreshAll: (id: string) => Promise<void>
   backgroundFetch: (id: string) => Promise<void>
 
@@ -114,7 +119,6 @@ function emptyRepo(id: string, name: string): RepoState {
     name,
     instanceToken: nextInstanceToken++,
     branches: [],
-    worktrees: [],
     currentBranch: '',
     selectedBranch: null,
     log: [],
@@ -213,6 +217,16 @@ export const useReposStore = create<ReposStore>((set, get) => ({
     set((s) => (s.repos[id] ? { activeId: id } : s))
   },
 
+  reorderRepos(fromId, toId) {
+    if (fromId === toId) return
+    set((s) => {
+      const from = s.order.indexOf(fromId)
+      const to = s.order.indexOf(toId)
+      if (from === -1 || to === -1) return s
+      return { order: arrayMove(s.order, from, to) }
+    })
+  },
+
   cycleActive(direction) {
     const { order, activeId } = get()
     if (order.length === 0) return
@@ -231,7 +245,6 @@ export const useReposStore = create<ReposStore>((set, get) => ({
     // Lazy-load tab content so the initial Branches view is fast.
     if (tab === 'log') void get().refreshLog(id)
     if (tab === 'status') void get().refreshStatus(id)
-    if (tab === 'worktrees') void get().refreshWorktrees(id)
   },
 
   selectBranch(id, branch) {
@@ -289,7 +302,6 @@ export const useReposStore = create<ReposStore>((set, get) => ({
         return {
           ...r,
           branches: snap.branches,
-          worktrees: snap.worktrees,
           currentBranch: snap.current,
           selectedBranch: selected,
           loading: false,
@@ -360,22 +372,6 @@ export const useReposStore = create<ReposStore>((set, get) => ({
     }
   },
 
-  async refreshWorktrees(id) {
-    const repoBefore = get().repos[id]
-    if (!repoBefore) return
-    const token = repoBefore.instanceToken
-    try {
-      const worktrees = await window.gbl.worktrees(id)
-      updateIfFresh(get(), set, id, token, (r) => ({ ...r, worktrees }))
-    } catch (err) {
-      console.warn('[refreshWorktrees] failed', err)
-      updateIfFresh(get(), set, id, token, (r) => ({
-        ...r,
-        error: err instanceof Error ? err.message : String(err),
-      }))
-    }
-  },
-
   async refreshAll(id) {
     if (!get().repos[id]) return
     await get().refreshSnapshot(id)
@@ -386,7 +382,6 @@ export const useReposStore = create<ReposStore>((set, get) => ({
     if (!after) return
     if (after.rightTab === 'log') await get().refreshLog(id)
     if (after.rightTab === 'status') await get().refreshStatus(id)
-    if (after.rightTab === 'worktrees') await get().refreshWorktrees(id)
   },
 
   async backgroundFetch(id) {

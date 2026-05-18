@@ -22,7 +22,6 @@ contextBridge.exposeInMainWorld('gbl', {
   snapshot: (cwd) => safeInvoke('repo:snapshot', cwd),
   log: (cwd, branch, count) => safeInvoke('repo:log', cwd, branch, count),
   status: (cwd) => safeInvoke('repo:status', cwd),
-  worktrees: (cwd) => safeInvoke('repo:worktrees', cwd),
   commit: (cwd, hash) => safeInvoke('repo:commit', cwd, hash),
 
   // ---- Mutating ----------------------------------------------------------

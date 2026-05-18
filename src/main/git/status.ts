@@ -1,17 +1,50 @@
 import { git } from '#/main/git/helper.ts'
-import { parseStatus } from '#/main/git/parsers.ts'
-import type { StatusEntry } from '#/main/git/types.ts'
+import { parseStatus, parseWorktrees } from '#/main/git/parsers.ts'
+import type { WorktreeStatus } from '#/main/git/types.ts'
 
-export async function getWorkingStatus(cwd: string): Promise<StatusEntry[]> {
+/** Status for the Status tab — grouped by worktree so multi-worktree
+ *  setups see *all* dirty changes, not just the main worktree's. The
+ *  main worktree (the one matching `cwd`) sorts first.
+ *
+ *  We list worktrees with `git worktree list` and run `git status` in
+ *  each in parallel. Bare worktrees and worktrees that fail to status
+ *  (drive unmounted, permissions) are skipped silently. */
+export async function getWorkingStatus(cwd: string): Promise<WorktreeStatus[]> {
+  let worktrees
   try {
-    // -z: NUL-terminated entries with quoting disabled. Without this,
-    // filenames containing spaces, quotes, or unicode get backslash-
-    // escaped and double-quoted (e.g. `"file name.txt"`), which the LF
-    // parser leaves as literal quotes in the output. -z gives us the
-    // raw bytes and uses NUL between entries.
-    const output = await git(cwd, ['status', '--porcelain', '-z'])
-    return parseStatus(output)
+    const out = await git(cwd, ['worktree', 'list', '--porcelain'])
+    worktrees = parseWorktrees(out)
   } catch {
     return []
   }
+
+  const results = await Promise.all(
+    worktrees.map(async (wt): Promise<WorktreeStatus | null> => {
+      if (wt.isBare) return null
+      try {
+        // -z: NUL-terminated entries with quoting disabled. Without this,
+        // filenames containing spaces, quotes, or unicode get backslash-
+        // escaped and double-quoted (e.g. `"file name.txt"`), which the LF
+        // parser leaves as literal quotes in the output. -z gives us the
+        // raw bytes and uses NUL between entries.
+        const output = await git(wt.path, ['status', '--porcelain', '-z'])
+        const entries = parseStatus(output)
+        return {
+          path: wt.path,
+          branch: wt.branch,
+          isMain: wt.path === cwd,
+          entries,
+        }
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  const filtered = results.filter((x): x is WorktreeStatus => x !== null)
+  // Main worktree first; the rest keep `git worktree list`'s order
+  // (creation order — stable and matches what `git worktree list` shows
+  // in the terminal).
+  filtered.sort((a, b) => Number(b.isMain) - Number(a.isMain))
+  return filtered
 }

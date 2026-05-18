@@ -23,9 +23,8 @@ export type MenuAction =
   | 'prev-repo'
   | 'refresh'
   | 'tab-branches'
-  | 'tab-log'
   | 'tab-status'
-  | 'tab-worktrees'
+  | 'tab-log'
   | 'toggle-theme'
   | 'open-settings'
   | 'show-help'
@@ -74,9 +73,8 @@ export function buildAppMenu(): void {
     label: t('menu.view'),
     submenu: [
       { label: t('menu.view.branches'), accelerator: 'CmdOrCtrl+1', click: () => send('tab-branches') },
-      { label: t('menu.view.log'), accelerator: 'CmdOrCtrl+2', click: () => send('tab-log') },
-      { label: t('menu.view.status'), accelerator: 'CmdOrCtrl+3', click: () => send('tab-status') },
-      { label: t('menu.view.worktrees'), accelerator: 'CmdOrCtrl+4', click: () => send('tab-worktrees') },
+      { label: t('menu.view.status'), accelerator: 'CmdOrCtrl+2', click: () => send('tab-status') },
+      { label: t('menu.view.log'), accelerator: 'CmdOrCtrl+3', click: () => send('tab-log') },
       { type: 'separator' },
       { label: t('menu.view.refresh'), accelerator: 'CmdOrCtrl+R', click: () => send('refresh') },
       { label: t('menu.view.toggleTheme'), accelerator: 'CmdOrCtrl+Shift+T', click: () => send('toggle-theme') },

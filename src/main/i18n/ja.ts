@@ -40,9 +40,8 @@ export const ja: Record<DictKey, string> = {
 
   // ---- Menu — View -------------------------------------------------------
   'menu.view.branches': 'ブランチ',
-  'menu.view.log': 'ログ',
   'menu.view.status': 'ステータス',
-  'menu.view.worktrees': 'ワークツリー',
+  'menu.view.log': 'ログ',
   'menu.view.refresh': '更新',
   'menu.view.toggleTheme': 'テーマを切替',
   'menu.view.toggleDevTools': '開発者ツールを切替',
@@ -67,6 +66,7 @@ export const ja: Record<DictKey, string> = {
   'sidebar.empty.openLabel': '開く',
   'sidebar.empty.after': ' から git リポジトリを追加してください。',
   'sidebar.close': '閉じる',
+  'sidebar.dragToReorder': 'ドラッグで並べ替え',
   'sidebar.missingTitle': '{n} 件のリポジトリを再オープンできませんでした',
   'sidebar.missingDismiss': '閉じる',
 
@@ -80,9 +80,8 @@ export const ja: Record<DictKey, string> = {
 
   // ---- Right-side tabs ---------------------------------------------------
   'tab.branches': 'ブランチ',
-  'tab.log': 'ログ',
   'tab.status': 'ステータス',
-  'tab.worktrees': 'ワークツリー',
+  'tab.log': 'ログ',
   'tab.fetching': 'fetch 中',
   'tab.fetchingTitle': 'バックグラウンドの fetch 実行中',
   'tab.fetchFailed': 'fetch 失敗',
@@ -102,6 +101,8 @@ export const ja: Record<DictKey, string> = {
   // ---- Status ------------------------------------------------------------
   'status.cleanTitle': '作業ツリーはクリーンです',
   'status.cleanBody': 'コミットすべき変更はありません。',
+  'status.mainWorktree': 'メイン',
+  'status.worktreeClean': 'クリーン',
   'status.staged': 'ステージ済み',
   'status.stagedHint': 'コミット可能',
   'status.unstaged': '未ステージ',
@@ -118,12 +119,7 @@ export const ja: Record<DictKey, string> = {
   'status.label.conflict': '競合',
   'status.label.changed': '変更',
 
-  // ---- Worktrees ---------------------------------------------------------
-  'worktrees.empty': '登録されたワークツリーはありません。',
-  'worktrees.detached': '(detached)',
-  'worktrees.bare': 'bare',
-  'worktrees.dirtyCount': '{n} 件の変更',
-  'worktrees.reveal': '開く',
+  // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.revealTitle': 'Finder で表示',
   'worktrees.openInGhosttyTitle': 'Ghostty で開く',
 
@@ -197,9 +193,8 @@ export const ja: Record<DictKey, string> = {
   'help.row.nextRepo': '次のリポジトリ',
   'help.row.prevRepo': '前のリポジトリ',
   'help.row.viewBranches': 'ブランチ',
-  'help.row.viewLog': 'ログ',
   'help.row.viewStatus': 'ステータス',
-  'help.row.viewWorktrees': 'ワークツリー',
+  'help.row.viewLog': 'ログ',
   'help.row.checkout': '選択中のブランチをチェックアウト',
   'help.row.openRepo': 'リポジトリを開く',
   'help.row.closeRepo': '現在のタブを閉じる',

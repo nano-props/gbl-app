@@ -10,8 +10,17 @@
 // "this branch is checked out elsewhere" readable at a glance — the
 // previous design buried the marker inside a row of small chips.
 
-import { useEffect, useRef } from 'react'
-import { AlertTriangle, ArrowDown, ArrowUp, Check, FolderTree, GitBranch } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  Check,
+  FolderOpen,
+  FolderTree,
+  GitBranch,
+  Terminal,
+} from 'lucide-react'
 import { useReposStore } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { cn } from '#/renderer/lib/cn.ts'
@@ -29,6 +38,19 @@ export function BranchList({ repoId, branches, selected, current }: Props) {
   const t = useT()
   const selectBranch = useReposStore((s) => s.selectBranch)
   const selectedRef = useRef<HTMLLIElement | null>(null)
+
+  // Probe ghostty once. Same pattern as the old WorktreeList — cheap and
+  // doesn't change mid-session, so a ref-style mount probe is enough.
+  const [ghosttyInstalled, setGhosttyInstalled] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void window.gbl.ghosttyInstalled().then((ok) => {
+      if (!cancelled) setGhosttyInstalled(ok)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Keep the selected row in view as the user navigates with j/k.
   useEffect(() => {
@@ -61,7 +83,7 @@ export function BranchList({ repoId, branches, selected, current }: Props) {
               }
             }}
             className={cn(
-              'flex cursor-pointer items-start gap-2 px-4 py-2.5 border-l-2',
+              'group flex cursor-pointer items-start gap-2 px-4 py-2.5 border-l-2',
               isSelected
                 ? 'bg-bg-deep border-accent'
                 : 'border-transparent hover:bg-bg-deep',
@@ -133,9 +155,41 @@ export function BranchList({ repoId, branches, selected, current }: Props) {
                 {b.lastCommitAuthor} · {b.lastCommitDate}
               </div>
             </div>
-            {!b.tracking && (
-              <AlertTriangle size={12} className="shrink-0 mt-1 text-ink-4" aria-label={t('branches.noUpstream')} />
-            )}
+            <div className="shrink-0 flex items-start gap-1 pt-0.5">
+              {b.worktreePath && (
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {ghosttyInstalled && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void window.gbl.openInGhostty(b.worktreePath!)
+                      }}
+                      className="p-1 rounded text-ink-3 hover:text-ink hover:bg-bg"
+                      title={t('worktrees.openInGhosttyTitle')}
+                      aria-label={t('worktrees.openInGhosttyTitle')}
+                    >
+                      <Terminal size={13} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void window.gbl.openInFinder(b.worktreePath!)
+                    }}
+                    className="p-1 rounded text-ink-3 hover:text-ink hover:bg-bg"
+                    title={t('worktrees.revealTitle')}
+                    aria-label={t('worktrees.revealTitle')}
+                  >
+                    <FolderOpen size={13} />
+                  </button>
+                </div>
+              )}
+              {!b.tracking && (
+                <AlertTriangle size={12} className="mt-1 text-ink-4" aria-label={t('branches.noUpstream')} />
+              )}
+            </div>
           </li>
         )
       })}

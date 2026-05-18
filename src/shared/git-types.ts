@@ -32,6 +32,17 @@ export interface StatusEntry {
   path: string
 }
 
+/** One worktree's working-tree status. The Status tab groups entries by
+ *  worktree so users with linked worktrees see all dirty changes, not
+ *  just the main worktree's. `isMain` marks the primary worktree (the
+ *  repo root), so the UI can surface it differently. */
+export interface WorktreeStatus {
+  path: string
+  branch?: string
+  isMain: boolean
+  entries: StatusEntry[]
+}
+
 export interface LogEntry {
   hash: string
   shortHash: string

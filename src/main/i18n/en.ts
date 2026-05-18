@@ -40,9 +40,8 @@ export const en = {
 
   // ---- Menu — View --------------------------------------------------------
   'menu.view.branches': 'Branches',
-  'menu.view.log': 'Log',
   'menu.view.status': 'Status',
-  'menu.view.worktrees': 'Worktrees',
+  'menu.view.log': 'Log',
   'menu.view.refresh': 'Refresh',
   'menu.view.toggleTheme': 'Toggle Theme',
   'menu.view.toggleDevTools': 'Toggle Developer Tools',
@@ -67,6 +66,7 @@ export const en = {
   'sidebar.empty.openLabel': 'Open',
   'sidebar.empty.after': ' in the toolbar to add a git repository.',
   'sidebar.close': 'Close',
+  'sidebar.dragToReorder': 'Drag to reorder',
   'sidebar.missingTitle': "Couldn't reopen {n} repository",
   'sidebar.missingDismiss': 'Dismiss',
 
@@ -82,9 +82,8 @@ export const en = {
 
   // ---- Right-side tabs ----------------------------------------------------
   'tab.branches': 'Branches',
-  'tab.log': 'Log',
   'tab.status': 'Status',
-  'tab.worktrees': 'Worktrees',
+  'tab.log': 'Log',
   'tab.fetching': 'fetch',
   'tab.fetchingTitle': 'Background fetch in progress',
   'tab.fetchFailed': 'fetch failed',
@@ -104,6 +103,8 @@ export const en = {
   // ---- Status -------------------------------------------------------------
   'status.cleanTitle': 'Working tree is clean',
   'status.cleanBody': 'No changes to commit.',
+  'status.mainWorktree': 'main',
+  'status.worktreeClean': 'clean',
   'status.staged': 'Staged',
   'status.stagedHint': 'Ready to commit',
   'status.unstaged': 'Unstaged',
@@ -120,12 +121,7 @@ export const en = {
   'status.label.conflict': 'conflict',
   'status.label.changed': 'changed',
 
-  // ---- Worktrees ----------------------------------------------------------
-  'worktrees.empty': 'No worktrees registered.',
-  'worktrees.detached': '(detached)',
-  'worktrees.bare': 'bare',
-  'worktrees.dirtyCount': '{n} dirty',
-  'worktrees.reveal': 'Reveal',
+  // ---- Worktree row actions (used by branch rows that have a worktree) ---
   'worktrees.revealTitle': 'Reveal in Finder',
   'worktrees.openInGhosttyTitle': 'Open in Ghostty',
 
@@ -198,9 +194,8 @@ export const en = {
   'help.row.nextRepo': 'Next repository',
   'help.row.prevRepo': 'Previous repository',
   'help.row.viewBranches': 'Branches',
-  'help.row.viewLog': 'Log',
   'help.row.viewStatus': 'Status',
-  'help.row.viewWorktrees': 'Worktrees',
+  'help.row.viewLog': 'Log',
   'help.row.checkout': 'Checkout selected branch',
   'help.row.openRepo': 'Open repository',
   'help.row.closeRepo': 'Close current tab',

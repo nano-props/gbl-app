@@ -113,14 +113,11 @@ export function App() {
         case 'tab-branches':
           if (state.activeId) setRightTab(state.activeId, 'branches')
           break
-        case 'tab-log':
-          if (state.activeId) setRightTab(state.activeId, 'log')
-          break
         case 'tab-status':
           if (state.activeId) setRightTab(state.activeId, 'status')
           break
-        case 'tab-worktrees':
-          if (state.activeId) setRightTab(state.activeId, 'worktrees')
+        case 'tab-log':
+          if (state.activeId) setRightTab(state.activeId, 'log')
           break
         case 'toggle-theme': {
           // Read pref from store, not closure: the menu effect runs once

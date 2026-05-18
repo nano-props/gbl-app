@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { BranchInfo, ExecResult, LogEntry, StatusEntry, WorktreeInfo } from '#/renderer/types.ts'
+import type { BranchInfo, ExecResult, LogEntry, WorktreeStatus } from '#/renderer/types.ts'
 import type {
   CommitDetail,
   I18nPayload,
@@ -15,7 +15,6 @@ import type {
 
 interface RepoSnapshot {
   branches: BranchInfo[]
-  worktrees: WorktreeInfo[]
   current: string
 }
 
@@ -30,8 +29,7 @@ interface GblBridge {
   probe: (cwd: string) => Promise<ProbeResult>
   snapshot: (cwd: string) => Promise<RepoSnapshot | null>
   log: (cwd: string, branch: string, count?: number) => Promise<LogEntry[]>
-  status: (cwd: string) => Promise<StatusEntry[]>
-  worktrees: (cwd: string) => Promise<WorktreeInfo[]>
+  status: (cwd: string) => Promise<WorktreeStatus[]>
   commit: (cwd: string, hash: string) => Promise<CommitDetail | null>
   checkout: (cwd: string, branch: string) => Promise<ExecResult>
   pull: (cwd: string, branch: string, worktreePath?: string) => Promise<ExecResult>

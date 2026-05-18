@@ -35,9 +35,8 @@ export const ko: Record<DictKey, string> = {
   'menu.edit.selectAll': '전체 선택',
 
   'menu.view.branches': '브랜치',
-  'menu.view.log': '커밋 로그',
   'menu.view.status': '워킹 트리 상태',
-  'menu.view.worktrees': '워크트리',
+  'menu.view.log': '커밋 로그',
   'menu.view.refresh': '새로 고침',
   'menu.view.toggleTheme': '테마 전환',
   'menu.view.toggleDevTools': '개발자 도구',
@@ -60,6 +59,7 @@ export const ko: Record<DictKey, string> = {
   'sidebar.empty.openLabel': '열기',
   'sidebar.empty.after': ' 를 눌러 git 리포지토리를 추가하세요.',
   'sidebar.close': '닫기',
+  'sidebar.dragToReorder': '드래그하여 순서 변경',
   'sidebar.missingTitle': '{n} 개 리포지토리를 복원하지 못했습니다',
   'sidebar.missingDismiss': '무시',
 
@@ -72,9 +72,8 @@ export const ko: Record<DictKey, string> = {
 
   // ---- Right-side tabs ---------------------------------------------------
   'tab.branches': '브랜치',
-  'tab.log': '로그',
   'tab.status': '상태',
-  'tab.worktrees': '워크트리',
+  'tab.log': '로그',
   'tab.fetching': '동기화',
   'tab.fetchingTitle': '백그라운드에서 fetch 진행 중',
   'tab.fetchFailed': '동기화 실패',
@@ -94,6 +93,8 @@ export const ko: Record<DictKey, string> = {
   // ---- Status ------------------------------------------------------------
   'status.cleanTitle': '워킹 트리가 깨끗합니다',
   'status.cleanBody': '커밋할 변경 사항이 없습니다.',
+  'status.mainWorktree': '메인',
+  'status.worktreeClean': '깨끗',
   'status.staged': '스테이지됨',
   'status.stagedHint': '커밋 준비됨',
   'status.unstaged': '미스테이지',
@@ -110,12 +111,7 @@ export const ko: Record<DictKey, string> = {
   'status.label.conflict': '충돌',
   'status.label.changed': '변경',
 
-  // ---- Worktrees ---------------------------------------------------------
-  'worktrees.empty': '등록된 워크트리가 없습니다.',
-  'worktrees.detached': '(분리됨)',
-  'worktrees.bare': '베어',
-  'worktrees.dirtyCount': '{n} 변경',
-  'worktrees.reveal': '열기',
+  // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.revealTitle': 'Finder 에서 보기',
   'worktrees.openInGhosttyTitle': 'Ghostty에서 열기',
 
@@ -188,9 +184,8 @@ export const ko: Record<DictKey, string> = {
   'help.row.nextRepo': '다음 리포지토리',
   'help.row.prevRepo': '이전 리포지토리',
   'help.row.viewBranches': '브랜치',
-  'help.row.viewLog': '커밋 로그',
   'help.row.viewStatus': '워킹 트리 상태',
-  'help.row.viewWorktrees': '워크트리',
+  'help.row.viewLog': '커밋 로그',
   'help.row.checkout': '선택한 브랜치로 체크아웃',
   'help.row.openRepo': '리포지토리 열기',
   'help.row.closeRepo': '현재 탭 닫기',

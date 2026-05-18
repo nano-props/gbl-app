@@ -34,9 +34,8 @@ export const zh: Record<DictKey, string> = {
   'menu.edit.selectAll': '全选',
 
   'menu.view.branches': '分支',
-  'menu.view.log': '提交历史',
   'menu.view.status': '工作区状态',
-  'menu.view.worktrees': '工作树',
+  'menu.view.log': '提交历史',
   'menu.view.refresh': '刷新',
   'menu.view.toggleTheme': '切换主题',
   'menu.view.toggleDevTools': '切换开发者工具',
@@ -59,6 +58,7 @@ export const zh: Record<DictKey, string> = {
   'sidebar.empty.openLabel': '打开',
   'sidebar.empty.after': ' 添加一个 git 仓库。',
   'sidebar.close': '关闭',
+  'sidebar.dragToReorder': '拖动以重新排序',
   'sidebar.missingTitle': '{n} 个仓库未能恢复',
   'sidebar.missingDismiss': '忽略',
 
@@ -71,9 +71,8 @@ export const zh: Record<DictKey, string> = {
 
   // ---- Right-side tabs ---------------------------------------------------
   'tab.branches': '分支',
-  'tab.log': '提交',
   'tab.status': '状态',
-  'tab.worktrees': '工作树',
+  'tab.log': '提交',
   'tab.fetching': '同步',
   'tab.fetchingTitle': '后台同步进行中',
   'tab.fetchFailed': '同步失败',
@@ -93,6 +92,8 @@ export const zh: Record<DictKey, string> = {
   // ---- Status ------------------------------------------------------------
   'status.cleanTitle': '工作区已清空',
   'status.cleanBody': '没有待提交的改动。',
+  'status.mainWorktree': '主',
+  'status.worktreeClean': '干净',
   'status.staged': '已暂存',
   'status.stagedHint': '可提交',
   'status.unstaged': '未暂存',
@@ -109,12 +110,7 @@ export const zh: Record<DictKey, string> = {
   'status.label.conflict': '冲突',
   'status.label.changed': '改动',
 
-  // ---- Worktrees ---------------------------------------------------------
-  'worktrees.empty': '尚未注册任何工作树。',
-  'worktrees.detached': '(游离)',
-  'worktrees.bare': '裸仓库',
-  'worktrees.dirtyCount': '{n} 处改动',
-  'worktrees.reveal': '打开',
+  // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.revealTitle': '在访达中显示',
   'worktrees.openInGhosttyTitle': '在 Ghostty 中打开',
 
@@ -187,9 +183,8 @@ export const zh: Record<DictKey, string> = {
   'help.row.nextRepo': '下一个仓库',
   'help.row.prevRepo': '上一个仓库',
   'help.row.viewBranches': '分支',
-  'help.row.viewLog': '提交历史',
   'help.row.viewStatus': '工作区状态',
-  'help.row.viewWorktrees': '工作树',
+  'help.row.viewLog': '提交历史',
   'help.row.checkout': '切换到选中分支',
   'help.row.openRepo': '打开仓库',
   'help.row.closeRepo': '关闭当前标签',

@@ -2,10 +2,32 @@
 // reveal the close (×) button. The active row gets a left accent border
 // and surface-coloured background so it pops against the deeper sidebar
 // fill.
+//
+// Drag-to-reorder uses dnd-kit (the de-facto choice in the React/shadcn/
+// tanstack ecosystem — accessible by default, works with pointer/touch/
+// keyboard, ~30 KB). PointerSensor with a small activation distance lets
+// a regular click still focus the repo without triggering a drag, and
+// KeyboardSensor makes Space/Arrows reorder for keyboard users.
 
 import { useShallow } from 'zustand/react/shallow'
 import { useStoreWithEqualityFn } from 'zustand/traditional'
-import { AlertCircle, X } from 'lucide-react'
+import { AlertCircle, GripVertical, X } from 'lucide-react'
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useReposStore } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { cn } from '#/renderer/lib/cn.ts'
@@ -35,6 +57,84 @@ function summariesEqual(a: TabSummary[], b: TabSummary[]): boolean {
   return true
 }
 
+interface RowProps {
+  repo: TabSummary
+  isActive: boolean
+  onActivate: (id: string) => void
+  onClose: (id: string) => void
+  closeLabel: string
+  dragLabel: string
+}
+
+function SortableRow({ repo, isActive, onActivate, onClose, closeLabel, dragLabel }: RowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: repo.id,
+  })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-interactive
+      role="button"
+      tabIndex={0}
+      aria-pressed={isActive}
+      onClick={() => onActivate(repo.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onActivate(repo.id)
+        }
+      }}
+      className={cn(
+        'group flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 text-sm',
+        isActive
+          ? 'border-accent bg-surface text-ink'
+          : 'border-transparent text-ink-2 hover:bg-bg hover:text-ink',
+        // Lift the dragged row a hair so it visually separates from the
+        // list while moving — also ensures it sits on top during overlap.
+        isDragging && 'shadow-md ring-1 ring-line z-10 relative bg-surface',
+      )}
+    >
+      <button
+        type="button"
+        // dnd-kit listeners attach to the handle so plain clicks on the
+        // body still focus the repo. attributes go on the handle too so
+        // Space/Arrows pick up that element for keyboard reordering.
+        {...attributes}
+        {...listeners}
+        // Stop click bubbling to the row's onClick — we don't want the
+        // handle press to also re-activate the repo.
+        onClick={(e) => e.stopPropagation()}
+        className="cursor-grab active:cursor-grabbing text-ink-3 hover:text-ink p-0.5 -ml-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus:outline-none"
+        aria-label={dragLabel}
+        title={dragLabel}
+      >
+        <GripVertical size={14} />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="truncate font-medium">{repo.name}</div>
+        <div className="truncate text-xs text-ink-3">{repo.currentBranch || repo.id}</div>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onClose(repo.id)
+        }}
+        className="opacity-0 group-hover:opacity-100 text-ink-3 hover:text-ink p-0.5 rounded"
+        title={closeLabel}
+        aria-label={closeLabel}
+      >
+        <X size={14} />
+      </button>
+    </div>
+  )
+}
+
 export function RepoTabs() {
   const t = useT()
   // Build the summary array inside the selector but compare with our
@@ -58,8 +158,25 @@ export function RepoTabs() {
   const activeId = useReposStore((s) => s.activeId)
   const setActive = useReposStore((s) => s.setActive)
   const closeRepo = useReposStore((s) => s.closeRepo)
+  const reorderRepos = useReposStore((s) => s.reorderRepos)
   const missing = useReposStore(useShallow((s) => s.missingFromSession))
   const dismissMissing = useReposStore((s) => s.dismissMissing)
+
+  // 6px activation distance so a quick click on the handle still selects
+  // the row (handle press becomes a drag only after the user actually
+  // moves the cursor). Without this, every press would start a drag.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    reorderRepos(String(active.id), String(over.id))
+  }
+
+  const ids = summaries.map((s) => s.id)
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-bg-deep">
@@ -74,48 +191,21 @@ export function RepoTabs() {
             {t('sidebar.empty.after')}
           </div>
         ) : (
-          summaries.map((repo) => {
-            const isActive = repo.id === activeId
-            return (
-              <div
-                key={repo.id}
-                data-interactive
-                role="button"
-                tabIndex={0}
-                aria-pressed={isActive}
-                onClick={() => setActive(repo.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    setActive(repo.id)
-                  }
-                }}
-                className={cn(
-                  'group flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 text-sm',
-                  isActive
-                    ? 'border-accent bg-surface text-ink'
-                    : 'border-transparent text-ink-2 hover:bg-bg hover:text-ink',
-                )}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="truncate font-medium">{repo.name}</div>
-                  <div className="truncate text-xs text-ink-3">{repo.currentBranch || repo.id}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    closeRepo(repo.id)
-                  }}
-                  className="opacity-0 group-hover:opacity-100 text-ink-3 hover:text-ink p-0.5 rounded"
-                  title={t('sidebar.close')}
-                  aria-label={t('sidebar.close')}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )
-          })
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+              {summaries.map((repo) => (
+                <SortableRow
+                  key={repo.id}
+                  repo={repo}
+                  isActive={repo.id === activeId}
+                  onActivate={setActive}
+                  onClose={closeRepo}
+                  closeLabel={t('sidebar.close')}
+                  dragLabel={t('sidebar.dragToReorder')}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         )}
 
         {missing.length > 0 && (

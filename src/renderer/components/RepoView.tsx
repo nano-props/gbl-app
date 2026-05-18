@@ -9,7 +9,6 @@ import { useReposStore, type RightTab } from '#/renderer/stores/repos.ts'
 import { BranchList } from '#/renderer/components/BranchList.tsx'
 import { LogList } from '#/renderer/components/LogList.tsx'
 import { StatusList } from '#/renderer/components/StatusList.tsx'
-import { WorktreeList } from '#/renderer/components/WorktreeList.tsx'
 import { CommitDetail } from '#/renderer/components/CommitDetail.tsx'
 import { RepoActions } from '#/renderer/components/RepoActions.tsx'
 import { ListSkeleton } from '#/renderer/components/Skeleton.tsx'
@@ -18,9 +17,8 @@ import { cn } from '#/renderer/lib/cn.ts'
 
 const TAB_KEYS: { id: RightTab; key: string; hotkey: string }[] = [
   { id: 'branches', key: 'tab.branches', hotkey: '⌘1' },
-  { id: 'log', key: 'tab.log', hotkey: '⌘2' },
-  { id: 'status', key: 'tab.status', hotkey: '⌘3' },
-  { id: 'worktrees', key: 'tab.worktrees', hotkey: '⌘4' },
+  { id: 'status', key: 'tab.status', hotkey: '⌘2' },
+  { id: 'log', key: 'tab.log', hotkey: '⌘3' },
 ]
 
 interface Props {
@@ -43,6 +41,10 @@ export function RepoView({ repoId }: Props) {
   }, [repo?.lastResult, repoId, setLastResult])
 
   if (!repo) return <div />
+
+  // Sum changes across every worktree so the status tab badge reflects
+  // the full repo's dirtiness, not just the main worktree's.
+  const statusCount = repo.status.reduce((n, w) => n + w.entries.length, 0)
 
   return (
     <section className="flex min-w-0 flex-1 flex-col">
@@ -88,14 +90,9 @@ export function RepoView({ repoId }: Props) {
             )}
           >
             {t(tab.key)}
-            {tab.id === 'status' && repo.status.length > 0 && (
+            {tab.id === 'status' && statusCount > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-warning/20 text-warning text-[10px] px-1.5">
-                {repo.status.length}
-              </span>
-            )}
-            {tab.id === 'worktrees' && repo.worktrees.length > 1 && (
-              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-bg text-ink-3 text-[10px] px-1.5 border border-line">
-                {repo.worktrees.length}
+                {statusCount}
               </span>
             )}
           </button>
@@ -148,7 +145,6 @@ export function RepoView({ repoId }: Props) {
                 <LogList repoId={repoId} log={repo.log} branch={repo.selectedBranch ?? repo.currentBranch} />
               ))}
             {repo.rightTab === 'status' && <StatusList status={repo.status} />}
-            {repo.rightTab === 'worktrees' && <WorktreeList worktrees={repo.worktrees} />}
           </>
         )}
       </div>
