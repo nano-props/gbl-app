@@ -23,24 +23,10 @@ function isUsableDirectory(p: string): boolean {
   }
 }
 
-/** Whether a Ghostty process is currently running. We ask System Events
- *  by bundle id rather than pgrep'ing a binary name — bundle id is the
- *  stable identifier and matches whatever Ghostty.app is installed. */
-function isGhosttyRunning(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const script = `tell application "System Events" to return (exists (first process whose bundle identifier is "${GHOSTTY_BUNDLE_ID}"))`
-    execFile('/usr/bin/osascript', ['-e', script], (err, stdout) => {
-      if (err) return resolve(false)
-      resolve(stdout.trim() === 'true')
-    })
-  })
-}
-
-/** Open `dir` as a new window inside an already-running Ghostty,
+/** Open `dir` as a new window if Ghostty is already running,
  *  setting the initial working directory via Ghostty's scripting
- *  dictionary (see ghostty/macos/Ghostty.sdef). Caller must confirm
- *  Ghostty is running. */
-function openInRunningGhostty(dir: string): Promise<void> {
+ *  dictionary (see ghostty/macos/Ghostty.sdef). */
+function openInRunningGhostty(dir: string): Promise<boolean> {
   // The path is passed as argv (item 1 of argv), not interpolated,
   // so AppleScript string-escaping isn't a concern. We deliberately
   // don't call `activate` here — Ghostty's `new window` handler
@@ -50,15 +36,20 @@ function openInRunningGhostty(dir: string): Promise<void> {
   const script = `
     on run argv
       set dir to item 1 of argv
+      tell application "System Events"
+        set ghosttyIsRunning to exists (first process whose bundle identifier is "${GHOSTTY_BUNDLE_ID}")
+      end tell
+      if not ghosttyIsRunning then return "not-running"
       tell application id "${GHOSTTY_BUNDLE_ID}"
         new window with configuration {initial working directory:dir}
       end tell
+      return "opened"
     end run
   `
   return new Promise((resolve, reject) => {
-    execFile('/usr/bin/osascript', ['-e', script, dir], (err, _stdout, stderr) => {
+    execFile('/usr/bin/osascript', ['-e', script, dir], (err, stdout, stderr) => {
       if (err) return reject(new Error(stderr || err.message))
-      resolve()
+      resolve(stdout.trim() === 'opened')
     })
   })
 }
@@ -83,14 +74,10 @@ export async function openInGhostty(p: string): Promise<{ ok: boolean; message: 
   if (!isUsableDirectory(p)) return { ok: false, message: 'error.invalidPath' }
   if (!isGhosttyInstalled()) return { ok: false, message: 'error.ghosttyNotInstalled' }
 
-  const running = await isGhosttyRunning()
-  if (running) {
-    try {
-      await openInRunningGhostty(p)
-      return { ok: true, message: p }
-    } catch (err) {
-      console.warn('[ghostty] AppleScript open failed, falling back to launch', err)
-    }
+  try {
+    if (await openInRunningGhostty(p)) return { ok: true, message: p }
+  } catch (err) {
+    console.warn('[ghostty] AppleScript open failed, falling back to launch', err)
   }
 
   try {
