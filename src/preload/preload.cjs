@@ -43,6 +43,10 @@ contextBridge.exposeInMainWorld('gbl', {
   // ---- Mutating ----------------------------------------------------------
   checkout: (cwd, branch) => safeInvoke('repo:checkout', cwd, branch),
   deleteBranch: (cwd, branch) => safeInvoke('repo:delete-branch', cwd, branch),
+  removeWorktree: (cwd, branch, worktreePath, alsoDeleteBranch) =>
+    safeInvoke('repo:remove-worktree', cwd, branch, worktreePath, alsoDeleteBranch),
+  createWorktree: (cwd, worktreePath, newBranch, baseBranch) =>
+    safeInvoke('repo:create-worktree', cwd, worktreePath, newBranch, baseBranch),
   pull: (cwd, branch, worktreePath) => safeInvoke('repo:pull', cwd, branch, worktreePath),
   push: (cwd, branch) => safeInvoke('repo:push', cwd, branch),
   fetch: (cwd) => safeInvoke('repo:fetch', cwd),

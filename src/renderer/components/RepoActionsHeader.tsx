@@ -18,12 +18,13 @@
 // / Open in GitHub) live in `BranchActionsMenu` on each branch row,
 // not here — those need a branch context to be meaningful.
 
-import { useState } from 'react'
-import { CloudDownload, RotateCw, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { CloudDownload, FolderPlus, RotateCw, X } from 'lucide-react'
 import { useReposStore, type RepoState } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { Tip } from '#/renderer/components/Tip.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
+import { CreateWorktreeDialog } from '#/renderer/components/CreateWorktreeDialog.tsx'
 
 interface Props {
   repo: RepoState
@@ -37,6 +38,16 @@ export function RepoActionsHeader({ repo }: Props) {
   const clearFetchFailed = useReposStore((s) => s.clearFetchFailed)
   const [fetchBusy, setFetchBusy] = useState(false)
   const [refreshBusy, setRefreshBusy] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+
+  // RepoView reuses the same React instance across repo switches
+  // (no `key={activeId}` on the parent), so RepoActionsHeader keeps
+  // its state when the user moves to a different repo. Force-close
+  // the create-worktree dialog on repo change so a half-typed branch
+  // name from repo A doesn't leak into a submission against repo B.
+  useEffect(() => {
+    setCreateOpen(false)
+  }, [repo.id])
 
   async function handleRefresh() {
     if (refreshBusy) return
@@ -101,6 +112,13 @@ export function RepoActionsHeader({ repo }: Props) {
           </Button>
         </Tip>
       )}
+      <Tip label={t('action.createWorktreeTitle')}>
+        <Button variant="ghost" onClick={() => setCreateOpen(true)}>
+          <FolderPlus />
+          {t('action.createWorktree')}
+        </Button>
+      </Tip>
+      <CreateWorktreeDialog open={createOpen} repo={repo} onClose={() => setCreateOpen(false)} />
     </div>
   )
 }

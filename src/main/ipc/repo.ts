@@ -4,6 +4,7 @@
 // crash main.
 
 import { ipcMain, dialog, BrowserWindow } from 'electron'
+import path from 'node:path'
 import { getMainWindow } from '#/main/window.ts'
 import {
   checkoutBranch,
@@ -13,16 +14,19 @@ import {
   getLog,
   getRepoName,
   getRepoRoot,
+  getUpstream,
+  isAncestor,
   isGitRepo,
 } from '#/main/git/branches.ts'
 import { fetchAll, pullBranch, pushBranch } from '#/main/git/remote.ts'
 import { getWorkingStatus } from '#/main/git/status.ts'
 import { getWorktreePatch } from '#/main/git/patch.ts'
-import { resolveKnownWorktree } from '#/main/git/guards.ts'
-import { getWorktrees } from '#/main/git/worktrees.ts'
+import { resolveKnownWorktree, resolveRemovableWorktree } from '#/main/git/guards.ts'
+import { createWorktree, getWorktrees, removeWorktree } from '#/main/git/worktrees.ts'
+import { isSafeBranchName } from '#/main/git/refnames.ts'
 import { getCommitFileStats, getCommitMeta } from '#/main/git/log.ts'
+import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
 
-const PROTECTED_BRANCHES = new Set(['main', 'master', 'develop', 'trunk'])
 const GIT_HASH_RE = /^[0-9a-fA-F]{7,64}$/
 
 /** Active AbortControllers keyed by repo id. Network ops (push/pull/fetch)
@@ -151,6 +155,127 @@ export function wireRepoIpc(): void {
     }
     return deleteBranch(cwd, branch)
   })
+
+  // Remove a linked worktree (and optionally its branch). Refuses when:
+  //   - target is the main / repo-root worktree (resolveRemovableWorktree)
+  //   - working tree has uncommitted changes (would lose work)
+  //   - worktree is locked (`git worktree lock`)
+  // Plus, when `alsoDeleteBranch` is set:
+  //   - protected branch (main/master/develop/trunk)
+  //   - branch is not yet merged into either HEAD or its upstream — i.e.
+  //     would be rejected by `git branch -d`. We check up front so a
+  //     non-deletable branch doesn't leave us with a removed worktree
+  //     and a "delete failed" toast (a confusing half-applied state).
+  //
+  // A branch with no upstream is fine on its own — `git worktree add
+  // -b new-branch ../foo` is a routine flow and `git worktree remove`
+  // doesn't object. Without `alsoDeleteBranch` we don't even look at
+  // ahead/behind: removing the worktree leaves the branch ref intact
+  // and every commit reachable.
+  //
+  // Each precondition maps to its own i18n key so the renderer's toast
+  // explains *why* removal was refused, instead of git's generic error.
+  ipcMain.handle(
+    'repo:remove-worktree',
+    async (_e, cwd: string, branch: string, worktreePath: string, alsoDeleteBranch: boolean) => {
+      if (
+        typeof cwd !== 'string' ||
+        typeof branch !== 'string' ||
+        typeof worktreePath !== 'string' ||
+        typeof alsoDeleteBranch !== 'boolean' ||
+        !cwd ||
+        !branch ||
+        !worktreePath
+      ) {
+        return { ok: false, message: 'error.invalidArguments' }
+      }
+      const root = await getRepoRoot(cwd)
+      const worktrees = await getWorktrees(cwd)
+      const resolved = resolveRemovableWorktree(worktrees, branch, worktreePath, root)
+      if (!resolved.ok) return resolved
+      const target = resolved.target
+
+      if (target.isLocked === true) return { ok: false, message: 'error.cannotRemoveLockedWorktree' }
+
+      // `getWorktrees` (run a few lines up) already filled `isDirty` by
+      // running `git status --porcelain -z` in each worktree. Trust it
+      // rather than running the same command again. `undefined` means
+      // we couldn't read status — refuse rather than blindly deleting.
+      if (target.isDirty !== false) return { ok: false, message: 'error.cannotRemoveDirtyWorktree' }
+
+      if (alsoDeleteBranch) {
+        // Mirror the protected-branch guard from `repo:delete-branch`.
+        // Catch up front so we don't remove the worktree first and then
+        // refuse the delete (leaves the user in a half-applied state).
+        if (PROTECTED_BRANCHES.has(branch)) return { ok: false, message: 'error.cannotDeleteProtectedBranch' }
+
+        // Mirror `git branch -d`: a branch is deletable iff it's a
+        // strict ancestor of HEAD (the main worktree's checkout) OR of
+        // its own upstream. Either condition means "every commit on
+        // this branch is reachable from somewhere else, so dropping
+        // the ref doesn't lose history." We pre-check here so a
+        // non-deletable branch surfaces *before* we delete the worktree.
+        const mergedIntoHead = await isAncestor(cwd, branch, 'HEAD')
+        let deletable = mergedIntoHead
+        if (!deletable) {
+          const upstream = await getUpstream(cwd, branch)
+          if (upstream) deletable = await isAncestor(cwd, branch, upstream)
+        }
+        if (!deletable) return { ok: false, message: 'error.cannotRemoveUnpushedWorktree' }
+      }
+
+      const removeResult = await removeWorktree(cwd, target.path)
+      if (!removeResult.ok) return removeResult
+      if (alsoDeleteBranch) {
+        // Predicate above mirrors -d's rule, so this should succeed.
+        // If git still refuses (race: branch advanced after our check),
+        // surface the error — the worktree is gone but that's a clean
+        // state the user can recover from (branch still has commits).
+        const delResult = await deleteBranch(cwd, branch)
+        if (!delResult.ok) return delResult
+      }
+      return removeResult
+    },
+  )
+
+  // Create a new linked worktree from a base branch. The renderer's
+  // dialog is guided to one mode only — `git worktree add -b
+  // <newBranch> <path> <baseBranch>` — so we don't expose detached
+  // worktrees or "reuse existing branch" here. Validation is strict on
+  // names (so a stray "-foo" can't become a flag) and on the path
+  // shape (must be absolute, no NULs); everything else (path already
+  // exists, parent dir missing, branch already exists) is delegated
+  // to git, which produces a precise error message we surface as-is.
+  ipcMain.handle(
+    'repo:create-worktree',
+    async (_e, cwd: string, worktreePath: string, newBranch: string, baseBranch: string) => {
+      if (
+        typeof cwd !== 'string' ||
+        typeof worktreePath !== 'string' ||
+        typeof newBranch !== 'string' ||
+        typeof baseBranch !== 'string' ||
+        !cwd ||
+        !worktreePath ||
+        !newBranch ||
+        !baseBranch
+      ) {
+        return { ok: false, message: 'error.invalidArguments' }
+      }
+      if (!isSafeBranchName(newBranch) || !isSafeBranchName(baseBranch)) {
+        return { ok: false, message: 'error.invalidArguments' }
+      }
+      // Reject relative paths and embedded NULs up front: the dialog
+      // always supplies an absolute path (derived from the repo's
+      // parent dir) so a relative one means a tampered renderer or a
+      // bug. Letting git resolve a relative path against `cwd` would
+      // be surprising — the user's input was the absolute string in
+      // the textbox, not "wherever git happens to think the repo is."
+      if (!path.isAbsolute(worktreePath) || worktreePath.includes('\0')) {
+        return { ok: false, message: 'error.invalidPath' }
+      }
+      return createWorktree(cwd, worktreePath, newBranch, baseBranch)
+    },
+  )
 
   ipcMain.handle('repo:pull', async (_e, cwd: string, branch: string, worktreePath?: string) => {
     if (typeof cwd !== 'string' || typeof branch !== 'string' || !cwd || !branch) {

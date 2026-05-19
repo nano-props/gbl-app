@@ -67,8 +67,17 @@ export function RepoView({ repoId }: Props) {
     // grow the toast off-screen. A `<pre>` preserves git's leading-
     // whitespace formatting; the `max-h-32 overflow-y-auto` lets the
     // user mouse-scroll inside the toast for the rest.
-    const message = result.message || 'error.unknown'
-    const description = <ToastDescription>{tRef.current(message)}</ToastDescription>
+    //
+    // Skip the description on a *successful* op with no message: some
+    // git commands (switch, worktree remove) print nothing on success,
+    // which would otherwise fall back to "Unknown error" under a green
+    // "OK" header — confusing. Errors still get a description because
+    // a silent failure is worse than a generic one.
+    const hasMessage = !!result.message
+    const description =
+      hasMessage || !result.ok ? (
+        <ToastDescription>{tRef.current(result.message || 'error.unknown')}</ToastDescription>
+      ) : undefined
     if (result.ok) {
       toast.success(tRef.current('action.resultOk'), {
         id: `${repoId}:result:ok`,

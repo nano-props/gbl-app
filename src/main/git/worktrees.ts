@@ -1,6 +1,6 @@
-import { git } from '#/main/git/helper.ts'
+import { git, gitResultWithOptions } from '#/main/git/helper.ts'
 import { parseStatus, parseWorktrees } from '#/main/git/parsers.ts'
-import type { WorktreeInfo } from '#/main/git/types.ts'
+import type { ExecResult, WorktreeInfo } from '#/main/git/types.ts'
 
 export async function getWorktrees(cwd: string): Promise<WorktreeInfo[]> {
   try {
@@ -29,4 +29,43 @@ export async function getWorktrees(cwd: string): Promise<WorktreeInfo[]> {
   } catch {
     return []
   }
+}
+
+/** Worktree create/remove can both touch tens of thousands of files
+ *  on large repos (mp-main: 7.8 GB, 91k files, ~22s on a hot SSD).
+ *  3 minutes gives ~8× headroom on the largest known repo so a slower
+ *  external disk or a busy filesystem still stays inside the budget. */
+const WORKTREE_OP_TIMEOUT_MS = 180_000
+
+/** Plain `git worktree remove` — no `--force`. Git refuses on dirty,
+ *  locked, or otherwise non-removable worktrees, which is exactly the
+ *  safety net we want; the IPC handler has already pre-checked the
+ *  expected cases and surfaced friendlier errors, so anything that
+ *  reaches here is a corner case worth showing git's own message for. */
+export async function removeWorktree(cwd: string, worktreePath: string): Promise<ExecResult> {
+  return gitResultWithOptions(cwd, { timeoutMs: WORKTREE_OP_TIMEOUT_MS }, 'worktree', 'remove', '--', worktreePath)
+}
+
+/** `git worktree add -b <newBranch> <path> <baseBranch>`. Always creates
+ *  a new branch from base — the renderer's CreateWorktree flow is
+ *  guided to that one mode. Git refuses on path-already-exists,
+ *  branch-already-exists, parent-dir-missing, etc.; we surface those
+ *  errors directly rather than pre-checking. */
+export async function createWorktree(
+  cwd: string,
+  worktreePath: string,
+  newBranch: string,
+  baseBranch: string,
+): Promise<ExecResult> {
+  return gitResultWithOptions(
+    cwd,
+    { timeoutMs: WORKTREE_OP_TIMEOUT_MS },
+    'worktree',
+    'add',
+    '-b',
+    newBranch,
+    '--',
+    worktreePath,
+    baseBranch,
+  )
 }

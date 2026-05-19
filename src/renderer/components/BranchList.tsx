@@ -11,7 +11,7 @@
 // previous design buried the marker inside a row of small chips.
 
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, ArrowDown, ArrowUp, Check, FolderTree, GitBranch } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, FolderTree, GitBranch } from 'lucide-react'
 import { useReposStore, type RepoState } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { Badge } from '#/renderer/components/ui/badge.tsx'
@@ -132,12 +132,10 @@ export function BranchList({ repo }: Props) {
                   <Badge variant={b.worktreeDirty ? 'warning' : 'brand'} className="gap-1" title={b.worktreePath}>
                     <FolderTree size={10} />
                     {lastPathSegment(b.worktreePath)}
-                    {b.worktreeDirty && (
-                      <span className="ml-0.5 uppercase tracking-wide">· {t('branches.dirty')}</span>
-                    )}
+                    {b.worktreeDirty && <span className="ml-0.5 uppercase tracking-wide">· {t('branches.dirty')}</span>}
                   </Badge>
                 )}
-                {b.tracking && (
+                {b.tracking ? (
                   <Badge
                     variant="outline"
                     className={cn(
@@ -146,6 +144,13 @@ export function BranchList({ repo }: Props) {
                     )}
                   >
                     {b.trackingGone ? `${b.tracking} (${t('branches.gone')})` : b.tracking}
+                  </Badge>
+                ) : (
+                  // Surface "no upstream" as plain text rather than a
+                  // bare warning glyph: the icon alone gives users no
+                  // way to learn what it means without hovering.
+                  <Badge variant="outline" className="font-mono leading-4 text-muted-foreground">
+                    {t('branches.noUpstream')}
                   </Badge>
                 )}
                 {b.ahead > 0 && (
@@ -170,9 +175,6 @@ export function BranchList({ repo }: Props) {
               </div>
             </div>
             <div className="shrink-0 flex items-start gap-1 pt-0.5">
-              {!b.tracking && (
-                <AlertTriangle size={12} className="mt-1 text-muted-foreground/60" aria-label={t('branches.noUpstream')} />
-              )}
               <BranchActionsMenu repo={repo} branch={b} ghosttyInstalled={ghosttyInstalled} />
             </div>
           </li>

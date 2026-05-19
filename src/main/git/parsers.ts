@@ -136,6 +136,7 @@ export function parseWorktrees(output: string): WorktreeInfo[] {
     let path = ''
     let branch: string | undefined
     let isBare = false
+    let isLocked = false
 
     for (const line of lines) {
       if (line.startsWith('worktree ')) {
@@ -145,10 +146,12 @@ export function parseWorktrees(output: string): WorktreeInfo[] {
         branch = ref.replace(/^refs\/heads\//, '')
       } else if (line === 'bare') {
         isBare = true
+      } else if (line === 'locked' || line.startsWith('locked ')) {
+        isLocked = true
       }
     }
 
-    if (path) worktrees.push({ path, branch, isBare, isPrimary: worktrees.length === 0 })
+    if (path) worktrees.push({ path, branch, isBare, isPrimary: worktrees.length === 0, isLocked })
   }
 
   return worktrees

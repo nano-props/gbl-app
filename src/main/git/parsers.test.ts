@@ -184,7 +184,18 @@ describe('parseWorktrees', () => {
     const out = ['worktree /repo', 'HEAD abc123', 'branch refs/heads/main'].join('\n')
     const result = parseWorktrees(out)
     expect(result).toHaveLength(1)
-    expect(result[0]).toEqual({ path: '/repo', branch: 'main', isBare: false, isPrimary: true })
+    expect(result[0]).toEqual({ path: '/repo', branch: 'main', isBare: false, isPrimary: true, isLocked: false })
+  })
+
+  test('flags locked worktrees (with or without reason)', () => {
+    // `git worktree list --porcelain` emits either a bare `locked` line
+    // or `locked <reason>` when the user passed `--reason` to lock.
+    const out = ['worktree /repo/wt', 'HEAD a', 'branch refs/heads/feat', 'locked needed for release'].join('\n')
+    const [w] = parseWorktrees(out)
+    expect(w?.isLocked).toBe(true)
+
+    const bare = ['worktree /repo/wt2', 'HEAD a', 'branch refs/heads/x', 'locked'].join('\n')
+    expect(parseWorktrees(bare)[0]?.isLocked).toBe(true)
   })
 
   test('detached HEAD has no branch line — branch left undefined', () => {

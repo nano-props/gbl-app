@@ -12,18 +12,7 @@
 // network timeout (90s).
 
 import { useState } from 'react'
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  Copy,
-  ExternalLink,
-  GitBranch,
-  Loader2,
-  Terminal,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronDown, ExternalLink, GitBranch, Loader2, Terminal, Trash2, X } from 'lucide-react'
 import { useReposStore, type RepoState } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { ConfirmDialog } from '#/renderer/components/ConfirmDialog.tsx'
@@ -35,15 +24,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '#/renderer/components/ui/dropdown-menu.tsx'
-import { formatWorktreeInfo } from '#/renderer/lib/worktree-info.ts'
+import { tildify } from '#/renderer/lib/paths.ts'
 import type { BranchInfo } from '#/renderer/types.ts'
+import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
 
-const PROTECTED_BRANCHES = new Set(['main', 'master', 'develop', 'trunk'])
-
-type Op = 'checkout' | 'pull' | 'push' | 'github' | 'ghostty' | 'deleteBranch' | 'copyWorktreeInfo'
+type Op = 'checkout' | 'pull' | 'push' | 'github' | 'ghostty' | 'deleteBranch' | 'removeWorktree'
 const CANCELLABLE_OPS = new Set<Op>(['pull', 'push'])
 const SILENT_SUCCESS_OPS = new Set<Op>(['github', 'ghostty'])
-const REFRESH_AFTER_OPS = new Set<Op>(['checkout', 'pull', 'push', 'deleteBranch'])
+const REFRESH_AFTER_OPS = new Set<Op>(['checkout', 'pull', 'push', 'deleteBranch', 'removeWorktree'])
 
 interface Props {
   repo: RepoState
@@ -59,6 +47,12 @@ export function BranchActionsMenu({ repo, branch, ghosttyInstalled }: Props) {
   const [busy, setBusy] = useState<Op | null>(null)
   const [pushConfirm, setPushConfirm] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [removeConfirm, setRemoveConfirm] = useState<string | null>(null)
+  // Also-delete-branch toggle for the remove-worktree dialog. Default
+  // on: the common flow is "I'm done with this branch and its
+  // worktree, clean both up." Re-defaulted to true every time the
+  // dialog opens so an earlier untick doesn't bleed into a fresh op.
+  const [removeAlsoDeletes, setRemoveAlsoDeletes] = useState(true)
   const [open, setOpen] = useState(false)
 
   async function run(op: Op, fn: () => Promise<{ ok: boolean; message: string }>) {
@@ -109,22 +103,19 @@ export function BranchActionsMenu({ repo, branch, ghosttyInstalled }: Props) {
     setOpen(false)
   }
 
-  function handleCopyWorktreeInfo() {
+  function handleRemoveWorktree() {
     if (!branch.worktreePath) return
+    // Protected branches (main/master/etc.) can never be deleted, so
+    // the default "also delete branch" tick would only get the user a
+    // toast asking them to come back and untick it. Default off there.
+    setRemoveAlsoDeletes(!PROTECTED_BRANCHES.has(branch.name))
+    setRemoveConfirm(branch.worktreePath)
     setOpen(false)
-    void run('copyWorktreeInfo', async () => {
-      try {
-        await navigator.clipboard.writeText(formatWorktreeInfo(repo, branch))
-        return { ok: true, message: 'worktrees.copyInfoOk' }
-      } catch (err) {
-        return { ok: false, message: err instanceof Error ? err.message : String(err) }
-      }
-    })
   }
 
   const isCurrent = branch.name === repo.currentBranch
   const checkedOutInAnotherWorktree = !!branch.worktreePath && !isCurrent
-  const canCopyWorktreeInfo = checkedOutInAnotherWorktree && !branch.worktreeIsPrimary
+  const canRemoveWorktree = checkedOutInAnotherWorktree && !branch.worktreeIsPrimary
   const isProtected = PROTECTED_BRANCHES.has(branch.name)
   const isRegularBranch = !isCurrent && !branch.worktreePath && !isProtected
   const cancellable = busy && CANCELLABLE_OPS.has(busy)
@@ -209,13 +200,13 @@ export function BranchActionsMenu({ repo, branch, ghosttyInstalled }: Props) {
             <ExternalLink />
             {t('action.github')}
           </DropdownMenuItem>
-          {(canCopyWorktreeInfo || isRegularBranch) && (
+          {(canRemoveWorktree || isRegularBranch) && (
             <>
               <DropdownMenuSeparator />
-              {canCopyWorktreeInfo ? (
-                <DropdownMenuItem disabled={!!busy} onClick={handleCopyWorktreeInfo}>
-                  <Copy />
-                  {t('worktrees.copyInfo')}
+              {canRemoveWorktree ? (
+                <DropdownMenuItem disabled={!!busy} onClick={handleRemoveWorktree} variant="destructive">
+                  <Trash2 />
+                  {t('action.removeWorktree')}
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem disabled={!!busy} onClick={handleDeleteBranch} variant="destructive">
@@ -272,6 +263,50 @@ export function BranchActionsMenu({ repo, branch, ghosttyInstalled }: Props) {
           const target = deleteConfirm
           setDeleteConfirm(null)
           if (target) void run('deleteBranch', () => window.gbl.deleteBranch(repo.id, target))
+        }}
+      />
+      <ConfirmDialog
+        open={removeConfirm !== null}
+        title={t('action.confirmRemoveWorktreeTitle', { branch: branch.name })}
+        message={
+          removeConfirm ? (
+            <div className="space-y-3">
+              <span>
+                {t('action.confirmRemoveWorktreeBody.before')}
+                <b className="text-foreground">{tildify(removeConfirm)}</b>
+                {t('action.confirmRemoveWorktreeBody.after')}
+              </span>
+              <label
+                className={
+                  PROTECTED_BRANCHES.has(branch.name)
+                    ? 'flex items-center gap-2 text-muted-foreground select-none cursor-not-allowed'
+                    : 'flex items-center gap-2 text-foreground cursor-pointer select-none'
+                }
+                title={PROTECTED_BRANCHES.has(branch.name) ? t('action.confirmRemoveWorktreeProtectedHint') : undefined}
+              >
+                <input
+                  type="checkbox"
+                  checked={removeAlsoDeletes}
+                  disabled={PROTECTED_BRANCHES.has(branch.name)}
+                  onChange={(e) => setRemoveAlsoDeletes(e.target.checked)}
+                  className="h-4 w-4 accent-destructive disabled:opacity-50"
+                />
+                <span>{t('action.confirmRemoveWorktreeAlsoDeleteBranch', { branch: branch.name })}</span>
+              </label>
+            </div>
+          ) : (
+            ''
+          )
+        }
+        confirmLabel={t('action.confirmRemoveWorktreeConfirm')}
+        destructive
+        onCancel={() => setRemoveConfirm(null)}
+        onConfirm={() => {
+          const target = removeConfirm
+          const alsoDelete = removeAlsoDeletes
+          setRemoveConfirm(null)
+          if (target)
+            void run('removeWorktree', () => window.gbl.removeWorktree(repo.id, branch.name, target, alsoDelete))
         }}
       />
     </>

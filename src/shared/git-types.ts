@@ -26,6 +26,7 @@ export interface WorktreeInfo {
   isPrimary: boolean
   isDirty?: boolean
   changeCount?: number
+  isLocked?: boolean
 }
 
 export interface StatusEntry {
@@ -57,3 +58,9 @@ export interface ExecResult {
   ok: boolean
   message: string
 }
+
+/** Branch names we treat as protected — direct push/delete/etc. require
+ *  extra confirmation, and "delete branch" is forbidden outright. Shared
+ *  between main (server-side enforcement in IPC handlers) and renderer
+ *  (UX gating in menus and dialogs) so both sides agree on the list. */
+export const PROTECTED_BRANCHES: ReadonlySet<string> = new Set(['main', 'master', 'develop', 'trunk'])

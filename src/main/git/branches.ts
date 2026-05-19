@@ -78,3 +78,33 @@ export async function deleteBranch(cwd: string, name: string): Promise<ExecResul
   if (!isSafeBranchName(name)) return { ok: false, message: 'error.invalidArguments' }
   return gitResult(cwd, 'branch', '-d', '--', name)
 }
+
+/** Resolve `branch`'s upstream short ref (e.g. "origin/feat") or null
+ *  when the branch has no upstream configured. */
+export async function getUpstream(cwd: string, branch: string): Promise<string | null> {
+  if (!isSafeBranchName(branch)) return null
+  try {
+    const out = await git(cwd, ['rev-parse', '--abbrev-ref', `${branch}@{u}`])
+    return out.trim() || null
+  } catch {
+    return null
+  }
+}
+
+/** Whether `ancestor` is reachable from `descendant` (i.e. every commit
+ *  on `ancestor` is on `descendant`'s history). Mirrors the predicate
+ *  `git branch -d` uses to decide if a branch is "fully merged".
+ *  `descendant` may be 'HEAD', a branch name, or 'origin/foo'; we don't
+ *  re-validate it because callers in this codebase pass either a fixed
+ *  literal or a value just produced by git itself (getUpstream). The
+ *  trailing `--` keeps either argument from being interpreted as a flag
+ *  if a future caller passes user input. */
+export async function isAncestor(cwd: string, ancestor: string, descendant: string): Promise<boolean> {
+  if (!isSafeBranchName(ancestor)) return false
+  try {
+    await git(cwd, ['merge-base', '--is-ancestor', '--', ancestor, descendant])
+    return true
+  } catch {
+    return false
+  }
+}

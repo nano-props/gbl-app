@@ -6,6 +6,15 @@ export function lastPathSegment(p: string): string {
   return idx >= 0 ? trimmed.slice(idx + 1) : trimmed
 }
 
+/** Everything before the last segment, with the trailing separator
+ *  stripped. Returns '' for paths with no separator. POSIX/Windows
+ *  agnostic for the same reason as `lastPathSegment`. */
+export function parentDir(p: string): string {
+  const trimmed = p.replace(/[/\\]+$/, '')
+  const idx = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'))
+  return idx > 0 ? trimmed.slice(0, idx) : ''
+}
+
 export function tildifyPath(path: string, home: string): string {
   if (!home) return path
   if (path === home) return '~'
