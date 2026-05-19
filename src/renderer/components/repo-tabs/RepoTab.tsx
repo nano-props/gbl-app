@@ -1,9 +1,8 @@
 import type { KeyboardEvent } from 'react'
-import { FolderGit2, GitBranch, X } from 'lucide-react'
+import { FolderGit2, X } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '#/renderer/lib/cn.ts'
-import { tildify } from '#/renderer/lib/paths.ts'
 import type { RepoTabSummary } from '#/renderer/components/repo-tabs/types.ts'
 
 interface RepoTabProps {
@@ -48,7 +47,7 @@ export function RepoTab({
       role="tab"
       tabIndex={0}
       aria-selected={isActive}
-      aria-label={`${repo.name}${repo.currentBranch ? `, ${repo.currentBranch}` : ''}. ${dragLabel}`}
+      aria-label={`${repo.name}. ${dragLabel}`}
       onPointerEnter={() => onHoverChange(repo.id)}
       onPointerLeave={() => onHoverChange(null)}
       onClick={() => onActivate(repo.id)}
@@ -67,7 +66,7 @@ export function RepoTab({
           : 'border-transparent text-muted-foreground hover:bg-accent/70 hover:text-foreground',
         isDragging && 'z-10 cursor-grabbing bg-background shadow-sm ring-1 ring-border',
       )}
-      title={`${repo.name} — ${repo.currentBranch || tildify(repo.id)}`}
+      title={repo.name}
     >
       {isActive && <span className="absolute inset-x-2 -bottom-px h-px rounded-full bg-brand" />}
       {showSeparator && (
@@ -76,10 +75,6 @@ export function RepoTab({
       <div className="flex h-full min-w-0 flex-1 items-center gap-1.5">
         <FolderGit2 size={13} className={cn('shrink-0', isActive ? 'text-brand' : 'text-muted-foreground')} />
         <span className="truncate font-medium">{repo.name}</span>
-        <span className="hidden min-w-0 items-center gap-1 border-l border-border pl-1.5 text-[11px] text-muted-foreground lg:flex">
-          <GitBranch size={11} className="shrink-0" />
-          <span className="truncate">{repo.currentBranch || tildify(repo.id)}</span>
-        </span>
       </div>
       <button
         type="button"

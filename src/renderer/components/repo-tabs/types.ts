@@ -1,7 +1,6 @@
 export interface RepoTabSummary {
   id: string
   name: string
-  currentBranch: string
 }
 
 export interface RepoTabStripLabels {

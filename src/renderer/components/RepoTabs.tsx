@@ -27,7 +27,7 @@ function summariesEqual(a: RepoTabSummary[], b: RepoTabSummary[]): boolean {
   for (let i = 0; i < a.length; i++) {
     const x = a[i]!
     const y = b[i]!
-    if (x.id !== y.id || x.name !== y.name || x.currentBranch !== y.currentBranch) return false
+    if (x.id !== y.id || x.name !== y.name) return false
   }
   return true
 }
@@ -47,7 +47,7 @@ export function RepoTabs() {
       s.order
         .map<RepoTabSummary | null>((id) => {
           const r = s.repos[id]
-          return r ? { id: r.id, name: r.name, currentBranch: r.currentBranch } : null
+          return r ? { id: r.id, name: r.name } : null
         })
         .filter((x): x is RepoTabSummary => x !== null),
     summariesEqual,
