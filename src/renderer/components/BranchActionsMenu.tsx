@@ -43,6 +43,7 @@ export function BranchActionsMenu({ repo, branch, ghosttyInstalled }: Props) {
   const t = useT()
   const refreshSnapshot = useReposStore((s) => s.refreshSnapshot)
   const refreshStatus = useReposStore((s) => s.refreshStatus)
+  const clearFetchFailed = useReposStore((s) => s.clearFetchFailed)
   const setLastResult = useReposStore((s) => s.setLastResult)
   const [busy, setBusy] = useState<Op | null>(null)
   const [pushConfirm, setPushConfirm] = useState<string | null>(null)
@@ -68,6 +69,7 @@ export function BranchActionsMenu({ repo, branch, ghosttyInstalled }: Props) {
       // might miss the lack of a tab/window.
       const skipSuccessToast = result.ok && SILENT_SUCCESS_OPS.has(op)
       if (!skipSuccessToast) setLastResult(repo.id, result)
+      if (!result.ok && result.message === 'error.networkOpInProgress') return
       // Mutating ops change branch state — refresh both snapshot and
       // status. Status drives the always-visible header badge, so we
       // refresh it regardless of which tab is active (otherwise a
@@ -76,6 +78,7 @@ export function BranchActionsMenu({ repo, branch, ghosttyInstalled }: Props) {
         await refreshSnapshot(repo.id)
         await refreshStatus(repo.id)
       }
+      if (result.ok && CANCELLABLE_OPS.has(op)) clearFetchFailed(repo.id)
     } finally {
       setBusy(null)
     }

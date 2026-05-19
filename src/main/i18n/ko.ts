@@ -181,6 +181,7 @@ export const ko: Record<DictKey, string> = {
   'error.invalidPath': '경로가 올바르지 않습니다',
   'error.invalidWorktreePath': '워크트리 경로가 올바르지 않습니다',
   'error.invalidArguments': '인수가 올바르지 않습니다',
+  'error.networkOpInProgress': '다른 git 네트워크 작업이 이미 실행 중입니다.',
   'error.unknown': '알 수 없는 오류',
   'error.cannotDeleteCurrentBranch': '현재 브랜치는 삭제할 수 없습니다',
   'error.cannotDeleteProtectedBranch': '보호된 브랜치는 삭제할 수 없습니다',

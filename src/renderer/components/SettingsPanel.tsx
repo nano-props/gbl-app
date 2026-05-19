@@ -3,7 +3,7 @@
 // returns null when closed.
 
 import { Modal } from '#/renderer/components/Modal.tsx'
-import { ToggleGroup, ToggleGroupItem } from '#/renderer/components/ui/toggle-group.tsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#/renderer/components/ui/select.tsx'
 import { useThemeStore } from '#/renderer/stores/theme.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
@@ -47,10 +47,10 @@ export function SettingsPanel({ open, onClose }: Props) {
   const buildInfo = commit ? `Goblin · v${__APP_VERSION__} · ${commit}` : `Goblin · v${__APP_VERSION__}`
 
   return (
-    <Modal open={open} title={t('settings.title')} onClose={onClose} widthClass="max-w-lg">
+    <Modal open={open} title={t('settings.title')} onClose={onClose} widthClass="sm:max-w-sm">
       <div className="space-y-6">
         <Section label={t('settings.appearance')}>
-          <SegmentedControl
+          <SettingsSelect
             value={themePref}
             options={themeOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
             onChange={(v) => void setThemePref(v)}
@@ -58,7 +58,7 @@ export function SettingsPanel({ open, onClose }: Props) {
         </Section>
 
         <Section label={t('settings.lang')}>
-          <SegmentedControl
+          <SettingsSelect
             value={langPref}
             options={langOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
             onChange={(v) => void setLangPref(v)}
@@ -66,7 +66,7 @@ export function SettingsPanel({ open, onClose }: Props) {
         </Section>
 
         <Section label={t('settings.fetch')} hint={t('settings.fetchHint')}>
-          <SegmentedControl
+          <SettingsSelect
             value={fetchInterval}
             options={intervalOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
             onChange={(v) => void setFetchInterval(v)}
@@ -89,38 +89,31 @@ function Section({ label, hint, children }: { label: string; hint?: string; chil
   )
 }
 
-interface SegmentedProps<T extends string | number> {
+interface SettingsSelectProps<T extends string | number> {
   value: T
   options: { value: T; label: string }[]
   onChange: (value: T) => void
 }
 
-function SegmentedControl<T extends string | number>({ value, options, onChange }: SegmentedProps<T>) {
-  // ToggleGroup is a Radix primitive: single-select gives us
-  // arrow-key navigation, aria-pressed, and proper roving-tabindex
-  // for free. We render it as `outline` + `spacing=0` so the items
-  // sit flush in a bordered pill — same visual idiom as the previous
-  // hand-rolled SegmentedControl, but with Radix wiring under it.
+function SettingsSelect<T extends string | number>({ value, options, onChange }: SettingsSelectProps<T>) {
   return (
-    <ToggleGroup
-      type="single"
+    <Select
       value={String(value)}
       onValueChange={(v) => {
-        if (!v) return
-        // ToggleGroup gives back a string; cast it to whichever shape
-        // the caller specified (string | number) by matching against
-        // the original options.
         const matched = options.find((o) => String(o.value) === v)
         if (matched) onChange(matched.value)
       }}
-      variant="outline"
-      size="sm"
     >
-      {options.map((opt) => (
-        <ToggleGroupItem key={String(opt.value)} value={String(opt.value)}>
-          {opt.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
+      <SelectTrigger className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((opt) => (
+          <SelectItem key={String(opt.value)} value={String(opt.value)}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

@@ -35,6 +35,7 @@ export function RepoActionsHeader({ repo }: Props) {
   const setLastResult = useReposStore((s) => s.setLastResult)
   const refreshAll = useReposStore((s) => s.refreshAll)
   const refreshSnapshot = useReposStore((s) => s.refreshSnapshot)
+  const refreshStatus = useReposStore((s) => s.refreshStatus)
   const clearFetchFailed = useReposStore((s) => s.clearFetchFailed)
   const [fetchBusy, setFetchBusy] = useState(false)
   const [refreshBusy, setRefreshBusy] = useState(false)
@@ -66,11 +67,13 @@ export function RepoActionsHeader({ repo }: Props) {
       const result = await window.gbl.fetch(repo.id)
       if (!result.ok && result.message === 'cancelled') return
       setLastResult(repo.id, result)
+      if (!result.ok && result.message === 'error.networkOpInProgress') return
       // Fetch can move the upstream pointer (origin's refs change), so
-      // the snapshot needs to re-read ahead/behind counts. It doesn't
-      // touch the working tree, so status is intentionally not
-      // re-fetched here — the badge stays correct.
+      // the snapshot needs to re-read ahead/behind counts. We also
+      // refresh status because the badge is always visible and may have
+      // gone stale from external filesystem changes.
       await refreshSnapshot(repo.id)
+      await refreshStatus(repo.id)
       if (result.ok) clearFetchFailed(repo.id)
     } finally {
       setFetchBusy(false)

@@ -89,7 +89,7 @@ export interface ReposStore {
     options?: { silent?: boolean; skipLogBackfill?: boolean; token?: number },
   ) => Promise<void>
   refreshLog: (id: string) => Promise<void>
-  refreshStatus: (id: string) => Promise<void>
+  refreshStatus: (id: string, options?: { token?: number }) => Promise<void>
   refreshAll: (id: string) => Promise<void>
   backgroundFetch: (id: string) => Promise<void>
 

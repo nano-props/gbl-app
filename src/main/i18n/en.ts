@@ -190,6 +190,7 @@ export const en = {
   'error.invalidPath': 'Invalid path',
   'error.invalidWorktreePath': 'Invalid worktree path',
   'error.invalidArguments': 'Invalid arguments',
+  'error.networkOpInProgress': 'Another git network operation is already running.',
   'error.unknown': 'Unknown error',
   'error.cannotDeleteCurrentBranch': 'Cannot delete the current branch',
   'error.cannotDeleteProtectedBranch': 'Cannot delete a protected branch',

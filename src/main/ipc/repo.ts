@@ -25,32 +25,57 @@ import { resolveKnownWorktree, resolveRemovableWorktree } from '#/main/git/guard
 import { createWorktree, getWorktrees, removeWorktree } from '#/main/git/worktrees.ts'
 import { isSafeBranchName } from '#/main/git/refnames.ts'
 import { getCommitFileStats, getCommitMeta } from '#/main/git/log.ts'
-import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
+import { PROTECTED_BRANCHES, type ExecResult } from '#/shared/git-types.ts'
 
 const GIT_HASH_RE = /^[0-9a-fA-F]{7,64}$/
 
+type NetworkOpKind = 'user' | 'background'
+
+interface ActiveNetworkOp {
+  ctrl: AbortController
+  kind: NetworkOpKind
+  done: Promise<void>
+}
+
 /** Active AbortControllers keyed by repo id. Network ops (push/pull/fetch)
  *  register here so the renderer can cancel them. Only one network op per
- *  repo is allowed at a time (the UI's busy lock guarantees this); a new
- *  op aborts the previous one for safety. */
-const activeOpControllers = new Map<string, AbortController>()
+ *  repo is allowed at a time; callers get a busy result instead of
+ *  accidentally cancelling an in-flight operation from another UI path. */
+const activeOpControllers = new Map<string, ActiveNetworkOp>()
 
 /** Wrap a network op so its AbortController is registered, then cleaned
  *  up regardless of success/failure/abort. Returns the underlying
- *  ExecResult plus a derived `cancelled` flag the renderer surfaces
- *  differently from a real error. */
-async function runCancellable<T>(repoId: string, fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
-  // If a previous op for this repo is somehow still in flight, abort it.
-  // Belt-and-braces: the renderer's busy lock should already prevent this.
-  activeOpControllers.get(repoId)?.abort()
+ *  ExecResult; if another network op is active for this repo, returns
+ *  a busy result instead of cancelling that operation. */
+async function runCancellable(
+  repoId: string,
+  kind: NetworkOpKind,
+  fn: (signal: AbortSignal) => Promise<ExecResult>,
+): Promise<ExecResult> {
+  let active = activeOpControllers.get(repoId)
+  if (active) {
+    if (kind === 'user' && active.kind === 'background') {
+      active.ctrl.abort()
+      await active.done
+      active = activeOpControllers.get(repoId)
+    }
+    if (active) return { ok: false, message: 'error.networkOpInProgress' }
+  }
+
   const ctrl = new AbortController()
-  activeOpControllers.set(repoId, ctrl)
+  let resolveDone!: () => void
+  const done = new Promise<void>((resolve) => {
+    resolveDone = resolve
+  })
+  const slot: ActiveNetworkOp = { ctrl, kind, done }
+  activeOpControllers.set(repoId, slot)
   try {
     return await fn(ctrl.signal)
   } finally {
-    if (activeOpControllers.get(repoId) === ctrl) {
+    if (activeOpControllers.get(repoId) === slot) {
       activeOpControllers.delete(repoId)
     }
+    resolveDone()
   }
 }
 
@@ -287,30 +312,29 @@ export function wireRepoIpc(): void {
       if (!target.ok) return target
       targetPath = target.path
     }
-    return runCancellable(cwd, (signal) => pullBranch(cwd, branch, targetPath, signal))
+    return runCancellable(cwd, 'user', (signal) => pullBranch(cwd, branch, targetPath, signal))
   })
 
   ipcMain.handle('repo:push', async (_e, cwd: string, branch: string) => {
     if (typeof cwd !== 'string' || typeof branch !== 'string' || !cwd || !branch) {
       return { ok: false, message: 'error.invalidArguments' }
     }
-    return runCancellable(cwd, (signal) => pushBranch(cwd, branch, signal))
+    return runCancellable(cwd, 'user', (signal) => pushBranch(cwd, branch, signal))
   })
 
-  ipcMain.handle('repo:fetch', async (_e, cwd: string) => {
+  ipcMain.handle('repo:fetch', async (_e, cwd: string, kind?: NetworkOpKind) => {
     if (typeof cwd !== 'string' || !cwd) return { ok: false, message: 'error.invalidArguments' }
-    return runCancellable(cwd, (signal) => fetchAll(cwd, signal))
+    return runCancellable(cwd, kind === 'background' ? 'background' : 'user', (signal) => fetchAll(cwd, signal))
   })
 
   // Cancel the in-flight network op for a repo, if any. No-op when
-  // nothing is running. Returns true when something was actually
-  // aborted so the renderer can give immediate visual feedback.
+  // nothing is running. Returns true when an in-flight op was signalled
+  // so the renderer can give immediate visual feedback.
   ipcMain.handle('repo:abort', (_e, cwd: string) => {
     if (typeof cwd !== 'string' || !cwd) return false
     const ctrl = activeOpControllers.get(cwd)
     if (!ctrl) return false
-    ctrl.abort()
-    activeOpControllers.delete(cwd)
+    ctrl.ctrl.abort()
     return true
   })
 }

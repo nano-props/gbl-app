@@ -39,7 +39,7 @@ interface GblBridge {
   createWorktree: (cwd: string, worktreePath: string, newBranch: string, baseBranch: string) => Promise<ExecResult>
   pull: (cwd: string, branch: string, worktreePath?: string) => Promise<ExecResult>
   push: (cwd: string, branch: string) => Promise<ExecResult>
-  fetch: (cwd: string) => Promise<ExecResult>
+  fetch: (cwd: string, kind?: 'user' | 'background') => Promise<ExecResult>
   abort: (cwd: string) => Promise<boolean>
   openGitHub: (cwd: string, branch?: string) => Promise<ExecResult>
   openInFinder: (path: string) => Promise<ExecResult>

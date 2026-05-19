@@ -86,10 +86,11 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
       }
     },
 
-    async refreshStatus(id: string) {
+    async refreshStatus(id: string, options?: { token?: number }) {
       const repoBefore = get().repos[id]
       if (!repoBefore) return
-      const token = repoBefore.instanceToken
+      const token = options?.token ?? repoBefore.instanceToken
+      if (repoBefore.instanceToken !== token) return
       try {
         const status = await window.gbl.status(id)
         updateIfFresh(get(), set, id, token, (r) => ({ ...r, status }))
@@ -131,19 +132,22 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
       let work!: Promise<void>
       work = (async () => {
         try {
-          const result = await window.gbl.fetch(id)
+          const result = await window.gbl.fetch(id, 'background')
           if (!result.ok) {
+            if (result.message === 'cancelled' || result.message === 'error.networkOpInProgress') return
             console.warn('[backgroundFetch] git fetch failed:', result.message)
             updateIfFresh(get(), set, id, token, (r) => ({
               ...r,
               fetchFailed: true,
               fetchError: result.message,
             }))
+            await get().refreshStatus(id, { token })
             return
           }
-          // Success — clear the fail flag and refresh the snapshot.
+          // Success — clear the fail flag and refresh the snapshot/status.
           updateIfFresh(get(), set, id, token, (r) => ({ ...r, fetchFailed: false, fetchError: null }))
           await get().refreshSnapshot(id, { silent: true, token })
+          await get().refreshStatus(id, { token })
         } catch (err) {
           console.warn('[backgroundFetch] threw:', err)
           const message = err instanceof Error ? err.message : String(err)

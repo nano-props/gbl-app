@@ -179,6 +179,7 @@ export const zh: Record<DictKey, string> = {
   'error.invalidPath': '路径无效',
   'error.invalidWorktreePath': '工作树路径无效',
   'error.invalidArguments': '参数无效',
+  'error.networkOpInProgress': '另一个 git 网络操作正在进行中。',
   'error.unknown': '未知错误',
   'error.cannotDeleteCurrentBranch': '不能删除当前分支',
   'error.cannotDeleteProtectedBranch': '不能删除受保护分支',

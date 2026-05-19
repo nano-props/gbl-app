@@ -49,7 +49,7 @@ contextBridge.exposeInMainWorld('gbl', {
     safeInvoke('repo:create-worktree', cwd, worktreePath, newBranch, baseBranch),
   pull: (cwd, branch, worktreePath) => safeInvoke('repo:pull', cwd, branch, worktreePath),
   push: (cwd, branch) => safeInvoke('repo:push', cwd, branch),
-  fetch: (cwd) => safeInvoke('repo:fetch', cwd),
+  fetch: (cwd, kind) => safeInvoke('repo:fetch', cwd, kind),
   abort: (cwd) => safeInvoke('repo:abort', cwd),
   openGitHub: (cwd, branch) => safeInvoke('repo:open-github', cwd, branch),
   openInFinder: (path) => safeInvoke('repo:open-in-finder', path),

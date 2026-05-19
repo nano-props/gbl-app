@@ -188,6 +188,7 @@ export const ja: Record<DictKey, string> = {
   'error.invalidPath': '無効なパス',
   'error.invalidWorktreePath': '無効なワークツリーパス',
   'error.invalidArguments': '無効な引数',
+  'error.networkOpInProgress': '別の git ネットワーク操作がすでに実行中です。',
   'error.unknown': '不明なエラー',
   'error.cannotDeleteCurrentBranch': '現在のブランチは削除できません',
   'error.cannotDeleteProtectedBranch': '保護されたブランチは削除できません',

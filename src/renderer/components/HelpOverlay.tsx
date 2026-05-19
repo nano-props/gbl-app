@@ -77,7 +77,7 @@ export function HelpOverlay({ open, onClose }: Props) {
   const t = useT()
   const [nav, views, actions] = SECTIONS
   return (
-    <Modal open={open} title={t('help.title')} onClose={onClose} widthClass="max-w-2xl">
+    <Modal open={open} title={t('help.title')} onClose={onClose} widthClass="sm:max-w-2xl">
       <div className="grid gap-3 sm:grid-cols-[0.85fr_1.15fr]">
         <div className="space-y-3">
           <ShortcutSection section={nav} />

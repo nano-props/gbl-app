@@ -15,11 +15,11 @@ interface Props {
   title: string
   onClose: () => void
   children: ReactNode
-  /** Tailwind width class. Default `max-w-md`. */
+  /** Tailwind width class. Default `sm:max-w-md`. */
   widthClass?: string
 }
 
-export function Modal({ open, title, onClose, children, widthClass = 'max-w-md' }: Props) {
+export function Modal({ open, title, onClose, children, widthClass = 'sm:max-w-md' }: Props) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       {/* p-0 + gap-0 to take full control: shadcn's default p-4 gap-3
