@@ -27,7 +27,7 @@ export function RepoTab({
   closeLabel,
   dragLabel,
 }: RepoTabProps) {
-  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: repo.id,
   })
   const sortableListeners = listeners ?? {}
@@ -43,8 +43,23 @@ export function RepoTab({
       ref={setNodeRef}
       style={style}
       data-interactive
+      {...attributes}
+      {...sortableListeners}
+      role="tab"
+      tabIndex={0}
+      aria-selected={isActive}
+      aria-label={`${repo.name}${repo.currentBranch ? `, ${repo.currentBranch}` : ''}. ${dragLabel}`}
       onPointerEnter={() => onHoverChange(repo.id)}
       onPointerLeave={() => onHoverChange(null)}
+      onClick={() => onActivate(repo.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          onActivate(repo.id)
+          return
+        }
+        onSortableKeyDown?.(e)
+      }}
       className={cn(
         'group relative flex h-8 min-w-36 max-w-56 shrink-0 cursor-pointer touch-none select-none items-center gap-1.5 rounded-md border px-2 text-xs transition-colors duration-100',
         isActive
@@ -58,25 +73,7 @@ export function RepoTab({
       {showSeparator && (
         <span className="pointer-events-none absolute right-0 top-1/2 h-4 -translate-y-1/2 border-r border-border/70" />
       )}
-      <div
-        ref={setActivatorNodeRef}
-        {...attributes}
-        {...sortableListeners}
-        role="tab"
-        tabIndex={0}
-        aria-selected={isActive}
-        aria-label={`${repo.name}${repo.currentBranch ? `, ${repo.currentBranch}` : ''}. ${dragLabel}`}
-        onClick={() => onActivate(repo.id)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            onActivate(repo.id)
-            return
-          }
-          onSortableKeyDown?.(e)
-        }}
-        className="flex min-w-0 flex-1 items-center gap-1.5"
-      >
+      <div className="flex h-full min-w-0 flex-1 items-center gap-1.5">
         <FolderGit2 size={13} className={cn('shrink-0', isActive ? 'text-brand' : 'text-muted-foreground')} />
         <span className="truncate font-medium">{repo.name}</span>
         <span className="hidden min-w-0 items-center gap-1 border-l border-border pl-1.5 text-[11px] text-muted-foreground lg:flex">
