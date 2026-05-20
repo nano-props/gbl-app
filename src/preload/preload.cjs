@@ -44,8 +44,8 @@ contextBridge.exposeInMainWorld('gbl', {
   // ---- Mutating ----------------------------------------------------------
   checkout: (cwd, branch) => safeInvoke('repo:checkout', cwd, branch),
   deleteBranch: (cwd, branch) => safeInvoke('repo:delete-branch', cwd, branch),
-  removeWorktree: (cwd, branch, worktreePath, alsoDeleteBranch) =>
-    safeInvoke('repo:remove-worktree', cwd, branch, worktreePath, alsoDeleteBranch),
+  removeWorktree: (cwd, branch, worktreePath, alsoDeleteBranch, forceDeleteBranch) =>
+    safeInvoke('repo:remove-worktree', cwd, branch, worktreePath, alsoDeleteBranch, forceDeleteBranch),
   createWorktree: (cwd, worktreePath, newBranch, baseBranch) =>
     safeInvoke('repo:create-worktree', cwd, worktreePath, newBranch, baseBranch),
   pull: (cwd, branch, worktreePath) => safeInvoke('repo:pull', cwd, branch, worktreePath),
@@ -74,6 +74,8 @@ contextBridge.exposeInMainWorld('gbl', {
   settings: {
     get: () => safeInvoke('settings:get'),
     setFetchInterval: (sec) => safeInvoke('settings:set-fetch-interval', sec),
+    addRecentRepo: (repoPath) => safeInvoke('settings:add-recent-repo', repoPath),
+    clearRecentRepos: () => safeInvoke('settings:clear-recent-repos'),
     onFetchIntervalChange: (cb) => {
       const listener = (_event, sec) => cb(sec)
       ipcRenderer.on('app:fetch-interval-changed', listener)

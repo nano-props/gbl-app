@@ -17,6 +17,9 @@ export function createLifecycleActions(set: ReposSet, get: ReposGet) {
       const id = probe.root
       const name = probe.name ?? lastPathSegment(id)
       const activate = options?.activate !== false
+      void window.gbl.settings.addRecentRepo(id).catch(() => {
+        /* recent menu is best-effort */
+      })
 
       // Branch on the two axes (already in store? activating?) so each
       // case writes only what actually changes. zustand v5 short-circuits

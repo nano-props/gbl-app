@@ -22,6 +22,7 @@ export function emptyRepo(id: string, name: string): RepoState {
     openCommit: null,
     openingCommitHash: null,
     loading: true,
+    syncing: false,
     fetching: false,
     fetchFailed: false,
     fetchError: null,

@@ -137,6 +137,25 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
       if (after.detailTab === 'commits') await get().refreshBranchLog(id, undefined, { token })
     },
 
+    async syncAndRefresh(id: string, options?: { token?: number }) {
+      const repoBefore = get().repos[id]
+      if (!repoBefore) return
+      const token = options?.token ?? repoBefore.instanceToken
+      if (repoBefore.instanceToken !== token) return
+      if (repoBefore.syncing) return
+      updateIfFresh(set, id, token, (r) => ({ ...r, syncing: true }))
+      try {
+        const result = await window.gbl.fetch(id)
+        if (!result.ok && result.message === 'cancelled') return
+        get().setLastResult(id, result, token)
+        if (!result.ok && result.message === 'error.networkOpInProgress') return
+        await get().refreshAll(id, { token })
+        if (result.ok) get().clearFetchFailed(id, token)
+      } finally {
+        updateIfFresh(set, id, token, (r) => ({ ...r, syncing: false }))
+      }
+    },
+
     async backgroundFetch(id: string) {
       // Coalesce: if a fetch is already running for this repo, return its
       // promise. Switching active back and forth on a slow network used

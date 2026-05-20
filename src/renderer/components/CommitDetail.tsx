@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { ArrowLeft, FileText, FileWarning } from 'lucide-react'
 import { useReposStore } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
+import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import type { CommitDetail as CommitDetailType } from '#/renderer/types-bridge.ts'
 
 interface Props {
@@ -21,11 +22,11 @@ export function CommitDetail({ repoId, detail }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      // Don't fight a Radix Dialog (Settings / Help / push confirm) —
-      // they own Escape while open. Without this gate, pressing Esc
-      // with a modal open would close BOTH the modal and the commit
-      // detail at once.
-      if (document.querySelector('[role="dialog"][data-state="open"]')) return
+      // Don't fight a Radix layer (Settings / Help / push confirm /
+      // dropdown menu) — it owns Escape while open. Without this gate,
+      // pressing Esc with a modal open would close BOTH the modal and
+      // the commit detail at once.
+      if (isShortcutBlockingLayerOpen()) return
       closeCommit(repoId)
     }
     window.addEventListener('keydown', onKey)

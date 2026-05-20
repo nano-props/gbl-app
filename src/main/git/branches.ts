@@ -106,9 +106,9 @@ export async function checkoutBranch(cwd: string, name: string): Promise<ExecRes
   return gitResult(cwd, 'switch', '--', name)
 }
 
-export async function deleteBranch(cwd: string, name: string): Promise<ExecResult> {
+export async function deleteBranch(cwd: string, name: string, options?: { force?: boolean }): Promise<ExecResult> {
   if (!isSafeBranchName(name)) return { ok: false, message: 'error.invalidArguments' }
-  return gitResult(cwd, 'branch', '-d', '--', name)
+  return gitResult(cwd, 'branch', options?.force ? '-D' : '-d', '--', name)
 }
 
 /** Resolve `branch`'s upstream short ref (e.g. "origin/feat") or null

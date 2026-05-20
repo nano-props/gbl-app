@@ -2,16 +2,19 @@
 // live here so adding/removing one is a single-file change.
 //
 // Shortcuts that are also wired through the application menu (⌘O,
-// ⌘W, ⌘2/⌘3, ⌘[ , ⌘]) are handled by Electron's accelerator system
+// ⌘W, ⌘1/⌘2, ⌘[ , ⌘]) are handled by Electron's accelerator system
 // and forwarded via `app:menu-invoke`. We only handle the "no
-// modifier" keys here (j/k/?/Enter/Esc) so we don't fight the menu.
+// modifier" keys here (j/k/p/P/g/v/G/?/Enter/Esc) so we don't fight the menu.
 //
-// Modal awareness: when an overlay is open (Settings / Help / commit
-// detail) every shortcut is suppressed — including `?`, otherwise
-// pressing it with Settings open would stack the Help modal on top.
+// Modal awareness: when an overlay/dialog/menu is open every shortcut
+// is suppressed — including `?`, otherwise pressing it with Settings
+// open would stack the Help modal on top.
 
 import { useEffect, useRef } from 'react'
 import { useReposStore } from '#/renderer/stores/repos.ts'
+import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
+
+type BranchShortcutAction = 'pull' | 'push' | 'ghostty' | 'vscode' | 'github'
 
 interface Options {
   onShowHelp: () => void
@@ -24,6 +27,13 @@ function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   const tag = target.tagName
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
+}
+
+function branchShortcutAction(e: KeyboardEvent): BranchShortcutAction | null {
+  if (e.code === 'KeyP') return e.shiftKey ? 'push' : 'pull'
+  if (e.code === 'KeyG') return e.shiftKey ? 'github' : 'ghostty'
+  if (e.code === 'KeyV' && !e.shiftKey) return 'vscode'
+  return null
 }
 
 export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
@@ -43,7 +53,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
       const state = useReposStore.getState()
       const repoId = state.activeId
       const repo = repoId ? state.repos[repoId] : null
-      const overlayOpen = isOverlayOpenRef.current() || !!repo?.openCommit
+      const overlayOpen = isOverlayOpenRef.current() || isShortcutBlockingLayerOpen() || !!repo?.openCommit
 
       // `?` honours the overlay gate so it doesn't stack a second modal
       // on top of Settings/Help/commit-detail. Modal owns Esc.
@@ -51,6 +61,14 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
         if (overlayOpen) return
         e.preventDefault()
         onShowHelpRef.current()
+        return
+      }
+
+      const action = branchShortcutAction(e)
+      if (action) {
+        if (overlayOpen || !repo || !repo.selectedBranch) return
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent('gbl:branch-action-shortcut', { detail: action }))
         return
       }
 

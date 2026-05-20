@@ -8,7 +8,7 @@ interface MenuActionHandlers {
 }
 
 export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
-  const refreshAll = useReposStore((s) => s.refreshAll)
+  const syncAndRefresh = useReposStore((s) => s.syncAndRefresh)
   const closeRepo = useReposStore((s) => s.closeRepo)
   const cycleActive = useReposStore((s) => s.cycleActive)
   const setDetailTab = useReposStore((s) => s.setDetailTab)
@@ -17,6 +17,10 @@ export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
   useEffect(() => {
     const off = window.gbl.onMenuAction(async (action) => {
       const state = useReposStore.getState()
+      if (typeof action === 'object') {
+        if (action.type === 'open-recent-repo') await state.openRepo(action.path)
+        return
+      }
       switch (action) {
         case 'open-repo': {
           const path = await window.gbl.openDialog()
@@ -34,7 +38,10 @@ export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
           cycleActive(-1)
           break
         case 'refresh':
-          if (state.activeId) await refreshAll(state.activeId)
+          if (state.activeId) {
+            const repo = state.repos[state.activeId]
+            if (repo) await syncAndRefresh(repo.id, { token: repo.instanceToken })
+          }
           break
         case 'tab-status':
           if (state.activeId) setDetailTab(state.activeId, 'status')
@@ -60,5 +67,5 @@ export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
       }
     })
     return off
-  }, [closeRepo, cycleActive, cycleTheme, openSettings, refreshAll, setDetailTab, showHelp])
+  }, [closeRepo, cycleActive, cycleTheme, openSettings, setDetailTab, showHelp, syncAndRefresh])
 }

@@ -12,9 +12,11 @@
 // language whenever `setCurrentLang` fires (the i18n IPC handler
 // rebuilds this menu on lang change).
 
-import { app, Menu, type MenuItemConstructorOptions, BrowserWindow } from 'electron'
+import { app, Menu, shell, dialog, type MenuItemConstructorOptions, BrowserWindow } from 'electron'
+import { promises as fs } from 'node:fs'
 import { getMainWindow } from '#/main/window.ts'
 import { t } from '#/main/i18n/index.ts'
+import { clearRecentRepos, getRecentRepos } from '#/main/settings.ts'
 
 export type MenuAction =
   | 'open-repo'
@@ -27,6 +29,7 @@ export type MenuAction =
   | 'toggle-theme'
   | 'open-settings'
   | 'show-help'
+  | { type: 'open-recent-repo'; path: string }
 
 function send(action: MenuAction): void {
   const win = getMainWindow() ?? BrowserWindow.getFocusedWindow()
@@ -37,16 +40,30 @@ function send(action: MenuAction): void {
 export function buildAppMenu(): void {
   const isMac = process.platform === 'darwin'
   const name = app.name
+  const recentRepos = getRecentRepos()
+  const recentSubmenu: MenuItemConstructorOptions[] =
+    recentRepos.length > 0
+      ? [
+          ...recentRepos.map((repoPath) => ({
+            label: tildify(repoPath),
+            click: () => send({ type: 'open-recent-repo', path: repoPath }),
+          })),
+          { type: 'separator' as const },
+          { label: t('menu.file.clearRecent'), click: () => void clearRecentReposFromMenu() },
+        ]
+      : [{ label: t('menu.file.noRecent'), enabled: false }]
 
   const fileMenu: MenuItemConstructorOptions = {
     label: t('menu.file'),
     submenu: [
       { label: t('menu.file.openRepo'), accelerator: 'CmdOrCtrl+O', click: () => send('open-repo') },
+      { label: t('menu.file.openRecent'), submenu: recentSubmenu },
+      { label: t('menu.file.openDataFolder'), click: () => void openDataFolder() },
       // ⌘W is the standard OS shortcut for closing the window — keep
       // the `role: 'close'` accelerator there so it still works even if
       // the renderer hasn't subscribed to menu actions yet (e.g. hung
       // renderer). Closing a repo tab moves to ⌘⇧W.
-      { role: 'close', accelerator: 'CmdOrCtrl+W' },
+      { role: 'close', label: t('menu.file.closeWindow'), accelerator: 'CmdOrCtrl+W' },
       { label: t('menu.file.closeTab'), accelerator: 'CmdOrCtrl+Shift+W', click: () => send('close-repo') },
       { type: 'separator' },
       {
@@ -71,8 +88,8 @@ export function buildAppMenu(): void {
   const viewMenu: MenuItemConstructorOptions = {
     label: t('menu.view'),
     submenu: [
-      { label: t('menu.view.status'), accelerator: 'CmdOrCtrl+2', click: () => send('tab-status') },
-      { label: t('menu.view.log'), accelerator: 'CmdOrCtrl+3', click: () => send('tab-log') },
+      { label: t('menu.view.status'), accelerator: 'CmdOrCtrl+1', click: () => send('tab-status') },
+      { label: t('menu.view.log'), accelerator: 'CmdOrCtrl+2', click: () => send('tab-log') },
       { type: 'separator' },
       { label: t('menu.view.refresh'), accelerator: 'CmdOrCtrl+R', click: () => send('refresh') },
       { label: t('menu.view.toggleTheme'), accelerator: 'CmdOrCtrl+Shift+T', click: () => send('toggle-theme') },
@@ -134,4 +151,32 @@ export function buildAppMenu(): void {
   ]
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+async function clearRecentReposFromMenu(): Promise<void> {
+  await clearRecentRepos()
+  buildAppMenu()
+}
+
+async function openDataFolder(): Promise<void> {
+  try {
+    const dir = app.getPath('userData')
+    await fs.mkdir(dir, { recursive: true })
+    const error = await shell.openPath(dir)
+    if (error) reportOpenDataFolderError(error)
+  } catch (err) {
+    reportOpenDataFolderError(err)
+  }
+}
+
+function reportOpenDataFolderError(err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err)
+  console.warn('[menu] failed to open data folder', err)
+  dialog.showErrorBox(t('menu.file.openDataFolder'), message)
+}
+
+function tildify(p: string): string {
+  const home = app.getPath('home')
+  if (!home || p === home) return p === home ? '~' : p
+  return p.startsWith(home + '/') ? `~${p.slice(home.length)}` : p
 }

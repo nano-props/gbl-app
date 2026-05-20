@@ -36,7 +36,13 @@ interface GblBridge {
   commit: (cwd: string, hash: string) => Promise<CommitDetail | null>
   checkout: (cwd: string, branch: string) => Promise<ExecResult>
   deleteBranch: (cwd: string, branch: string) => Promise<ExecResult>
-  removeWorktree: (cwd: string, branch: string, worktreePath: string, alsoDeleteBranch: boolean) => Promise<ExecResult>
+  removeWorktree: (
+    cwd: string,
+    branch: string,
+    worktreePath: string,
+    alsoDeleteBranch: boolean,
+    forceDeleteBranch?: boolean,
+  ) => Promise<ExecResult>
   createWorktree: (cwd: string, worktreePath: string, newBranch: string, baseBranch: string) => Promise<ExecResult>
   pull: (cwd: string, branch: string, worktreePath?: string) => Promise<ExecResult>
   push: (cwd: string, branch: string) => Promise<ExecResult>
@@ -56,6 +62,8 @@ interface GblBridge {
   settings: {
     get: () => Promise<SettingsSnapshot>
     setFetchInterval: (sec: number) => Promise<void>
+    addRecentRepo: (repoPath: string) => Promise<string[]>
+    clearRecentRepos: () => Promise<void>
     onFetchIntervalChange: (cb: (sec: number) => void) => () => void
     saveSession: (session: SessionState) => Promise<void>
     onWriteError: (cb: (message: string) => void) => () => void

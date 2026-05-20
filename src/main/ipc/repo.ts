@@ -191,6 +191,9 @@ export function wireRepoIpc(): void {
   //     would be rejected by `git branch -d`. We check up front so a
   //     non-deletable branch doesn't leave us with a removed worktree
   //     and a "delete failed" toast (a confusing half-applied state).
+  //     `forceDeleteBranch` deliberately bypasses only this mergedness
+  //     check after the renderer has shown a stronger confirmation; dirty,
+  //     locked, main-worktree, and protected-branch guards still apply.
   //
   // A branch with no upstream is fine on its own — `git worktree add
   // -b new-branch ../foo` is a routine flow and `git worktree remove`
@@ -202,12 +205,20 @@ export function wireRepoIpc(): void {
   // explains *why* removal was refused, instead of git's generic error.
   ipcMain.handle(
     'repo:remove-worktree',
-    async (_e, cwd: string, branch: string, worktreePath: string, alsoDeleteBranch: boolean) => {
+    async (
+      _e,
+      cwd: string,
+      branch: string,
+      worktreePath: string,
+      alsoDeleteBranch: boolean,
+      forceDeleteBranch?: boolean,
+    ) => {
       if (
         typeof cwd !== 'string' ||
         typeof branch !== 'string' ||
         typeof worktreePath !== 'string' ||
         typeof alsoDeleteBranch !== 'boolean' ||
+        (forceDeleteBranch !== undefined && typeof forceDeleteBranch !== 'boolean') ||
         !cwd ||
         !branch ||
         !worktreePath
@@ -228,6 +239,8 @@ export function wireRepoIpc(): void {
       // we couldn't read status — refuse rather than blindly deleting.
       if (target.isDirty !== false) return { ok: false, message: 'error.cannotRemoveDirtyWorktree' }
 
+      const shouldForceDeleteBranch = forceDeleteBranch === true
+
       if (alsoDeleteBranch) {
         // Mirror the protected-branch guard from `repo:delete-branch`.
         // Catch up front so we don't remove the worktree first and then
@@ -240,23 +253,27 @@ export function wireRepoIpc(): void {
         // this branch is reachable from somewhere else, so dropping
         // the ref doesn't lose history." We pre-check here so a
         // non-deletable branch surfaces *before* we delete the worktree.
+        // If the renderer passed `forceDeleteBranch`, the user has
+        // accepted the stronger warning and we delete with `branch -D`
+        // after the worktree is removed.
         const mergedIntoHead = await isAncestor(cwd, branch, 'HEAD')
         let deletable = mergedIntoHead
         if (!deletable) {
           const upstream = await getUpstream(cwd, branch)
           if (upstream) deletable = await isAncestor(cwd, branch, upstream)
         }
-        if (!deletable) return { ok: false, message: 'error.cannotRemoveUnpushedWorktree' }
+        if (!deletable && !shouldForceDeleteBranch) return { ok: false, message: 'error.cannotRemoveUnpushedWorktree' }
       }
 
       const removeResult = await removeWorktree(cwd, target.path)
       if (!removeResult.ok) return removeResult
       if (alsoDeleteBranch) {
-        // Predicate above mirrors -d's rule, so this should succeed.
-        // If git still refuses (race: branch advanced after our check),
-        // surface the error — the worktree is gone but that's a clean
-        // state the user can recover from (branch still has commits).
-        const delResult = await deleteBranch(cwd, branch)
+        // Safe path uses -d after the predicate above mirrors Git's rule.
+        // Forced path uses -D after the renderer's stronger confirmation.
+        // If git still refuses (race: branch checked out elsewhere after
+        // our check), surface the error — the worktree is gone but that's
+        // a clean state the user can recover from (branch still exists).
+        const delResult = await deleteBranch(cwd, branch, { force: shouldForceDeleteBranch })
         if (!delResult.ok) return delResult
       }
       return removeResult

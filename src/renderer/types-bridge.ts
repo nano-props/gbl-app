@@ -27,6 +27,7 @@ export interface SettingsSnapshot {
   theme: ThemePref
   fetchIntervalSec: number
   session: SessionState
+  recentRepos: string[]
 }
 
 export type MenuAction =
@@ -40,6 +41,7 @@ export type MenuAction =
   | 'toggle-theme'
   | 'open-settings'
   | 'show-help'
+  | { type: 'open-recent-repo'; path: string }
 
 export interface CommitMeta {
   hash: string

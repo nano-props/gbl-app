@@ -44,6 +44,7 @@ export interface Settings {
   fetchIntervalSec: number
   windowBounds: WindowBounds | null
   session: SessionState
+  recentRepos: string[]
 }
 
 const DEFAULTS: Settings = {
@@ -53,9 +54,11 @@ const DEFAULTS: Settings = {
   fetchIntervalSec: 60,
   windowBounds: null,
   session: { openRepos: [], activeRepo: null },
+  recentRepos: [],
 }
 
 const WRITE_DEBOUNCE_MS = 200
+const MAX_RECENT_REPOS = 10
 
 let cache: Settings | null = null
 let writeTimer: NodeJS.Timeout | null = null
@@ -86,6 +89,20 @@ function normalizeSession(session: unknown): SessionState {
   return { openRepos, activeRepo }
 }
 
+function normalizeRecentRepos(recentRepos: unknown): string[] {
+  if (!Array.isArray(recentRepos)) return []
+  const seen = new Set<string>()
+  const normalized: string[] = []
+  for (const value of recentRepos) {
+    const safePath = toSafeSessionPath(value)
+    if (!safePath || seen.has(safePath)) continue
+    seen.add(safePath)
+    normalized.push(safePath)
+    if (normalized.length >= MAX_RECENT_REPOS) break
+  }
+  return normalized
+}
+
 function toSafeSessionPath(p: unknown): string | null {
   if (typeof p !== 'string' || p.length === 0 || p.includes('\0') || !path.isAbsolute(p)) return null
   return path.normalize(p)
@@ -109,13 +126,18 @@ export async function loadSettings(): Promise<Settings> {
           : DEFAULTS.fetchIntervalSec,
       windowBounds: parsed.windowBounds ?? null,
       session: normalizeSession(parsed.session),
+      recentRepos: normalizeRecentRepos(parsed.recentRepos),
     }
   } catch {
     // Missing file or malformed JSON: start clean rather than crashing the
     // app at boot. The first save will write a fresh file.
-    cache = { ...DEFAULTS, session: { ...DEFAULTS.session } }
+    cache = { ...DEFAULTS, session: { ...DEFAULTS.session }, recentRepos: [] }
   }
   return cache
+}
+
+export function getRecentRepos(): string[] {
+  return cache?.recentRepos ?? []
 }
 
 function scheduleWrite(): void {
@@ -215,5 +237,21 @@ export async function setWindowBounds(bounds: WindowBounds): Promise<void> {
 export async function setSession(session: SessionState): Promise<void> {
   const s = await loadSettings()
   s.session = session
+  scheduleWrite()
+}
+
+export async function addRecentRepo(repoPath: string): Promise<string[]> {
+  const safePath = toSafeSessionPath(repoPath)
+  if (!safePath) return getRecentRepos()
+  const s = await loadSettings()
+  s.recentRepos = [safePath, ...s.recentRepos.filter((p) => p !== safePath)].slice(0, MAX_RECENT_REPOS)
+  scheduleWrite()
+  return s.recentRepos
+}
+
+export async function clearRecentRepos(): Promise<void> {
+  const s = await loadSettings()
+  if (s.recentRepos.length === 0) return
+  s.recentRepos = []
   scheduleWrite()
 }

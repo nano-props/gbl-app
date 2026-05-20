@@ -39,6 +39,7 @@ export interface RepoState {
   openCommit: CommitDetail | null
   openingCommitHash: string | null
   loading: boolean
+  syncing: boolean
   /** True while a periodic background fetch is running — header indicator. */
   fetching: boolean
   /** True if the most recent background fetch failed (network down,
@@ -96,6 +97,7 @@ export interface ReposStore {
   refreshBranchLog: (id: string, branch?: string, options?: { token?: number }) => Promise<void>
   refreshStatus: (id: string, options?: { token?: number }) => Promise<void>
   refreshAll: (id: string, options?: { token?: number }) => Promise<void>
+  syncAndRefresh: (id: string, options?: { token?: number }) => Promise<void>
   backgroundFetch: (id: string) => Promise<void>
 
   openCommit: (id: string, hash: string) => Promise<void>

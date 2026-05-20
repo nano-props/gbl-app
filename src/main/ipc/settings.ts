@@ -9,7 +9,15 @@
 
 import { ipcMain, BrowserWindow } from 'electron'
 import path from 'node:path'
-import { loadSettings, onSettingsWriteError, setFetchInterval, setSession, type SessionState } from '#/main/settings.ts'
+import {
+  addRecentRepo,
+  clearRecentRepos,
+  loadSettings,
+  onSettingsWriteError,
+  setFetchInterval,
+  setSession,
+  type SessionState,
+} from '#/main/settings.ts'
 
 export function wireSettingsIpc(): void {
   // Hydrate the renderer at boot. The full settings blob is small
@@ -20,6 +28,7 @@ export function wireSettingsIpc(): void {
       theme: s.theme,
       fetchIntervalSec: s.fetchIntervalSec,
       session: s.session,
+      recentRepos: s.recentRepos,
     }
   })
 
@@ -38,6 +47,18 @@ export function wireSettingsIpc(): void {
       activeRepo: activeRepo && openRepos.includes(activeRepo) ? activeRepo : null,
     }
     await setSession(cleaned)
+  })
+
+  ipcMain.handle('settings:add-recent-repo', async (_e, repoPath: string) => {
+    if (typeof repoPath !== 'string') return []
+    const recentRepos = await addRecentRepo(repoPath)
+    await rebuildMenu()
+    return recentRepos
+  })
+
+  ipcMain.handle('settings:clear-recent-repos', async () => {
+    await clearRecentRepos()
+    await rebuildMenu()
   })
 
   // Surface persistence failures to the renderer. Listener is
@@ -59,4 +80,9 @@ function broadcastFetchInterval(sec: number): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) win.webContents.send('app:fetch-interval-changed', sec)
   }
+}
+
+async function rebuildMenu(): Promise<void> {
+  const { buildAppMenu } = await import('#/main/menu.ts')
+  buildAppMenu()
 }

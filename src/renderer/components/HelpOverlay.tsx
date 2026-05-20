@@ -22,14 +22,24 @@ const SECTIONS: { titleKey: string; rows: { keys: string[]; labelKey: string }[]
   {
     titleKey: 'help.section.views',
     rows: [
-      { keys: ['⌘', '2'], labelKey: 'help.row.viewStatus' },
-      { keys: ['⌘', '3'], labelKey: 'help.row.viewLog' },
+      { keys: ['⌘', '1'], labelKey: 'help.row.viewStatus' },
+      { keys: ['⌘', '2'], labelKey: 'help.row.viewLog' },
+    ],
+  },
+  {
+    titleKey: 'help.section.branchActions',
+    rows: [
+      { keys: ['Enter'], labelKey: 'help.row.checkout' },
+      { keys: ['p'], labelKey: 'action.pull' },
+      { keys: ['P'], labelKey: 'action.push' },
+      { keys: ['g'], labelKey: 'worktrees.openInGhosttyLabel' },
+      { keys: ['v'], labelKey: 'worktrees.openInVSCodeLabel' },
+      { keys: ['G'], labelKey: 'action.github' },
     ],
   },
   {
     titleKey: 'help.section.actions',
     rows: [
-      { keys: ['Enter'], labelKey: 'help.row.checkout' },
       { keys: ['⌘', 'O'], labelKey: 'help.row.openRepo' },
       { keys: ['⌥', 'G'], labelKey: 'help.row.activateWindow' },
       { keys: ['⌘', '⇧', 'W'], labelKey: 'help.row.closeRepo' },
@@ -43,7 +53,7 @@ const SECTIONS: { titleKey: string; rows: { keys: string[]; labelKey: string }[]
 
 function KeyChips({ keys }: { keys: string[] }) {
   return (
-    <span className="flex gap-1 shrink-0">
+    <span className="flex shrink-0 gap-1">
       {keys.map((k, i) => (
         <span key={i} className="kbd">
           {k}
@@ -56,13 +66,17 @@ function KeyChips({ keys }: { keys: string[] }) {
 function ShortcutSection({ section }: { section: (typeof SECTIONS)[number] }) {
   const t = useT()
   return (
-    <section className="rounded-lg border border-border bg-card/60 p-3">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {t(section.titleKey)}
+    <section className="rounded-xl border border-border bg-card/70 p-3 shadow-sm">
+      <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="h-3 w-1 rounded-full bg-brand" />
+        <span>{t(section.titleKey)}</span>
       </div>
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {section.rows.map((row) => (
-          <li key={row.labelKey} className="flex min-h-6 items-center justify-between gap-3 text-sm">
+          <li
+            key={`${row.labelKey}:${row.keys.join('+')}`}
+            className="-mx-1.5 grid min-h-7 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-1.5 text-sm"
+          >
             <span className="min-w-0 truncate text-foreground">{t(row.labelKey)}</span>
             <KeyChips keys={row.keys} />
           </li>
@@ -74,15 +88,12 @@ function ShortcutSection({ section }: { section: (typeof SECTIONS)[number] }) {
 
 export function HelpOverlay({ open, onClose }: Props) {
   const t = useT()
-  const [nav, views, actions] = SECTIONS
   return (
-    <Modal open={open} title={t('help.title')} onClose={onClose} widthClass="sm:max-w-2xl">
-      <div className="grid gap-3 sm:grid-cols-[0.85fr_1.15fr]">
-        <div className="space-y-3">
-          <ShortcutSection section={nav} />
-          <ShortcutSection section={views} />
-        </div>
-        <ShortcutSection section={actions} />
+    <Modal open={open} title={t('help.title')} onClose={onClose} widthClass="sm:max-w-3xl">
+      <div className="grid items-start gap-3 sm:grid-cols-2">
+        {SECTIONS.map((section) => (
+          <ShortcutSection key={section.titleKey} section={section} />
+        ))}
       </div>
     </Modal>
   )

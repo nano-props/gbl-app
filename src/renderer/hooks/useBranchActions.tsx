@@ -37,9 +37,14 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
   const [pushConfirm, setPushConfirm] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [removeConfirm, setRemoveConfirm] = useState<RemoveConfirm | null>(null)
+  const [forceRemoveConfirm, setForceRemoveConfirm] = useState<RemoveConfirm | null>(null)
   const [removeAlsoDeletes, setRemoveAlsoDeletes] = useState(true)
 
-  async function run(op: BranchActionOp, fn: () => Promise<ExecResult>) {
+  async function run(
+    op: BranchActionOp,
+    fn: () => Promise<ExecResult>,
+    options?: { handleResult?: (result: ExecResult) => boolean },
+  ) {
     if (busyRef.current) return
     busyRef.current = op
     setBusy(op)
@@ -47,12 +52,12 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
     try {
       const result = await fn()
       if (!result.ok && result.message === 'cancelled') return
+      if (options?.handleResult?.(result)) return
       const skipSuccessToast = result.ok && SILENT_SUCCESS_OPS.has(op)
       if (!skipSuccessToast) setLastResult(repo.id, result, token)
       if (!result.ok && result.message === 'error.networkOpInProgress') return
       if (REFRESH_AFTER_OPS.has(op)) {
-        await refreshSnapshot(repo.id, { token })
-        await refreshStatus(repo.id, { token })
+        await Promise.all([refreshSnapshot(repo.id, { token }), refreshStatus(repo.id, { token })])
       }
       if (result.ok && NETWORK_OPS.has(op)) clearFetchFailed(repo.id, token)
     } finally {
@@ -119,6 +124,27 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
     if (busyRef.current || !branch.worktreePath) return
     setRemoveAlsoDeletes(!PROTECTED_BRANCHES.has(branch.name))
     setRemoveConfirm({ branch: branch.name, path: branch.worktreePath })
+  }
+
+  function removeWorktree(target: RemoveConfirm, alsoDeleteBranch: boolean, forceDeleteBranch: boolean) {
+    void run(
+      'removeWorktree',
+      () => window.gbl.removeWorktree(repo.id, target.branch, target.path, alsoDeleteBranch, forceDeleteBranch),
+      {
+        handleResult: (result) => {
+          if (
+            !result.ok &&
+            result.message === 'error.cannotRemoveUnpushedWorktree' &&
+            alsoDeleteBranch &&
+            !forceDeleteBranch
+          ) {
+            setForceRemoveConfirm(target)
+            return true
+          }
+          return false
+        },
+      },
+    )
   }
 
   const isCurrent = branch.name === repo.currentBranch
@@ -221,8 +247,28 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
           const target = removeConfirm
           const alsoDelete = removeAlsoDeletes
           setRemoveConfirm(null)
-          if (target)
-            void run('removeWorktree', () => window.gbl.removeWorktree(repo.id, target.branch, target.path, alsoDelete))
+          if (target) removeWorktree(target, alsoDelete, false)
+        }}
+      />
+      <ConfirmDialog
+        open={forceRemoveConfirm !== null}
+        title={
+          forceRemoveConfirm ? t('action.confirmForceDeleteBranchTitle', { branch: forceRemoveConfirm.branch }) : ''
+        }
+        message={
+          forceRemoveConfirm ? (
+            <span>{t('action.confirmForceDeleteBranchBody', { branch: forceRemoveConfirm.branch })}</span>
+          ) : (
+            ''
+          )
+        }
+        confirmLabel={t('action.confirmForceDeleteBranchConfirm')}
+        destructive
+        onCancel={() => setForceRemoveConfirm(null)}
+        onConfirm={() => {
+          const target = forceRemoveConfirm
+          setForceRemoveConfirm(null)
+          if (target) removeWorktree(target, true, true)
         }}
       />
     </>
