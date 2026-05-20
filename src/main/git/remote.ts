@@ -1,7 +1,7 @@
 import { git, gitResultWithOptions, NETWORK_TIMEOUT_MS } from '#/main/git/helper.ts'
 import type { ExecResult } from '#/main/git/types.ts'
 import { getCurrentBranch } from '#/main/git/branches.ts'
-import { isSafeBranchName } from '#/main/git/refnames.ts'
+import { isSafeBranchName } from '#/shared/refnames.ts'
 
 function remoteUrlToHttps(url: string): string | null {
   const sshUrl = url.match(/^ssh:\/\/(?:[^@]+@)?([^:/]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/)

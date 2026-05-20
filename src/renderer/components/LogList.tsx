@@ -5,9 +5,10 @@
 
 import { useEffect, useRef } from 'react'
 import { useReposStore } from '#/renderer/stores/repos.ts'
-import { useT } from '#/renderer/stores/i18n.ts'
+import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
 import { EmptyState } from '#/renderer/components/Layout.tsx'
 import { cn } from '#/renderer/lib/cn.ts'
+import { formatRelativeTime } from '#/renderer/lib/dates.ts'
 import type { LogEntry } from '#/renderer/types.ts'
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
 
 export function LogList({ repoId, log, branch, selectedHash }: Props) {
   const t = useT()
+  const lang = useI18nStore((s) => s.lang)
   const openCommit = useReposStore((s) => s.openCommit)
   const selectLog = useReposStore((s) => s.selectLog)
   const selectedRef = useRef<HTMLLIElement | null>(null)
@@ -67,7 +69,7 @@ export function LogList({ repoId, log, branch, selectedHash }: Props) {
                 <span className="truncate text-sm text-foreground">{entry.message}</span>
               </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
-                {entry.author} · {entry.date}
+                {entry.author} · {formatRelativeTime(entry.date, lang)}
               </div>
             </li>
           )

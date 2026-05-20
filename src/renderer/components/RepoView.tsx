@@ -24,20 +24,25 @@ export function RepoView({ repoId }: Props) {
         exists: !!repo,
         initialLoading: !!repo && repo.loading && repo.branches.length === 0,
         openCommit: repo?.openCommit ?? null,
+        detailCollapsed: s.detailCollapsed,
       }
     },
-    (a, b) => a.exists === b.exists && a.initialLoading === b.initialLoading && a.openCommit === b.openCommit,
+    (a, b) =>
+      a.exists === b.exists &&
+      a.initialLoading === b.initialLoading &&
+      a.openCommit === b.openCommit &&
+      a.detailCollapsed === b.detailCollapsed,
   )
   useRepoToasts(repoId)
 
   if (!view.exists) return <div />
-  if (view.initialLoading) return <RepoWorkspaceSkeleton showRepoToolbar />
+  if (view.initialLoading) return <RepoWorkspaceSkeleton showRepoToolbar detailCollapsed={view.detailCollapsed} />
 
   return (
     <section className="flex min-w-0 flex-1 flex-col">
       <RepoToolbar repoId={repoId} />
 
-      <RepoWorkspace>
+      <RepoWorkspace detailCollapsed={view.detailCollapsed && !view.openCommit}>
         <RepoWorkspacePane border>
           <BranchList repoId={repoId} />
         </RepoWorkspacePane>
@@ -45,7 +50,7 @@ export function RepoView({ repoId }: Props) {
           {view.openCommit ? (
             <CommitDetail repoId={repoId} detail={view.openCommit} />
           ) : (
-            <BranchDetail repoId={repoId} />
+            <BranchDetail repoId={repoId} collapsed={view.detailCollapsed} />
           )}
         </RepoWorkspacePane>
       </RepoWorkspace>

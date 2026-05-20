@@ -26,6 +26,14 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
       if (next && next !== activeId) set({ activeId: next })
     },
 
+    setDetailCollapsed(collapsed: boolean) {
+      set((s) => (s.detailCollapsed === collapsed ? s : { detailCollapsed: collapsed }))
+    },
+
+    toggleDetailCollapsed() {
+      set((s) => ({ detailCollapsed: !s.detailCollapsed }))
+    },
+
     setDetailTab(id: string, tab: DetailTab) {
       let changed = false
       set((s) => {
@@ -36,7 +44,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         return { repos: { ...s.repos, [id]: { ...repo, detailTab: tab, openCommit: null, openingCommitHash: null } } }
       })
       if (changed && tab === 'commits') void get().refreshBranchLog(id)
-      if (changed && tab === 'status') void get().refreshStatus(id)
+      if (changed && tab === 'changes') void get().refreshStatus(id)
     },
 
     selectBranch(id: string, branch: string) {

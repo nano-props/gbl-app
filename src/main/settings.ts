@@ -27,12 +27,14 @@ export interface SessionState {
   openRepos: string[]
   /** The active tab — null when no repos were open. */
   activeRepo: string | null
+  detailCollapsed: boolean
 }
 
 /** Bump when a breaking schema change lands (renamed fields, removed
  *  enum values, etc.). loadSettings checks this so a future migration
  *  can rewrite the file before the app reads it. */
 export const SETTINGS_SCHEMA_VERSION = 1
+export const DEFAULT_SESSION_DETAIL_COLLAPSED = true
 
 export interface Settings {
   /** Schema version of this file. Older files without it are treated as
@@ -53,7 +55,7 @@ const DEFAULTS: Settings = {
   lang: 'auto',
   fetchIntervalSec: 60,
   windowBounds: null,
-  session: { openRepos: [], activeRepo: null },
+  session: { openRepos: [], activeRepo: null, detailCollapsed: DEFAULT_SESSION_DETAIL_COLLAPSED },
   recentRepos: [],
 }
 
@@ -86,7 +88,12 @@ function normalizeSession(session: unknown): SessionState {
     : []
   const activePath = toSafeSessionPath(value.activeRepo)
   const activeRepo = activePath && openRepos.includes(activePath) ? activePath : null
-  return { openRepos, activeRepo }
+  return {
+    openRepos,
+    activeRepo,
+    detailCollapsed:
+      typeof value.detailCollapsed === 'boolean' ? value.detailCollapsed : DEFAULTS.session.detailCollapsed,
+  }
 }
 
 function normalizeRecentRepos(recentRepos: unknown): string[] {

@@ -12,6 +12,8 @@ export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
   const closeRepo = useReposStore((s) => s.closeRepo)
   const cycleActive = useReposStore((s) => s.cycleActive)
   const setDetailTab = useReposStore((s) => s.setDetailTab)
+  const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
+  const toggleDetailCollapsed = useReposStore((s) => s.toggleDetailCollapsed)
   const cycleTheme = useThemeStore((s) => s.setPref)
 
   useEffect(() => {
@@ -44,10 +46,25 @@ export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
           }
           break
         case 'tab-status':
-          if (state.activeId) setDetailTab(state.activeId, 'status')
+          if (state.activeId) {
+            setDetailTab(state.activeId, 'status')
+            setDetailCollapsed(false)
+          }
+          break
+        case 'tab-changes':
+          if (state.activeId) {
+            setDetailTab(state.activeId, 'changes')
+            setDetailCollapsed(false)
+          }
           break
         case 'tab-log':
-          if (state.activeId) setDetailTab(state.activeId, 'commits')
+          if (state.activeId) {
+            setDetailTab(state.activeId, 'commits')
+            setDetailCollapsed(false)
+          }
+          break
+        case 'toggle-detail':
+          if (state.activeId && !state.repos[state.activeId]?.openCommit) toggleDetailCollapsed()
           break
         case 'toggle-theme': {
           // Read pref from store, not closure: the menu effect runs once
@@ -67,5 +84,15 @@ export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
       }
     })
     return off
-  }, [closeRepo, cycleActive, cycleTheme, openSettings, setDetailTab, showHelp, syncAndRefresh])
+  }, [
+    closeRepo,
+    cycleActive,
+    cycleTheme,
+    openSettings,
+    setDetailCollapsed,
+    setDetailTab,
+    showHelp,
+    syncAndRefresh,
+    toggleDetailCollapsed,
+  ])
 }

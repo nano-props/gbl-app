@@ -23,7 +23,9 @@ const SECTIONS: { titleKey: string; rows: { keys: string[]; labelKey: string }[]
     titleKey: 'help.section.views',
     rows: [
       { keys: ['⌘', '1'], labelKey: 'help.row.viewStatus' },
-      { keys: ['⌘', '2'], labelKey: 'help.row.viewLog' },
+      { keys: ['⌘', '2'], labelKey: 'help.row.viewChanges' },
+      { keys: ['⌘', '3'], labelKey: 'help.row.viewLog' },
+      { keys: ['⌘', 'J'], labelKey: 'help.row.toggleDetail' },
     ],
   },
   {

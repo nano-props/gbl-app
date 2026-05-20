@@ -5,6 +5,10 @@ interface ShellProps {
   children: ReactNode
 }
 
+interface RepoWorkspaceProps extends ShellProps {
+  detailCollapsed?: boolean
+}
+
 interface ToolbarProps {
   children: ReactNode
   className?: string
@@ -56,8 +60,17 @@ export function ToolbarTitle({ title, description, after }: ToolbarTitleProps) {
   )
 }
 
-export function RepoWorkspace({ children }: ShellProps) {
-  return <div className="grid min-h-0 flex-1 grid-rows-2">{children}</div>
+export function RepoWorkspace({ children, detailCollapsed = false }: RepoWorkspaceProps) {
+  return (
+    <div
+      className={cn(
+        'grid min-h-0 flex-1',
+        detailCollapsed ? 'grid-rows-[minmax(0,1fr)_2.25rem]' : 'grid-rows-[minmax(0,1fr)_minmax(0,1fr)]',
+      )}
+    >
+      {children}
+    </div>
+  )
 }
 
 export function RepoWorkspacePane({ children, border = false }: PaneProps) {

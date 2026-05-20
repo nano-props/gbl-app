@@ -2,7 +2,7 @@ import type { StoreApi } from 'zustand'
 import type { BranchInfo, LogEntry, WorktreeStatus } from '#/renderer/types.ts'
 import type { CommitDetail } from '#/renderer/types-bridge.ts'
 
-export type DetailTab = 'status' | 'commits'
+export type DetailTab = 'status' | 'changes' | 'commits'
 
 export interface BranchLogState {
   entries: LogEntry[]
@@ -66,6 +66,7 @@ export interface ReposStore {
    *  come back, and offers a "forget" action to remove them from the
    *  saved session. */
   missingFromSession: string[]
+  detailCollapsed: boolean
 
   /** Add a repo to the store. By default also focuses it — pass
    *  `activate: false` for batch flows (e.g. multi-folder drop) that
@@ -82,6 +83,8 @@ export interface ReposStore {
    *  `from > to`). No-op if either id is unknown or they're identical. */
   reorderRepos: (fromId: string, toId: string) => void
   setDetailTab: (id: string, tab: DetailTab) => void
+  setDetailCollapsed: (collapsed: boolean) => void
+  toggleDetailCollapsed: () => void
   selectBranch: (id: string, branch: string) => void
   selectLog: (id: string, branch: string, hash: string) => void
   cycleActive: (direction: 1 | -1) => void

@@ -6,19 +6,27 @@ import { BranchDetailContent } from '#/renderer/components/branch-detail/BranchD
 
 interface Props {
   repoId: string
+  collapsed?: boolean
 }
 
-export function BranchDetail({ repoId }: Props) {
+export function BranchDetail({ repoId, collapsed = false }: Props) {
   const detailId = useId()
   const repo = useReposStore((s) => s.repos[repoId])
   if (!repo) return null
 
   const detail = getSelectedBranchDetail(repo)
+  const contentId = `${detailId}-content`
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-background">
-      <BranchDetailToolbar repo={repo} detail={detail} detailId={detailId} />
-      <BranchDetailContent repo={repo} detail={detail} detailId={detailId} />
+      <BranchDetailToolbar
+        repo={repo}
+        detail={detail}
+        detailId={detailId}
+        contentId={contentId}
+        collapsed={collapsed}
+      />
+      {!collapsed && <BranchDetailContent repo={repo} detail={detail} detailId={detailId} contentId={contentId} />}
     </section>
   )
 }

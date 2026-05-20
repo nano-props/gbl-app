@@ -1,5 +1,6 @@
 import { ipcMain, shell } from 'electron'
 import path from 'node:path'
+import { getBranchPullRequest } from '#/main/git/pull-requests.ts'
 import { getGitHubUrl, getPullRequestUrl } from '#/main/git/remote.ts'
 import { isGhosttyInstalled, openInGhostty } from '#/main/system/ghostty.ts'
 import { isVSCodeInstalled, openInVSCode } from '#/main/system/vscode.ts'
@@ -14,6 +15,13 @@ export function wireOpenersIpc(): void {
 
   ipcMain.handle('repo:open-github', async (_e, cwd: string, branch?: string) => {
     if (typeof cwd !== 'string' || !cwd) return { ok: false, message: 'error.invalidArguments' }
+    if (typeof branch === 'string' && branch) {
+      const detectedPr = await getBranchPullRequest(cwd, branch)
+      if (detectedPr?.url) {
+        void shell.openExternal(detectedPr.url)
+        return { ok: true, message: detectedPr.url }
+      }
+    }
     // Prefer a PR-shaped URL when we know the branch: GitHub's
     // `/pull/new/{branch}` redirects to the existing open PR if one
     // exists, otherwise lands on the create-PR page. That covers

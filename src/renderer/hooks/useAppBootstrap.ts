@@ -6,6 +6,7 @@ import { useThemeStore } from '#/renderer/stores/theme.ts'
 
 export function useAppBootstrap() {
   const hydrateSession = useReposStore((s) => s.hydrateSession)
+  const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
   const hydrateSettings = useSettingsStore((s) => s.hydrate)
   const hydrateTheme = useThemeStore((s) => s.hydrate)
   const hydrateI18n = useI18nStore((s) => s.hydrate)
@@ -22,7 +23,8 @@ export function useAppBootstrap() {
     void (async () => {
       await Promise.all([hydrateTheme(), hydrateSettings(), hydrateI18n()])
       const session = useSettingsStore.getState().savedSession
+      setDetailCollapsed(session.detailCollapsed)
       await hydrateSession(session.openRepos, session.activeRepo)
     })()
-  }, [hydrateTheme, hydrateSettings, hydrateI18n, hydrateSession])
+  }, [hydrateTheme, hydrateSettings, hydrateI18n, hydrateSession, setDetailCollapsed])
 }

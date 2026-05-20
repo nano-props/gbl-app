@@ -1,7 +1,8 @@
 import { git, gitResult } from '#/main/git/helper.ts'
 import { FIELD_SEP, parseBranches, parseLog } from '#/main/git/parsers.ts'
-import { isSafeBranchName } from '#/main/git/refnames.ts'
-import type { BranchInfo, ExecResult, LogEntry, WorktreeInfo } from '#/main/git/types.ts'
+import { getBranchPullRequests } from '#/main/git/pull-requests.ts'
+import { isSafeBranchName } from '#/shared/refnames.ts'
+import type { BranchInfo, ExecResult, LogEntry, PullRequestInfo, WorktreeInfo } from '#/main/git/types.ts'
 
 export async function isGitRepo(cwd: string): Promise<boolean> {
   try {
@@ -65,13 +66,48 @@ export function markDefaultBranch(branches: BranchInfo[], defaultBranch: string)
   })
 }
 
+export function markMergedToDefault(
+  branches: BranchInfo[],
+  defaultBranch: string,
+  mergedBranches: Set<string>,
+): BranchInfo[] {
+  if (!defaultBranch) return branches
+  return branches.map((branch) => ({
+    ...branch,
+    mergedToDefault: branch.name === defaultBranch || mergedBranches.has(branch.name),
+  }))
+}
+
+export function markPullRequests(branches: BranchInfo[], prs: Map<string, PullRequestInfo> | null): BranchInfo[] {
+  if (!prs || prs.size === 0) return branches
+  return branches.map((branch) => {
+    const pullRequest = prs.get(branch.name)
+    return pullRequest ? { ...branch, pullRequest } : branch
+  })
+}
+
+async function getMergedBranchNames(cwd: string, defaultBranch: string): Promise<Set<string> | null> {
+  if (!isSafeBranchName(defaultBranch)) return null
+  try {
+    const output = await git(cwd, ['branch', '--format=%(refname:short)', '--merged', defaultBranch])
+    return new Set(
+      output
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean),
+    )
+  } catch {
+    return null
+  }
+}
+
 export async function getBranches(cwd: string, worktrees?: WorktreeInfo[]): Promise<BranchInfo[]> {
   try {
     const format = [
       '%(refname:short)',
       '%(objectname:short)',
       '%(subject)',
-      '%(authordate:relative)',
+      '%(authordate:iso-strict)',
       '%(authorname)',
       '%(upstream:short)',
       '%(upstream:track)',
@@ -82,8 +118,14 @@ export async function getBranches(cwd: string, worktrees?: WorktreeInfo[]): Prom
       getCurrentBranch(cwd),
       getDefaultBranch(cwd),
     ])
+    const mergedBranchNames = await getMergedBranchNames(cwd, defaultBranch)
+    const branches = markDefaultBranch(parseBranches(output, currentBranch, worktrees), defaultBranch)
+    const pullRequests = await getBranchPullRequests(cwd, new Set(branches.map((branch) => branch.name)))
     return prioritizeDefaultBranch(
-      markDefaultBranch(parseBranches(output, currentBranch, worktrees), defaultBranch),
+      markPullRequests(
+        mergedBranchNames ? markMergedToDefault(branches, defaultBranch, mergedBranchNames) : branches,
+        pullRequests,
+      ),
       defaultBranch,
     )
   } catch {
@@ -93,7 +135,7 @@ export async function getBranches(cwd: string, worktrees?: WorktreeInfo[]): Prom
 
 export async function getLog(cwd: string, branch: string, count = 100): Promise<LogEntry[]> {
   try {
-    const format = ['%H', '%h', '%s', '%an', '%ar'].join(FIELD_SEP)
+    const format = ['%H', '%h', '%s', '%an', '%aI'].join(FIELD_SEP)
     const output = await git(cwd, ['log', `--format=${format}`, '-n', String(count), branch])
     return parseLog(output)
   } catch {

@@ -32,6 +32,7 @@ export const useReposStore = create<ReposStore>((set, get) => ({
   activeId: null,
   sessionReady: false,
   missingFromSession: [],
+  detailCollapsed: true,
 
   ...createLifecycleActions(set, get),
   ...createSelectionActions(set, get),

@@ -35,7 +35,7 @@ export async function getCommitMeta(cwd: string, hash: string): Promise<CommitMe
     // %x1f delimiters keep the subject body intact even when it contains
     // newlines or our other separators. %P is space-separated parents.
     const SEP = '\x1f'
-    const format = ['%H', '%h', '%an', '%ae', '%ai', '%P', '%s', '%b'].join(SEP)
+    const format = ['%H', '%h', '%an', '%ae', '%aI', '%P', '%s', '%b'].join(SEP)
     const out = await git(cwd, ['show', '--no-patch', `--format=${format}`, hash])
     if (!out) return null
     const parts = out.split(SEP)

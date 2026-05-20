@@ -35,7 +35,7 @@ interface GblBridge {
   patch: (cwd: string, worktreePath: string) => Promise<ExecResult>
   commit: (cwd: string, hash: string) => Promise<CommitDetail | null>
   checkout: (cwd: string, branch: string) => Promise<ExecResult>
-  deleteBranch: (cwd: string, branch: string) => Promise<ExecResult>
+  deleteBranch: (cwd: string, branch: string, force?: boolean) => Promise<ExecResult>
   removeWorktree: (
     cwd: string,
     branch: string,

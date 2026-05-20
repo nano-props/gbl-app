@@ -1,10 +1,9 @@
-// Persistent branch list. Each row shows branch name, upstream,
-// ahead/behind, optional worktree marker, and the head commit's hash +
-// subject + author + relative date. The selected row scrolls into view
-// automatically when the user moves with j/k so a long branch list
-// doesn't strand the cursor offscreen.
+// Persistent branch list. Each row shows branch name, lightweight
+// scan signals, and the head commit subject + relative date. The
+// selected row scrolls into view automatically when the user moves with
+// j/k so a long branch list doesn't strand the cursor offscreen.
 //
-// Worktree branches use a folder-tree glyph and a path chip beside the
+// Worktree branches use a folder-tree glyph and a compact chip beside the
 // name. We avoid tinting the whole row so selection, hover, and status
 // semantics don't compete for background colour.
 
@@ -12,21 +11,39 @@ import { useEffect, useRef } from 'react'
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { ArrowDown, ArrowUp, Check, FolderTree, GitBranch } from 'lucide-react'
 import { useReposStore } from '#/renderer/stores/repos.ts'
-import { useT } from '#/renderer/stores/i18n.ts'
+import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
 import { Badge } from '#/renderer/components/ui/badge.tsx'
 import { BranchActionsMenu } from '#/renderer/components/BranchActionsMenu.tsx'
 import { EmptyState } from '#/renderer/components/Layout.tsx'
 import { useGhosttyInstalled } from '#/renderer/hooks/useGhosttyInstalled.ts'
 import { useVSCodeInstalled } from '#/renderer/hooks/useVSCodeInstalled.ts'
 import { cn } from '#/renderer/lib/cn.ts'
-import { lastPathSegment, tildify } from '#/renderer/lib/paths.ts'
+import { formatRelativeTime } from '#/renderer/lib/dates.ts'
 
 interface Props {
   repoId: string
 }
 
+function Delta({ direction, count, label }: { direction: 'ahead' | 'behind'; count: number; label: string }) {
+  const Icon = direction === 'ahead' ? ArrowUp : ArrowDown
+  return (
+    <span
+      aria-label={label}
+      title={label}
+      className={cn(
+        'inline-flex items-center gap-0.5 font-mono text-xs',
+        direction === 'ahead' ? 'text-success' : 'text-warning',
+      )}
+    >
+      <Icon size={11} />
+      {count}
+    </span>
+  )
+}
+
 export function BranchList({ repoId }: Props) {
   const t = useT()
+  const lang = useI18nStore((s) => s.lang)
   const selectBranch = useReposStore((s) => s.selectBranch)
   const selectedRef = useRef<HTMLLIElement | null>(null)
   const ghosttyInstalled = useGhosttyInstalled()
@@ -61,7 +78,8 @@ export function BranchList({ repoId }: Props) {
       {branches.map((b) => {
         const isSelected = b.name === selected
         const isCurrent = b.name === current
-        const isWorktree = !!b.worktreePath && !isCurrent
+        const hasWorktree = !!b.worktreePath
+        const isWorktree = hasWorktree && !isCurrent
         return (
           <li
             key={b.name}
@@ -78,7 +96,7 @@ export function BranchList({ repoId }: Props) {
               }
             }}
             className={cn(
-              'flex cursor-pointer items-start gap-2 px-4 py-2.5',
+              'grid cursor-pointer grid-cols-[1rem_minmax(0,1fr)_auto] items-start gap-2 px-4 py-2',
               // Keep the focus indicator inset so Tab navigation is
               // visible without painting an outside outline across the
               // row divider.
@@ -89,71 +107,54 @@ export function BranchList({ repoId }: Props) {
               isSelected ? 'bg-selected text-selected-foreground hover:bg-selected' : 'hover:bg-muted',
             )}
           >
-            <div className="w-4 pt-0.5 shrink-0">
+            <div className="flex size-4 shrink-0 items-center justify-center pt-0.5">
               {isCurrent ? (
                 <Check size={14} className="text-success" />
               ) : isWorktree ? (
-                <FolderTree size={14} className="text-muted-foreground" />
+                <FolderTree size={14} className={b.worktreeDirty ? 'text-warning' : 'text-brand-text'} />
               ) : (
                 <GitBranch size={14} className="text-muted-foreground" />
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="truncate font-medium text-foreground">{b.name}</span>
-                {b.isDefault && (
-                  <Badge variant="outline" className="font-mono leading-4 text-muted-foreground">
-                    {t('branches.default')}
-                  </Badge>
-                )}
-                {isWorktree && b.worktreePath && (
-                  <Badge
-                    variant={b.worktreeDirty ? 'warning' : 'brand'}
-                    className="gap-1"
-                    title={tildify(b.worktreePath)}
-                  >
-                    <FolderTree size={10} />
-                    {lastPathSegment(b.worktreePath)}
-                    {b.worktreeDirty && <span className="ml-0.5 uppercase tracking-wide">· {t('branches.dirty')}</span>}
-                  </Badge>
-                )}
-                {b.tracking ? (
-                  <Badge
-                    variant="outline"
-                    className={cn('font-mono leading-4', b.trackingGone && 'text-warning border-warning-border')}
-                  >
-                    {b.trackingGone ? `${b.tracking} (${t('branches.gone')})` : b.tracking}
-                  </Badge>
-                ) : (
-                  // Surface "no upstream" as plain text rather than a
-                  // bare warning glyph: the icon alone gives users no
-                  // way to learn what it means without hovering.
-                  <Badge variant="outline" className="font-mono leading-4 text-muted-foreground">
-                    {t('branches.noUpstream')}
-                  </Badge>
-                )}
-                {b.ahead > 0 && (
-                  <span className="inline-flex items-center gap-0.5 text-xs text-success">
-                    <ArrowUp size={11} />
-                    {b.ahead}
-                  </span>
-                )}
-                {b.behind > 0 && (
-                  <span className="inline-flex items-center gap-0.5 text-xs text-warning">
-                    <ArrowDown size={11} />
-                    {b.behind}
-                  </span>
-                )}
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="min-w-0 truncate text-sm font-medium text-foreground">{b.name}</span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {b.isDefault && (
+                    <Badge variant="outline" className="font-mono text-muted-foreground">
+                      {t('branches.default')}
+                    </Badge>
+                  )}
+                  {hasWorktree && b.worktreeDirty ? (
+                    <Badge variant="warning" className="gap-1 font-mono">
+                      <FolderTree size={10} />
+                      {t('branches.dirty')}
+                    </Badge>
+                  ) : isWorktree ? (
+                    <Badge variant="outline" className="gap-1 font-mono text-muted-foreground">
+                      <FolderTree size={10} />
+                      {t('branches.worktree')}
+                    </Badge>
+                  ) : null}
+                  {b.trackingGone && (
+                    <Badge variant="warning" className="font-mono">
+                      {t('branches.gone')}
+                    </Badge>
+                  )}
+                  {b.ahead > 0 && (
+                    <Delta direction="ahead" count={b.ahead} label={t('branchStatus.sync.ahead', { n: b.ahead })} />
+                  )}
+                  {b.behind > 0 && (
+                    <Delta direction="behind" count={b.behind} label={t('branchStatus.sync.behind', { n: b.behind })} />
+                  )}
+                </div>
               </div>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-mono shrink-0">{b.lastCommitHash}</span>
-                <span className="truncate">{b.lastCommitMessage || '—'}</span>
-              </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {b.lastCommitAuthor} · {b.lastCommitDate}
+              <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                <span className="min-w-0 truncate">{b.lastCommitMessage || '—'}</span>
+                <span className="shrink-0">{formatRelativeTime(b.lastCommitDate, lang)}</span>
               </div>
             </div>
-            <div className="shrink-0 flex items-start pt-0.5">
+            <div className="flex shrink-0 items-start">
               <BranchActionsMenu
                 repo={repo}
                 branch={b}

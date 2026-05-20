@@ -6,10 +6,10 @@
 //     disabled until a branch name exists, since the auto-derived
 //     suggestion only makes sense once we have a slug to plug in.
 //
-// Errors are surfaced raw from git: path/branch already exists,
-// missing parent directory, etc. The renderer's input gating handles
-// the obvious rejections (empty branch); anything else is git's
-// responsibility and its errors are precise enough to show as-is.
+// Errors are surfaced raw from git: path already exists, missing
+// parent directory, etc. The renderer's input gating handles branch
+// names up front; anything else is git's responsibility and its errors
+// are precise enough to show as-is.
 
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -25,6 +25,7 @@ import { Button } from '#/renderer/components/ui/button.tsx'
 import type { RepoState } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { lastPathSegment, parentDir, tildify, untildify } from '#/renderer/lib/paths.ts'
+import { validateBranchName } from '#/shared/refnames.ts'
 
 export interface CreateWorktreeRequest {
   worktreePath: string
@@ -40,7 +41,7 @@ interface Props {
 }
 
 function computeDefaultPath(repoId: string, branch: string): string {
-  const slug = branch.trim()
+  const slug = branch.trim().replaceAll('/', '-')
   if (!slug) return ''
   const parent = parentDir(repoId)
   const name = lastPathSegment(repoId)
@@ -71,13 +72,22 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
   const branchTrimmed = branch.trim()
   const pathTrimmed = untildify(worktreePath.trim())
   const defaultPath = computeDefaultPath(repo.id, branchTrimmed)
+  const branchValidation = branchTrimmed ? validateBranchName(branchTrimmed) : { ok: true }
+  const branchExists = branchTrimmed ? repo.branches.some((b) => b.name === branchTrimmed) : false
+  const branchError = branchTrimmed
+    ? !branchValidation.ok
+      ? t('action.createWorktreeBranchInvalid')
+      : branchExists
+        ? t('action.createWorktreeBranchExists')
+        : ''
+    : ''
   // Effective path that will be sent on submit: user's typed value if
   // provided, else the auto-derived sibling default. Shown as a
   // greyed-out preview so users know what they'll get without typing.
   const effectivePath = pathTrimmed || defaultPath
   const displayDefaultPath = tildify(defaultPath)
   const displayEffectivePath = tildify(effectivePath)
-  const canSubmit = branchTrimmed.length > 0 && effectivePath.length > 0 && base.length > 0
+  const canSubmit = branchTrimmed.length > 0 && !branchError && effectivePath.length > 0 && base.length > 0
 
   function handleSubmit() {
     if (!canSubmit) return
@@ -98,7 +108,13 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
           <DialogDescription>{t('action.createWorktreeHint')}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSubmit()
+          }}
+        >
           <div>
             <label className="block text-sm font-medium text-foreground" htmlFor="cwt-base">
               {t('action.createWorktreeBaseLabel')}
@@ -136,8 +152,15 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
               placeholder={t('action.createWorktreeBranchPlaceholder')}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-invalid={!!branchError}
+              aria-describedby={branchError ? 'cwt-branch-error' : undefined}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20"
             />
+            {branchError && (
+              <div id="cwt-branch-error" className="mt-1 text-xs text-destructive">
+                {branchError}
+              </div>
+            )}
           </div>
 
           <div>
@@ -156,16 +179,15 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
               {!branchTrimmed ? t('action.createWorktreePathDisabledHint') : effectivePath ? displayEffectivePath : ''}
             </div>
           </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            {t('dialog.cancel')}
-          </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {t('action.createWorktreeConfirm')}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose}>
+              {t('dialog.cancel')}
+            </Button>
+            <Button type="submit" disabled={!canSubmit}>
+              {t('action.createWorktreeConfirm')}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

@@ -21,6 +21,7 @@ export interface I18nPayload {
 export interface SessionState {
   openRepos: string[]
   activeRepo: string | null
+  detailCollapsed: boolean
 }
 
 export interface SettingsSnapshot {
@@ -37,7 +38,9 @@ export type MenuAction =
   | 'prev-repo'
   | 'refresh'
   | 'tab-status'
+  | 'tab-changes'
   | 'tab-log'
+  | 'toggle-detail'
   | 'toggle-theme'
   | 'open-settings'
   | 'show-help'

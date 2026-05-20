@@ -15,14 +15,25 @@ export const FIELD_SEP = '\x1f'
 /**
  * Parse `git for-each-ref --format=<fields joined by FIELD_SEP> refs/heads/`.
  * Fields, in order: refname:short, objectname:short, subject,
- * authordate:relative, authorname, upstream:short, upstream:track.
+ * authordate:iso-strict, authorname, upstream:short, upstream:track.
  */
 export function parseBranches(output: string, currentBranch: string, worktrees: WorktreeInfo[] = []): BranchInfo[] {
   if (!output) return []
 
-  const worktreeMap = new Map<string, { path: string; isDirty?: boolean; isPrimary: boolean }>()
+  const worktreeMap = new Map<
+    string,
+    { path: string; isDirty?: boolean; isPrimary: boolean; changeCount?: number; isLocked?: boolean }
+  >()
   for (const wt of worktrees) {
-    if (wt.branch) worktreeMap.set(wt.branch, { path: wt.path, isDirty: wt.isDirty, isPrimary: wt.isPrimary })
+    if (wt.branch) {
+      worktreeMap.set(wt.branch, {
+        path: wt.path,
+        isDirty: wt.isDirty,
+        isPrimary: wt.isPrimary,
+        changeCount: wt.changeCount,
+        isLocked: wt.isLocked,
+      })
+    }
   }
 
   const lines = output.split('\n').filter(Boolean)
@@ -66,6 +77,8 @@ export function parseBranches(output: string, currentBranch: string, worktrees: 
       branchInfo.worktreePath = wtInfo.path
       branchInfo.worktreeDirty = wtInfo.isDirty
       branchInfo.worktreeIsPrimary = wtInfo.isPrimary
+      branchInfo.worktreeChangeCount = wtInfo.changeCount
+      branchInfo.worktreeLocked = wtInfo.isLocked
     }
 
     branches.push(branchInfo)
@@ -75,7 +88,7 @@ export function parseBranches(output: string, currentBranch: string, worktrees: 
 }
 
 /**
- * Parse `git log --format=<%H, %h, %s, %an, %ar joined by FIELD_SEP>`.
+ * Parse `git log --format=<%H, %h, %s, %an, %aI joined by FIELD_SEP>`.
  */
 export function parseLog(output: string): LogEntry[] {
   if (!output) return []

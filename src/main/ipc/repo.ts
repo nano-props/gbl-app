@@ -23,7 +23,7 @@ import { getWorkingStatus } from '#/main/git/status.ts'
 import { getWorktreePatch } from '#/main/git/patch.ts'
 import { resolveKnownWorktree, resolveRemovableWorktree } from '#/main/git/guards.ts'
 import { createWorktree, getWorktrees, removeWorktree } from '#/main/git/worktrees.ts'
-import { isSafeBranchName } from '#/main/git/refnames.ts'
+import { isSafeBranchName } from '#/shared/refnames.ts'
 import { getCommitFileStats, getCommitMeta } from '#/main/git/log.ts'
 import { PROTECTED_BRANCHES, type ExecResult } from '#/shared/git-types.ts'
 
@@ -42,6 +42,11 @@ interface ActiveNetworkOp {
  *  repo is allowed at a time; callers get a busy result instead of
  *  accidentally cancelling an in-flight operation from another UI path. */
 const activeOpControllers = new Map<string, ActiveNetworkOp>()
+
+async function isSafelyDeletableBranch(cwd: string, branch: string): Promise<boolean> {
+  const upstream = await getUpstream(cwd, branch)
+  return isAncestor(cwd, branch, upstream ?? 'HEAD')
+}
 
 /** Wrap a network op so its AbortController is registered, then cleaned
  *  up regardless of success/failure/abort. Returns the underlying
@@ -167,7 +172,7 @@ export function wireRepoIpc(): void {
     return checkoutBranch(cwd, branch)
   })
 
-  ipcMain.handle('repo:delete-branch', async (_e, cwd: string, branch: string) => {
+  ipcMain.handle('repo:delete-branch', async (_e, cwd: string, branch: string, force?: boolean) => {
     if (typeof cwd !== 'string' || typeof branch !== 'string' || !cwd || !branch) {
       return { ok: false, message: 'error.invalidArguments' }
     }
@@ -178,7 +183,11 @@ export function wireRepoIpc(): void {
     if (worktrees.some((wt) => wt.branch === branch)) {
       return { ok: false, message: 'error.cannotDeleteCheckedOutBranch' }
     }
-    return deleteBranch(cwd, branch)
+    const shouldForce = force === true
+    if (!shouldForce) {
+      if (!(await isSafelyDeletableBranch(cwd, branch))) return { ok: false, message: 'error.branchNotFullyMerged' }
+    }
+    return deleteBranch(cwd, branch, { force: shouldForce })
   })
 
   // Remove a linked worktree (and optionally its branch). Refuses when:
@@ -187,8 +196,9 @@ export function wireRepoIpc(): void {
   //   - worktree is locked (`git worktree lock`)
   // Plus, when `alsoDeleteBranch` is set:
   //   - protected branch (main/master/develop/trunk)
-  //   - branch is not yet merged into either HEAD or its upstream — i.e.
-  //     would be rejected by `git branch -d`. We check up front so a
+  //   - branch is not yet merged into its upstream (when configured) or
+  //     HEAD (without upstream) — i.e. would be rejected by `git branch -d`.
+  //     We check up front so a
   //     non-deletable branch doesn't leave us with a removed worktree
   //     and a "delete failed" toast (a confusing half-applied state).
   //     `forceDeleteBranch` deliberately bypasses only this mergedness
@@ -247,22 +257,16 @@ export function wireRepoIpc(): void {
         // refuse the delete (leaves the user in a half-applied state).
         if (PROTECTED_BRANCHES.has(branch)) return { ok: false, message: 'error.cannotDeleteProtectedBranch' }
 
-        // Mirror `git branch -d`: a branch is deletable iff it's a
-        // strict ancestor of HEAD (the main worktree's checkout) OR of
-        // its own upstream. Either condition means "every commit on
-        // this branch is reachable from somewhere else, so dropping
-        // the ref doesn't lose history." We pre-check here so a
-        // non-deletable branch surfaces *before* we delete the worktree.
+        // Mirror `git branch -d`: with an upstream, the branch must be an
+        // ancestor of that upstream; without one, it must be an ancestor
+        // of HEAD. We pre-check here so a non-deletable
+        // branch surfaces *before* we delete the worktree.
         // If the renderer passed `forceDeleteBranch`, the user has
         // accepted the stronger warning and we delete with `branch -D`
         // after the worktree is removed.
-        const mergedIntoHead = await isAncestor(cwd, branch, 'HEAD')
-        let deletable = mergedIntoHead
-        if (!deletable) {
-          const upstream = await getUpstream(cwd, branch)
-          if (upstream) deletable = await isAncestor(cwd, branch, upstream)
+        if (!shouldForceDeleteBranch && !(await isSafelyDeletableBranch(cwd, branch))) {
+          return { ok: false, message: 'error.cannotRemoveUnpushedWorktree' }
         }
-        if (!deletable && !shouldForceDeleteBranch) return { ok: false, message: 'error.cannotRemoveUnpushedWorktree' }
       }
 
       const removeResult = await removeWorktree(cwd, target.path)

@@ -110,7 +110,7 @@ export function useBranchActionItems(
       : []),
     {
       id: 'github',
-      label: t('action.github'),
+      label: branch.pullRequest ? t('action.githubPr', { n: branch.pullRequest.number }) : t('action.github'),
       disabled: !!busy,
       visible: true,
       Icon: ExternalLink,

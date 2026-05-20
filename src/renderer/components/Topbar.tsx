@@ -3,7 +3,7 @@
 // opt out via -webkit-app-region: no-drag (set globally on `button` and
 // any element with `data-interactive`).
 
-import { HelpCircle, Settings } from 'lucide-react'
+import { HelpCircle, Info, Settings } from 'lucide-react'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { Tip } from '#/renderer/components/Tip.tsx'
 import { Logo } from '#/renderer/components/Logo.tsx'
@@ -11,10 +11,11 @@ import { Button } from '#/renderer/components/ui/button.tsx'
 
 interface Props {
   onOpenSettings: () => void
+  onShowDependencies: () => void
   onShowHelp: () => void
 }
 
-export function Topbar({ onOpenSettings, onShowHelp }: Props) {
+export function Topbar({ onOpenSettings, onShowDependencies, onShowHelp }: Props) {
   const t = useT()
 
   return (
@@ -35,6 +36,11 @@ export function Topbar({ onOpenSettings, onShowHelp }: Props) {
       {/* Topbar actions are ghost-icon-only — same idiom as macOS title
        * bars and the deck-app reference: hover surfaces the button,
        * tooltips name the action. */}
+      <Tip label={t('topbar.dependencies')}>
+        <Button variant="ghost" size="icon" onClick={onShowDependencies} aria-label={t('topbar.dependencies')}>
+          <Info />
+        </Button>
+      </Tip>
       <Tip label={t('topbar.help')}>
         <Button variant="ghost" size="icon" onClick={onShowHelp} aria-label={t('topbar.help')}>
           <HelpCircle />

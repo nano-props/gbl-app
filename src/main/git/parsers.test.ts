@@ -19,7 +19,7 @@ describe('parseBranches', () => {
   })
 
   test('parses a single branch with no upstream', () => {
-    const line = ['main', 'abc1234', 'initial commit', '2 days ago', 'Alice', '', ''].join(SEP)
+    const line = ['main', 'abc1234', 'initial commit', '2026-05-20T10:00:00+08:00', 'Alice', '', ''].join(SEP)
     const result = parseBranches(line, 'main')
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({
@@ -29,6 +29,7 @@ describe('parseBranches', () => {
       behind: 0,
       lastCommitHash: 'abc1234',
       lastCommitMessage: 'initial commit',
+      lastCommitDate: '2026-05-20T10:00:00+08:00',
       lastCommitAuthor: 'Alice',
     })
     expect(result[0]?.tracking).toBeUndefined()
@@ -36,7 +37,15 @@ describe('parseBranches', () => {
   })
 
   test('parses ahead/behind from track string', () => {
-    const line = ['feature', 'def5678', 'wip', '1 hour ago', 'Bob', 'origin/feature', '[ahead 3, behind 2]'].join(SEP)
+    const line = [
+      'feature',
+      'def5678',
+      'wip',
+      '2026-05-20T10:00:00+08:00',
+      'Bob',
+      'origin/feature',
+      '[ahead 3, behind 2]',
+    ].join(SEP)
     const [b] = parseBranches(line, 'main')
     expect(b?.ahead).toBe(3)
     expect(b?.behind).toBe(2)
@@ -45,7 +54,7 @@ describe('parseBranches', () => {
   })
 
   test('flags trackingGone when upstream marked [gone]', () => {
-    const line = ['stale', 'aaa1111', 'old', '1 month ago', 'Carol', 'origin/stale', '[gone]'].join(SEP)
+    const line = ['stale', 'aaa1111', 'old', '2026-05-20T10:00:00+08:00', 'Carol', 'origin/stale', '[gone]'].join(SEP)
     const [b] = parseBranches(line, 'main')
     expect(b?.tracking).toBe('origin/stale')
     expect(b?.trackingGone).toBe(true)
@@ -65,11 +74,12 @@ describe('parseBranches', () => {
   test('attaches worktree info when branch matches', () => {
     const line = ['feat', 'h', 's', 'd', 'a', '', ''].join(SEP)
     const result = parseBranches(line, 'main', [
-      { path: '/wt/feat', branch: 'feat', isBare: false, isPrimary: false, isDirty: true },
+      { path: '/wt/feat', branch: 'feat', isBare: false, isPrimary: false, isDirty: true, changeCount: 3 },
     ])
     expect(result[0]?.worktreePath).toBe('/wt/feat')
     expect(result[0]?.worktreeDirty).toBe(true)
     expect(result[0]?.worktreeIsPrimary).toBe(false)
+    expect(result[0]?.worktreeChangeCount).toBe(3)
   })
 
   test('attaches primary worktree marker when branch matches the main worktree', () => {
@@ -94,8 +104,8 @@ describe('parseLog', () => {
 
   test('parses multiple entries', () => {
     const out = [
-      ['fullsha1', 'sha1', 'first', 'Alice', '2 days ago'].join(SEP),
-      ['fullsha2', 'sha2', 'second', 'Bob', '1 day ago'].join(SEP),
+      ['fullsha1', 'sha1', 'first', 'Alice', '2026-05-20T10:00:00+08:00'].join(SEP),
+      ['fullsha2', 'sha2', 'second', 'Bob', '2026-05-19T10:00:00+08:00'].join(SEP),
     ].join('\n')
     const result = parseLog(out)
     expect(result).toHaveLength(2)
@@ -104,7 +114,7 @@ describe('parseLog', () => {
       shortHash: 'sha1',
       message: 'first',
       author: 'Alice',
-      date: '2 days ago',
+      date: '2026-05-20T10:00:00+08:00',
     })
     expect(result[1]?.author).toBe('Bob')
   })

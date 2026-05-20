@@ -18,6 +18,20 @@ export interface BranchInfo {
   worktreePath?: string
   worktreeDirty?: boolean
   worktreeIsPrimary?: boolean
+  worktreeChangeCount?: number
+  worktreeLocked?: boolean
+  mergedToDefault?: boolean
+  pullRequest?: PullRequestInfo
+}
+
+export interface PullRequestInfo {
+  number: number
+  title: string
+  url: string
+  state: 'open' | 'merged' | 'closed'
+  isDraft?: boolean
+  baseRefName?: string
+  headRefName?: string
 }
 
 export interface WorktreeInfo {

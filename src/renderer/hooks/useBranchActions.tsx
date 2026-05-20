@@ -36,6 +36,7 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
   const [busy, setBusy] = useState<BranchActionOp | null>(null)
   const [pushConfirm, setPushConfirm] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [forceDeleteConfirm, setForceDeleteConfirm] = useState<string | null>(null)
   const [removeConfirm, setRemoveConfirm] = useState<RemoveConfirm | null>(null)
   const [forceRemoveConfirm, setForceRemoveConfirm] = useState<RemoveConfirm | null>(null)
   const [removeAlsoDeletes, setRemoveAlsoDeletes] = useState(true)
@@ -126,6 +127,18 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
     setRemoveConfirm({ branch: branch.name, path: branch.worktreePath })
   }
 
+  function deleteBranch(target: string, force = false) {
+    void run('deleteBranch', () => window.gbl.deleteBranch(repo.id, target, force), {
+      handleResult: (result) => {
+        if (!force && !result.ok && result.message === 'error.branchNotFullyMerged') {
+          setForceDeleteConfirm(target)
+          return true
+        }
+        return false
+      },
+    })
+  }
+
   function removeWorktree(target: RemoveConfirm, alsoDeleteBranch: boolean, forceDeleteBranch: boolean) {
     void run(
       'removeWorktree',
@@ -200,7 +213,30 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
         onConfirm={() => {
           const target = deleteConfirm
           setDeleteConfirm(null)
-          if (target) void run('deleteBranch', () => window.gbl.deleteBranch(repo.id, target))
+          if (target) deleteBranch(target)
+        }}
+      />
+      <ConfirmDialog
+        open={forceDeleteConfirm !== null}
+        title={forceDeleteConfirm ? t('action.confirmForceDeleteStandaloneTitle', { branch: forceDeleteConfirm }) : ''}
+        message={
+          forceDeleteConfirm ? (
+            <span>
+              {t('action.confirmForceDeleteStandaloneBody.before')}
+              <b className="text-foreground">{forceDeleteConfirm}</b>
+              {t('action.confirmForceDeleteStandaloneBody.after')}
+            </span>
+          ) : (
+            ''
+          )
+        }
+        confirmLabel={t('action.confirmForceDeleteStandaloneConfirm')}
+        destructive
+        onCancel={() => setForceDeleteConfirm(null)}
+        onConfirm={() => {
+          const target = forceDeleteConfirm
+          setForceDeleteConfirm(null)
+          if (target) deleteBranch(target, true)
         }}
       />
       <ConfirmDialog

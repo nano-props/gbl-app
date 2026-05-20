@@ -25,6 +25,7 @@ import { RepoView } from '#/renderer/components/RepoView.tsx'
 import { RepoWorkspaceSkeleton } from '#/renderer/components/Skeleton.tsx'
 import { SettingsPanel } from '#/renderer/components/SettingsPanel.tsx'
 import { HelpOverlay } from '#/renderer/components/HelpOverlay.tsx'
+import { DependenciesOverlay } from '#/renderer/components/DependenciesOverlay.tsx'
 import { RepoDropOverlay } from '#/renderer/components/RepoDropOverlay.tsx'
 import { useReposStore } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
@@ -39,15 +40,18 @@ import { useSettingsWriteErrorToast } from '#/renderer/hooks/useSettingsWriteErr
 export function App() {
   const activeId = useReposStore((s) => s.activeId)
   const sessionReady = useReposStore((s) => s.sessionReady)
+  const detailCollapsed = useReposStore((s) => s.detailCollapsed)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const openSettings = useCallback(() => setSettingsOpen(true), [])
   const showHelp = useCallback(() => setHelpOpen(true), [])
+  const showDependencies = useCallback(() => setDependenciesOpen(true), [])
   // Shared gate: any modal overlay (Settings, Help) suppresses both
   // keyboard shortcuts and the file-drop dashed border. useKeyboard
   // additionally OR's in commit-detail, which is per-repo state read
   // from the store inside the hook itself.
-  const modalOpen = settingsOpen || helpOpen
+  const modalOpen = settingsOpen || helpOpen || dependenciesOpen
   const repoDrop = useRepoDrop({ blocked: modalOpen })
 
   useAppBootstrap()
@@ -77,12 +81,12 @@ export function App() {
         onDragLeave={repoDrop.onDragLeave}
         onDrop={repoDrop.onDrop}
       >
-        <Topbar onOpenSettings={openSettings} onShowHelp={showHelp} />
+        <Topbar onOpenSettings={openSettings} onShowDependencies={showDependencies} onShowHelp={showHelp} />
         <RepoTabs />
         <main className="flex flex-1 min-h-0 min-w-0">
           <ErrorBoundary resetKey={activeId}>
             {!sessionReady ? (
-              <RepoWorkspaceSkeleton showRepoToolbar />
+              <RepoWorkspaceSkeleton showRepoToolbar detailCollapsed={detailCollapsed} />
             ) : activeId ? (
               <RepoView repoId={activeId} />
             ) : (
@@ -91,6 +95,7 @@ export function App() {
           </ErrorBoundary>
         </main>
         <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        <DependenciesOverlay open={dependenciesOpen} onClose={() => setDependenciesOpen(false)} />
         <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
         {repoDrop.active && <RepoDropOverlay />}
         {/* shadcn/ui Toaster wrapper — owns its own theme + style hooks.

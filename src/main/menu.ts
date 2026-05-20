@@ -25,7 +25,9 @@ export type MenuAction =
   | 'prev-repo'
   | 'refresh'
   | 'tab-status'
+  | 'tab-changes'
   | 'tab-log'
+  | 'toggle-detail'
   | 'toggle-theme'
   | 'open-settings'
   | 'show-help'
@@ -89,7 +91,9 @@ export function buildAppMenu(): void {
     label: t('menu.view'),
     submenu: [
       { label: t('menu.view.status'), accelerator: 'CmdOrCtrl+1', click: () => send('tab-status') },
-      { label: t('menu.view.log'), accelerator: 'CmdOrCtrl+2', click: () => send('tab-log') },
+      { label: t('menu.view.changes'), accelerator: 'CmdOrCtrl+2', click: () => send('tab-changes') },
+      { label: t('menu.view.log'), accelerator: 'CmdOrCtrl+3', click: () => send('tab-log') },
+      { label: t('menu.view.toggleDetail'), accelerator: 'CmdOrCtrl+J', click: () => send('toggle-detail') },
       { type: 'separator' },
       { label: t('menu.view.refresh'), accelerator: 'CmdOrCtrl+R', click: () => send('refresh') },
       { label: t('menu.view.toggleTheme'), accelerator: 'CmdOrCtrl+Shift+T', click: () => send('toggle-theme') },

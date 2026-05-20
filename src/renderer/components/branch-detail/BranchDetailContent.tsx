@@ -5,26 +5,38 @@ import { EmptyState } from '#/renderer/components/Layout.tsx'
 import { LogList } from '#/renderer/components/LogList.tsx'
 import { StatusList } from '#/renderer/components/StatusList.tsx'
 import { ListSkeleton } from '#/renderer/components/Skeleton.tsx'
+import { BranchStatus } from '#/renderer/components/branch-detail/BranchStatus.tsx'
 import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
 
 interface Props {
   repo: RepoState
   detail: SelectedBranchDetail
   detailId: string
+  contentId: string
 }
 
-export function BranchDetailContent({ repo, detail, detailId }: Props) {
+export function BranchDetailContent({ repo, detail, detailId, contentId }: Props) {
   const t = useT()
   const { branch, branchLog, selectedStatus } = detail
   if (!branch) return <EmptyState title={t('branches.empty')} />
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div id={contentId} className="flex min-h-0 flex-1 flex-col">
       {repo.detailTab === 'status' && (
         <div
           id={`${detailId}-status-panel`}
           role="tabpanel"
           aria-labelledby={`${detailId}-status-tab`}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <BranchStatus detail={detail} />
+        </div>
+      )}
+      {repo.detailTab === 'changes' && (
+        <div
+          id={`${detailId}-changes-panel`}
+          role="tabpanel"
+          aria-labelledby={`${detailId}-changes-tab`}
           className="flex min-h-0 flex-1 flex-col"
         >
           {branch.worktreePath && repo.statusLoading && !repo.statusLoaded ? (

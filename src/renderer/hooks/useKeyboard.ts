@@ -2,7 +2,7 @@
 // live here so adding/removing one is a single-file change.
 //
 // Shortcuts that are also wired through the application menu (⌘O,
-// ⌘W, ⌘1/⌘2, ⌘[ , ⌘]) are handled by Electron's accelerator system
+// ⌘W, ⌘1/⌘2/⌘3, ⌘[ , ⌘]) are handled by Electron's accelerator system
 // and forwarded via `app:menu-invoke`. We only handle the "no
 // modifier" keys here (j/k/p/P/g/v/G/?/Enter/Esc) so we don't fight the menu.
 //
@@ -54,6 +54,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
       const repoId = state.activeId
       const repo = repoId ? state.repos[repoId] : null
       const overlayOpen = isOverlayOpenRef.current() || isShortcutBlockingLayerOpen() || !!repo?.openCommit
+      const commitListActive = !!repo && repo.detailTab === 'commits' && !state.detailCollapsed
 
       // `?` honours the overlay gate so it doesn't stack a second modal
       // on top of Settings/Help/commit-detail. Modal owns Esc.
@@ -76,7 +77,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
         case 'j':
         case 'ArrowDown': {
           if (overlayOpen || !repo || repo.branches.length === 0) break
-          if (repo.detailTab === 'commits') {
+          if (commitListActive) {
             const branch = repo.selectedBranch ?? repo.currentBranch
             const branchLog = branch ? repo.logsByBranch[branch] : undefined
             if (branch && branchLog?.entries.length) {
@@ -98,7 +99,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
         case 'k':
         case 'ArrowUp': {
           if (overlayOpen || !repo || repo.branches.length === 0) break
-          if (repo.detailTab === 'commits') {
+          if (commitListActive) {
             const branch = repo.selectedBranch ?? repo.currentBranch
             const branchLog = branch ? repo.logsByBranch[branch] : undefined
             if (branch && branchLog?.entries.length) {
@@ -119,7 +120,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
         }
         case 'Enter': {
           if (overlayOpen || !repo) break
-          if (repo.detailTab === 'commits') {
+          if (commitListActive) {
             e.preventDefault()
             void state.openSelectedCommit()
           } else {

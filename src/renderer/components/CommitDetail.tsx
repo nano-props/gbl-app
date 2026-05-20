@@ -6,7 +6,8 @@
 import { useEffect } from 'react'
 import { ArrowLeft, FileText, FileWarning } from 'lucide-react'
 import { useReposStore } from '#/renderer/stores/repos.ts'
-import { useT } from '#/renderer/stores/i18n.ts'
+import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
+import { formatRelativeTime } from '#/renderer/lib/dates.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import type { CommitDetail as CommitDetailType } from '#/renderer/types-bridge.ts'
 
@@ -17,6 +18,7 @@ interface Props {
 
 export function CommitDetail({ repoId, detail }: Props) {
   const t = useT()
+  const lang = useI18nStore((s) => s.lang)
   const closeCommit = useReposStore((s) => s.closeCommit)
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export function CommitDetail({ repoId, detail }: Props) {
             <span className="text-sm font-semibold text-foreground">{meta.subject}</span>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {meta.author} &lt;{meta.email}&gt; · {meta.date}
+            {meta.author} &lt;{meta.email}&gt; · {formatRelativeTime(meta.date, lang)}
           </div>
           {meta.parents.length > 0 && (
             <div className="mt-0.5 text-xs text-muted-foreground font-mono">

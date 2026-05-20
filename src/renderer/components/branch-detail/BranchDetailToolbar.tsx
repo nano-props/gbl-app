@@ -1,8 +1,9 @@
-import { Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2 } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 import { useReposStore, type RepoState, type DetailTab } from '#/renderer/stores/repos.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { Badge } from '#/renderer/components/ui/badge.tsx'
+import { Button } from '#/renderer/components/ui/button.tsx'
 import { BranchActionBar } from '#/renderer/components/BranchActionBar.tsx'
 import { Toolbar } from '#/renderer/components/Layout.tsx'
 import { useGhosttyInstalled } from '#/renderer/hooks/useGhosttyInstalled.ts'
@@ -14,16 +15,21 @@ interface Props {
   repo: RepoState
   detail: SelectedBranchDetail
   detailId: string
+  contentId: string
+  collapsed: boolean
 }
 
 const DETAIL_TABS: { id: DetailTab; key: string }[] = [
   { id: 'status', key: 'tab.status' },
+  { id: 'changes', key: 'tab.changes' },
   { id: 'commits', key: 'tab.log' },
 ]
 
-export function BranchDetailToolbar({ repo, detail, detailId }: Props) {
+export function BranchDetailToolbar({ repo, detail, detailId, contentId, collapsed }: Props) {
   const t = useT()
   const setDetailTab = useReposStore((s) => s.setDetailTab)
+  const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
+  const toggleDetailCollapsed = useReposStore((s) => s.toggleDetailCollapsed)
   const ghosttyInstalled = useGhosttyInstalled()
   const vscodeInstalled = useVSCodeInstalled()
 
@@ -46,41 +52,60 @@ export function BranchDetailToolbar({ repo, detail, detailId }: Props) {
     e.preventDefault()
     const nextTab = DETAIL_TABS[next]
     setDetailTab(repo.id, nextTab.id)
+    setDetailCollapsed(false)
     window.requestAnimationFrame(() => document.getElementById(`${detailId}-${nextTab.id}-tab`)?.focus())
   }
 
   return (
     <Toolbar variant="detail">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleDetailCollapsed}
+        aria-label={t(collapsed ? 'branchDetail.expand' : 'branchDetail.collapse')}
+        title={t(collapsed ? 'branchDetail.expandTitle' : 'branchDetail.collapseTitle')}
+        aria-expanded={!collapsed}
+        aria-controls={collapsed ? undefined : contentId}
+        className="size-7"
+      >
+        <ChevronDown className={cn(collapsed && '-rotate-90')} />
+      </Button>
       <div className="flex shrink-0" role="tablist" aria-label={t('tab.branchDetail')}>
-        {DETAIL_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            id={`${detailId}-${tab.id}-tab`}
-            type="button"
-            role="tab"
-            aria-selected={repo.detailTab === tab.id}
-            aria-controls={`${detailId}-${tab.id}-panel`}
-            tabIndex={repo.detailTab === tab.id ? 0 : -1}
-            onClick={() => setDetailTab(repo.id, tab.id)}
-            onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
-            className={cn(
-              'h-9 px-3 text-sm border-b-2 -mb-px cursor-pointer transition-colors duration-100',
-              repo.detailTab === tab.id
-                ? 'border-brand text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t(tab.key)}
-            {tab.id === 'status' && detail.statusCount > 0 && (
-              <Badge variant="warning" className="ml-1.5 rounded-full">
-                {detail.statusCount}
-              </Badge>
-            )}
-            {tab.id === 'commits' && detail.branchLog?.loading && (
-              <Loader2 size={11} className="ml-1.5 inline animate-spin text-muted-foreground" />
-            )}
-          </button>
-        ))}
+        {DETAIL_TABS.map((tab) => {
+          const selected = !collapsed && repo.detailTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              id={`${detailId}-${tab.id}-tab`}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={collapsed ? undefined : `${detailId}-${tab.id}-panel`}
+              tabIndex={repo.detailTab === tab.id ? 0 : -1}
+              onClick={() => {
+                setDetailTab(repo.id, tab.id)
+                setDetailCollapsed(false)
+              }}
+              onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
+              className={cn(
+                'h-9 px-3 text-sm border-b-2 -mb-px cursor-pointer transition-colors duration-100',
+                selected
+                  ? 'border-brand text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t(tab.key)}
+              {tab.id === 'changes' && detail.statusCount > 0 && (
+                <Badge variant="warning" className="ml-1.5 rounded-full">
+                  {detail.statusCount}
+                </Badge>
+              )}
+              {tab.id === 'commits' && detail.branchLog?.loading && (
+                <Loader2 size={11} className="ml-1.5 inline animate-spin text-muted-foreground" />
+              )}
+            </button>
+          )
+        })}
       </div>
       <BranchActionBar
         key={`${repo.id}:${detail.branch.name}`}

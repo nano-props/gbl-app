@@ -21,7 +21,7 @@ interface SettingsStore {
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
   fetchIntervalSec: 60,
-  savedSession: { openRepos: [], activeRepo: null },
+  savedSession: { openRepos: [], activeRepo: null, detailCollapsed: true },
 
   async hydrate() {
     const snap = await window.gbl.settings.get()

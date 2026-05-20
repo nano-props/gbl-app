@@ -8,4 +8,5 @@ export type {
   WorktreeStatus,
   LogEntry,
   ExecResult,
+  PullRequestInfo,
 } from '#/shared/git-types.ts'

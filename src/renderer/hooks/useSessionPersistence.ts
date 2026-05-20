@@ -4,10 +4,11 @@ import { useReposStore } from '#/renderer/stores/repos.ts'
 export function useSessionPersistence() {
   const activeId = useReposStore((s) => s.activeId)
   const order = useReposStore((s) => s.order)
+  const detailCollapsed = useReposStore((s) => s.detailCollapsed)
   const sessionReady = useReposStore((s) => s.sessionReady)
 
   useEffect(() => {
     if (!sessionReady) return
-    void window.gbl.settings.saveSession({ openRepos: order, activeRepo: activeId })
-  }, [sessionReady, order, activeId])
+    void window.gbl.settings.saveSession({ openRepos: order, activeRepo: activeId, detailCollapsed })
+  }, [sessionReady, order, activeId, detailCollapsed])
 }

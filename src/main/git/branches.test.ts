@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { markDefaultBranch, prioritizeDefaultBranch } from '#/main/git/branches.ts'
+import { markDefaultBranch, markMergedToDefault, markPullRequests, prioritizeDefaultBranch } from '#/main/git/branches.ts'
 import type { BranchInfo } from '#/main/git/types.ts'
 
 function branch(name: string): BranchInfo {
@@ -53,5 +53,50 @@ describe('markDefaultBranch', () => {
   test('clears stale default markers when no default branch is known', () => {
     const [result] = markDefaultBranch([{ ...branch('feature/a'), isDefault: true }], '')
     expect(result?.isDefault).toBeUndefined()
+  })
+})
+
+describe('markMergedToDefault', () => {
+  test('marks branches reachable from the default branch', () => {
+    const result = markMergedToDefault(
+      [branch('feature/a'), branch('feature/b'), branch('main')],
+      'main',
+      new Set(['feature/a', 'main']),
+    )
+    expect(result.find((b) => b.name === 'feature/a')?.mergedToDefault).toBe(true)
+    expect(result.find((b) => b.name === 'feature/b')?.mergedToDefault).toBe(false)
+    expect(result.find((b) => b.name === 'main')?.mergedToDefault).toBe(true)
+  })
+
+  test('preserves branches when no default branch is known', () => {
+    const branches = [branch('feature/a')]
+    expect(markMergedToDefault(branches, '', new Set(['feature/a']))).toBe(branches)
+  })
+})
+
+describe('markPullRequests', () => {
+  test('attaches detected pull requests by branch name', () => {
+    const result = markPullRequests(
+      [branch('feature/a'), branch('feature/b')],
+      new Map([
+        [
+          'feature/a',
+          {
+            number: 123,
+            title: 'Add feature',
+            url: 'https://github.com/acme/repo/pull/123',
+            state: 'open',
+          },
+        ],
+      ]),
+    )
+
+    expect(result.find((b) => b.name === 'feature/a')?.pullRequest?.number).toBe(123)
+    expect(result.find((b) => b.name === 'feature/b')?.pullRequest).toBeUndefined()
+  })
+
+  test('preserves branches when pull request lookup is unavailable', () => {
+    const branches = [branch('feature/a')]
+    expect(markPullRequests(branches, null)).toBe(branches)
   })
 })

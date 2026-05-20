@@ -12,6 +12,7 @@ import path from 'node:path'
 import {
   addRecentRepo,
   clearRecentRepos,
+  DEFAULT_SESSION_DETAIL_COLLAPSED,
   loadSettings,
   onSettingsWriteError,
   setFetchInterval,
@@ -45,6 +46,8 @@ export function wireSettingsIpc(): void {
     const cleaned: SessionState = {
       openRepos,
       activeRepo: activeRepo && openRepos.includes(activeRepo) ? activeRepo : null,
+      detailCollapsed:
+        typeof session.detailCollapsed === 'boolean' ? session.detailCollapsed : DEFAULT_SESSION_DETAIL_COLLAPSED,
     }
     await setSession(cleaned)
   })

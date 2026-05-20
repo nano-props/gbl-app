@@ -18,6 +18,7 @@ interface Props {
 
 interface WorkspaceSkeletonProps {
   showRepoToolbar?: boolean
+  detailCollapsed?: boolean
 }
 
 export function ListSkeleton({ rows = 6, variant = 'branch' }: Props) {
@@ -50,7 +51,7 @@ export function ListSkeleton({ rows = 6, variant = 'branch' }: Props) {
   )
 }
 
-export function RepoWorkspaceSkeleton({ showRepoToolbar = false }: WorkspaceSkeletonProps) {
+export function RepoWorkspaceSkeleton({ showRepoToolbar = false, detailCollapsed = false }: WorkspaceSkeletonProps) {
   return (
     <section className="flex min-w-0 flex-1 flex-col">
       {showRepoToolbar && (
@@ -66,19 +67,24 @@ export function RepoWorkspaceSkeleton({ showRepoToolbar = false }: WorkspaceSkel
           </div>
         </Toolbar>
       )}
-      <div className="grid min-h-0 flex-1 grid-rows-2">
+      <div
+        className={cn(
+          'grid min-h-0 flex-1',
+          detailCollapsed ? 'grid-rows-[minmax(0,1fr)_2.25rem]' : 'grid-rows-[minmax(0,1fr)_minmax(0,1fr)]',
+        )}
+      >
         <div className="flex min-h-0 flex-col overflow-hidden border-b border-border">
           <ListSkeleton variant="branch" />
         </div>
         <div className="flex min-h-0 flex-col overflow-hidden">
-          <BranchDetailSkeleton />
+          <BranchDetailSkeleton collapsed={detailCollapsed} />
         </div>
       </div>
     </section>
   )
 }
 
-export function BranchDetailSkeleton() {
+export function BranchDetailSkeleton({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-background">
       <Toolbar className="justify-between gap-2 bg-muted px-2">
@@ -98,9 +104,11 @@ export function BranchDetailSkeleton() {
         </div>
       </Toolbar>
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        <ListSkeleton rows={8} variant="status" />
-      </div>
+      {!collapsed && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ListSkeleton rows={8} variant="status" />
+        </div>
+      )}
     </section>
   )
 }
