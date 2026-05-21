@@ -3,10 +3,7 @@ import type { Configuration } from 'electron-builder'
 const config: Configuration = {
   appId: 'goblin.app',
   productName: 'Goblin',
-  // Point at the .icns directly so the multi-resolution variants
-  // electron-builder embeds match what we authored. Re-generate via
-  // `bun run icon` after editing assets/icon.svg.
-  icon: 'assets/icon.icns',
+  icon: 'assets/icon-mac-1024.png',
   directories: {
     output: 'release',
   },
