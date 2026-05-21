@@ -130,8 +130,14 @@ try {
       // isn't blocked by "tag already exists" and upstream history doesn't
       // collect dangling tags pointing at unreleased commits.
       console.error('Publish failed; rolling back tag.')
-      if (pushedTag) await $`git push origin :refs/tags/${tag}`.nothrow()
-      await $`git tag -d ${tag}`.nothrow()
+      if (pushedTag) {
+        const remoteRollback = await $`git push origin :refs/tags/${tag}`.nothrow()
+        if (remoteRollback.exitCode !== 0) {
+          console.error(`Failed to delete remote tag ${tag}; run: git push origin :refs/tags/${tag}`)
+        }
+      }
+      const localRollback = await $`git tag -d ${tag}`.nothrow()
+      if (localRollback.exitCode !== 0) console.error(`Failed to delete local tag ${tag}; run: git tag -d ${tag}`)
       throw err
     }
 

@@ -2,6 +2,8 @@ import { git } from '#/main/git/helper.ts'
 import { parseStatus, parseWorktrees } from '#/main/git/parsers.ts'
 import type { WorktreeStatus } from '#/main/git/types.ts'
 
+const WORKTREE_STATUS_CONCURRENCY = 16
+
 /** Status for the Status tab — grouped by worktree so multi-worktree
  *  setups see *all* dirty changes, not just the main worktree's. The
  *  main worktree (the one matching `cwd`) sorts first.
@@ -18,8 +20,10 @@ export async function getWorkingStatus(cwd: string): Promise<WorktreeStatus[]> {
     return []
   }
 
-  const results = await Promise.all(
-    worktrees.map(async (wt): Promise<WorktreeStatus | null> => {
+  const results = await mapWithConcurrency(
+    worktrees,
+    WORKTREE_STATUS_CONCURRENCY,
+    async (wt): Promise<WorktreeStatus | null> => {
       if (wt.isBare) return null
       try {
         // -z: NUL-terminated entries with quoting disabled. Without this,
@@ -38,7 +42,7 @@ export async function getWorkingStatus(cwd: string): Promise<WorktreeStatus[]> {
       } catch {
         return null
       }
-    }),
+    },
   )
 
   const filtered = results.filter((x): x is WorktreeStatus => x !== null)
@@ -47,4 +51,18 @@ export async function getWorkingStatus(cwd: string): Promise<WorktreeStatus[]> {
   // in the terminal).
   filtered.sort((a, b) => Number(b.isMain) - Number(a.isMain))
   return filtered
+}
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let cursor = 0
+  const worker = async () => {
+    while (true) {
+      const i = cursor++
+      if (i >= items.length) return
+      results[i] = await fn(items[i]!)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
 }

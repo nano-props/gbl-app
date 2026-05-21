@@ -29,6 +29,7 @@ import { isValidAbsolutePath, isValidBranch, isValidCwd } from '#/main/ipc/valid
 import { checkGitAvailable } from '#/main/git/helper.ts'
 
 const GIT_HASH_RE = /^[0-9a-fA-F]{7,64}$/
+const PATCH_TIMEOUT_MS = 90_000
 
 type NetworkOpKind = 'user' | 'background'
 
@@ -166,15 +167,31 @@ export function wireRepoIpc(): void {
     if (!isValidCwd(cwd) || !isValidAbsolutePath(worktreePath)) {
       return { ok: false, message: 'error.invalid-worktree-path' }
     }
+    const ctrl = new AbortController()
+    let timedOut = false
+    const timeout = setTimeout(() => {
+      timedOut = true
+      ctrl.abort()
+    }, PATCH_TIMEOUT_MS)
+    if ('unref' in timeout && typeof timeout.unref === 'function') timeout.unref()
     try {
-      const target = resolveKnownWorktree(await getWorktrees(cwd), worktreePath)
+      const target = resolveKnownWorktree(
+        await getWorktrees(cwd, { includeStatus: false, signal: ctrl.signal }),
+        worktreePath,
+      )
       if (!target.ok) return target
-      const patch = await getWorktreePatch(target.path)
+      const patch = await getWorktreePatch(target.path, { signal: ctrl.signal })
+      if (timedOut) return { ok: false, message: `git timed out after ${PATCH_TIMEOUT_MS / 1000}s` }
+      if (ctrl.signal.aborted) return { ok: false, message: 'cancelled' }
       return { ok: true, message: patch }
     } catch (err: unknown) {
+      if (timedOut) return { ok: false, message: `git timed out after ${PATCH_TIMEOUT_MS / 1000}s` }
+      if (ctrl.signal.aborted) return { ok: false, message: 'cancelled' }
       const e = err as { stderr?: string; message?: string }
       const msg = (typeof e.stderr === 'string' && e.stderr.trim()) || e.message || 'error.unknown'
       return { ok: false, message: msg }
+    } finally {
+      clearTimeout(timeout)
     }
   })
 

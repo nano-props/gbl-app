@@ -50,7 +50,8 @@ async function main(): Promise<void> {
     event.preventDefault()
     isQuitting = true
     try {
-      await flushSettings()
+      const flushed = await flushSettings()
+      if (!flushed) console.error('[settings] final flush failed before quit')
     } finally {
       app.exit(0)
     }

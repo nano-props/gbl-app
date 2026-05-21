@@ -36,16 +36,17 @@ const UNTRACKED_DIFF_CONCURRENCY = 16
 /** Returns the assembled patch text, or empty string when the worktree
  *  has no changes. Throws if the underlying git diff fails for an
  *  unexpected reason. */
-export async function getWorktreePatch(worktreePath: string): Promise<string> {
+export async function getWorktreePatch(worktreePath: string, options?: { signal?: AbortSignal }): Promise<string> {
+  const signal = options?.signal
   // Tracked: staged + unstaged in a single pass.
-  const trackedPatch = await git(worktreePath, ['diff', 'HEAD', '--binary'])
+  const trackedPatch = await git(worktreePath, ['diff', 'HEAD', '--binary'], { signal })
 
   // Untracked: -uall expands untracked directories into their member
   // files. Without it, an untracked `subdir/` is reported as a single
   // entry, but `git diff --no-index /dev/null subdir/` doesn't work
   // (no-index expects two file paths). With -uall we get one entry per
   // file and each diff invocation succeeds.
-  const statusOut = await git(worktreePath, ['status', '--porcelain', '-z', '-uall'])
+  const statusOut = await git(worktreePath, ['status', '--porcelain', '-z', '-uall'], { signal })
   const entries = parseStatus(statusOut)
   const untrackedPaths = entries.filter((e) => e.x === '?' && e.y === '?').map((e) => e.path)
 
@@ -53,13 +54,19 @@ export async function getWorktreePatch(worktreePath: string): Promise<string> {
   // success for us, we want the diff. Our helper currently throws on any
   // non-zero exit, so we route it through safeDiffNoIndex which treats
   // exit 1 as success.
-  const untrackedPatches = await mapWithConcurrency(untrackedPaths, UNTRACKED_DIFF_CONCURRENCY, async (p) => {
-    const patch = await safeDiffNoIndex(worktreePath, p)
-    if (patch === null) throw new Error(`Failed to diff untracked file: ${p}`)
-    return patch
-  })
+  const untrackedPatches = await mapWithConcurrency(
+    untrackedPaths,
+    UNTRACKED_DIFF_CONCURRENCY,
+    async (p) => {
+      const patch = await safeDiffNoIndex(worktreePath, p, signal)
+      if (patch === null) throw new Error(`Failed to diff untracked file: ${p}`)
+      return patch
+    },
+    signal,
+  )
 
   const combined = [trackedPatch, ...untrackedPatches].filter((s) => s.length > 0).join('\n')
+  if (signal?.aborted) throw new Error('cancelled')
   // Guarantee a trailing newline — `git apply` tolerates either, but a
   // trailing newline is what `git format-patch` produces and what most
   // tools (`pbpaste | git apply`) expect.
@@ -70,14 +77,22 @@ export async function getWorktreePatch(worktreePath: string): Promise<string> {
  *  output. Treats exit code 1 (files differ — i.e. there's a diff) as
  *  success. Returns null on any other failure so the caller can fail
  *  the whole patch rather than silently dropping a file. */
-async function safeDiffNoIndex(cwd: string, relativePath: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    execFile(
+async function safeDiffNoIndex(cwd: string, relativePath: string, signal?: AbortSignal): Promise<string | null> {
+  if (signal?.aborted) throw new Error('cancelled')
+  return new Promise((resolve, reject) => {
+    let grace: NodeJS.Timeout | null = null
+    const child = execFile(
       'git',
       ['diff', '--binary', '--no-index', '--', '/dev/null', relativePath],
       { cwd, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024, timeout: 30_000 },
       (error, stdout) => {
+        if (signal) signal.removeEventListener('abort', onAbort)
+        if (grace) clearTimeout(grace)
         const out = typeof stdout === 'string' ? stdout.trimEnd() : String(stdout)
+        if (signal?.aborted) {
+          reject(new Error('cancelled'))
+          return
+        }
         if (!error || (error as { code?: number }).code === 1) {
           resolve(out)
           return
@@ -85,6 +100,23 @@ async function safeDiffNoIndex(cwd: string, relativePath: string): Promise<strin
         resolve(null)
       },
     )
+    const onAbort = () => {
+      try {
+        child.kill('SIGTERM')
+      } catch {
+        /* already gone */
+      }
+      grace = setTimeout(() => {
+        try {
+          child.kill('SIGKILL')
+        } catch {
+          /* gone */
+        }
+      }, 500)
+      if ('unref' in grace && typeof grace.unref === 'function') grace.unref()
+    }
+    if (signal?.aborted) onAbort()
+    else if (signal) signal.addEventListener('abort', onAbort, { once: true })
   })
 }
 
@@ -92,11 +124,17 @@ async function safeDiffNoIndex(cwd: string, relativePath: string): Promise<strin
  *  once, preserving input order in the result array. Used instead of
  *  `Promise.all(items.map(fn))` when each call spawns an OS process —
  *  unbounded fan-out can exhaust the process table on big worktrees. */
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+  signal?: AbortSignal,
+): Promise<R[]> {
   const results = new Array<R>(items.length)
   let cursor = 0
   const worker = async () => {
     while (true) {
+      if (signal?.aborted) throw new Error('cancelled')
       const i = cursor++
       if (i >= items.length) return
       results[i] = await fn(items[i]!)

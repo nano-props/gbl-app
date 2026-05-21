@@ -52,6 +52,7 @@ async function hasRemote(cwd: string, remote: string): Promise<boolean> {
 }
 
 async function getUpstreamParts(cwd: string, branch: string): Promise<{ remote: string; branch: string } | null> {
+  if (!isSafeBranchName(branch)) return null
   try {
     const [remote, mergeRef] = await Promise.all([
       git(cwd, ['config', '--get', `branch.${branch}.remote`]),

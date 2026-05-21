@@ -69,7 +69,7 @@ const MAX_RECENT_REPOS = 10
 
 let cache: Settings | null = null
 let writeTimer: NodeJS.Timeout | null = null
-let pendingFlush: Promise<void> | null = null
+let pendingFlush: Promise<boolean> | null = null
 
 type WriteErrorListener = (err: unknown) => void
 const writeErrorListeners = new Set<WriteErrorListener>()
@@ -201,8 +201,8 @@ function scheduleWrite(): void {
     // Chain a new write on the previous one — a `pendingFlush` already
     // running must complete before we start writing again, otherwise
     // two writes can race and the older snapshot can win.
-    const prev = pendingFlush ?? Promise.resolve()
-    const current: Promise<void> = prev.then(doFlush).finally(() => {
+    const prev = pendingFlush ?? Promise.resolve(true)
+    const current: Promise<boolean> = chainFlush(prev).finally(() => {
       // Only clear the slot if it still refers to *this* run; another
       // scheduleWrite may have queued a fresh promise in between.
       if (pendingFlush === current) pendingFlush = null
@@ -211,8 +211,14 @@ function scheduleWrite(): void {
   }, WRITE_DEBOUNCE_MS)
 }
 
-async function doFlush(): Promise<void> {
-  if (!cache) return
+async function chainFlush(prev: Promise<boolean>): Promise<boolean> {
+  const prevOk = await prev
+  const currentOk = await doFlush()
+  return prevOk && currentOk
+}
+
+async function doFlush(): Promise<boolean> {
+  if (!cache) return true
   const target = settingsFile()
   // Write to a sibling tmp file then rename. rename(2) is atomic on the
   // same filesystem, so a power loss / process kill mid-write leaves
@@ -223,6 +229,7 @@ async function doFlush(): Promise<void> {
     await fs.mkdir(path.dirname(target), { recursive: true })
     await fs.writeFile(tmp, JSON.stringify(cache, null, 2), 'utf-8')
     await fs.rename(tmp, target)
+    return true
   } catch (err) {
     console.warn('[settings] write failed', err)
     // Best-effort cleanup of any orphaned tmp file.
@@ -238,6 +245,7 @@ async function doFlush(): Promise<void> {
         console.warn('[settings] write-error listener threw', lerr)
       }
     }
+    return false
   }
 }
 
@@ -245,22 +253,24 @@ async function doFlush(): Promise<void> {
  *  Drains both the in-flight write AND the queued debounced one in
  *  order — without that order a queued write can overwrite a flush
  *  that was meant to be the last word. */
-export async function flushSettings(): Promise<void> {
+export async function flushSettings(): Promise<boolean> {
+  let ok = true
   while (writeTimer || pendingFlush) {
     // Cancel the debounced timer and replace it with an immediate flush
     // chained after any in-flight write.
     if (writeTimer) {
       clearTimeout(writeTimer)
       writeTimer = null
-      const prev = pendingFlush ?? Promise.resolve()
-      pendingFlush = prev.then(doFlush)
+      const prev = pendingFlush ?? Promise.resolve(true)
+      pendingFlush = chainFlush(prev)
     }
     const current = pendingFlush
     if (current) {
-      await current
+      ok = (await current) && ok
       if (pendingFlush === current) pendingFlush = null
     }
   }
+  return ok
 }
 
 export async function setThemePref(pref: ThemePref): Promise<void> {

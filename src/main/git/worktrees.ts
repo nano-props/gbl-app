@@ -4,10 +4,16 @@ import type { ExecResult, WorktreeInfo } from '#/main/git/types.ts'
 
 const WORKTREE_STATUS_CONCURRENCY = 16
 
-export async function getWorktrees(cwd: string): Promise<WorktreeInfo[]> {
+interface GetWorktreesOptions {
+  includeStatus?: boolean
+  signal?: AbortSignal
+}
+
+export async function getWorktrees(cwd: string, options?: GetWorktreesOptions): Promise<WorktreeInfo[]> {
   try {
-    const output = await git(cwd, ['worktree', 'list', '--porcelain'])
+    const output = await git(cwd, ['worktree', 'list', '--porcelain'], { signal: options?.signal })
     const worktrees = parseWorktrees(output)
+    if (options?.includeStatus === false) return worktrees
 
     await mapWithConcurrency(worktrees, WORKTREE_STATUS_CONCURRENCY, async (wt) => {
       if (wt.isBare) return
@@ -16,17 +22,19 @@ export async function getWorktrees(cwd: string): Promise<WorktreeInfo[]> {
         // counted as two changes. Reuse parseStatus so rename / copy
         // pairs (R/C take TWO records under -z) collapse into one
         // entry — matching what `git status` shows the user.
-        const out = await git(wt.path, ['status', '--porcelain', '-z'])
+        const out = await git(wt.path, ['status', '--porcelain', '-z'], { signal: options?.signal })
         const entries = parseStatus(out)
         wt.isDirty = entries.length > 0
         wt.changeCount = entries.length
       } catch {
+        if (options?.signal?.aborted) throw new Error('cancelled')
         wt.isDirty = undefined
       }
     })
 
     return worktrees
   } catch {
+    if (options?.signal?.aborted) throw new Error('cancelled')
     return []
   }
 }
