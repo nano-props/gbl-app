@@ -22,7 +22,7 @@ import {
   type SessionState,
 } from '#/main/settings.ts'
 import { isGlobalShortcutRegistered, replaceGlobalShortcut, syncGlobalShortcuts } from '#/main/shortcuts.ts'
-import { parseGlobalShortcut } from '#/shared/accelerator.ts'
+import { isReservedGlobalShortcut, parseGlobalShortcut } from '#/shared/accelerator.ts'
 
 export function wireSettingsIpc(): void {
   // Hydrate the renderer at boot. The full settings blob is small
@@ -60,6 +60,7 @@ export function wireSettingsIpc(): void {
     const parsed = parseGlobalShortcut(accelerator)
     const s = await loadSettings()
     if (!parsed) return globalShortcutPayload(s.globalShortcut)
+    if (isReservedGlobalShortcut(parsed)) return globalShortcutPayload(s.globalShortcut)
     const registered = s.shortcutsDisabled || replaceGlobalShortcut(false, s.globalShortcut, parsed)
     if (!registered && !s.shortcutsDisabled) return globalShortcutPayload(s.globalShortcut)
     const saved = await setGlobalShortcut(parsed)

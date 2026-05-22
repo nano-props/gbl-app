@@ -313,7 +313,7 @@ export const ko: Record<DictKey, string> = {
   'settings.fetch.15m': '15 분',
   'settings.shortcuts': '키보드 단축키',
   'settings.shortcuts-hint': '단축키를 끄거나 Goblin 호출 단축키를 바꿉니다.',
-  'settings.shortcuts-disable-all': '모든 단축키 비활성화',
+  'settings.shortcuts-disable-all': '앱 단축키 비활성화',
   'settings.global-shortcut': '전역 단축키',
   'settings.global-shortcut-hint': '새 조합을 누르세요. Esc 취소.',
   'settings.global-shortcut-disabled-hint': '저장됨, 현재 꺼짐.',

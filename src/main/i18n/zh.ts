@@ -308,7 +308,7 @@ export const zh: Record<DictKey, string> = {
   'settings.fetch.15m': '15 分钟',
   'settings.shortcuts': '键盘快捷键',
   'settings.shortcuts-hint': '关闭快捷键，或更换唤起 Goblin 的组合键。',
-  'settings.shortcuts-disable-all': '禁用所有快捷键',
+  'settings.shortcuts-disable-all': '禁用应用快捷键',
   'settings.global-shortcut': '全局快捷键',
   'settings.global-shortcut-hint': '按新组合键，Esc 取消。',
   'settings.global-shortcut-disabled-hint': '已保存，当前未启用。',

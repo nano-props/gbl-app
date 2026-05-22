@@ -320,7 +320,7 @@ export const ja: Record<DictKey, string> = {
   'settings.fetch.15m': '15 分',
   'settings.shortcuts': 'キーボードショートカット',
   'settings.shortcuts-hint': 'ショートカットをオフ、または Goblin の呼び出しキーを変更します。',
-  'settings.shortcuts-disable-all': 'すべてのショートカットを無効にする',
+  'settings.shortcuts-disable-all': 'アプリのショートカットを無効化',
   'settings.global-shortcut': 'グローバルショートカット',
   'settings.global-shortcut-hint': '新しい組み合わせを押してください。Esc でキャンセル。',
   'settings.global-shortcut-disabled-hint': '保存済み、現在はオフ。',

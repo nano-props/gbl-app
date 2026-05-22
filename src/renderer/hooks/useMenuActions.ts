@@ -1,13 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useThemeStore } from '#/renderer/stores/theme.ts'
+import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 
 interface MenuActionHandlers {
   openSettings: () => void
   showHelp: () => void
+  isOverlayOpen: () => boolean
 }
 
-export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
+export function useMenuActions({ openSettings, showHelp, isOverlayOpen }: MenuActionHandlers) {
   const syncAndRefresh = useReposStore((s) => s.syncAndRefresh)
   const closeRepo = useReposStore((s) => s.closeRepo)
   const cycleActive = useReposStore((s) => s.cycleActive)
@@ -15,9 +17,12 @@ export function useMenuActions({ openSettings, showHelp }: MenuActionHandlers) {
   const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
   const toggleDetailCollapsed = useReposStore((s) => s.toggleDetailCollapsed)
   const cycleTheme = useThemeStore((s) => s.setPref)
+  const isOverlayOpenRef = useRef(isOverlayOpen)
+  isOverlayOpenRef.current = isOverlayOpen
 
   useEffect(() => {
     const off = window.gbl.onMenuAction(async (action) => {
+      if (isOverlayOpenRef.current() || isShortcutBlockingLayerOpen()) return
       const state = useReposStore.getState()
       if (typeof action === 'object') {
         if (action.type === 'open-recent-repo') await state.openRepo(action.path)

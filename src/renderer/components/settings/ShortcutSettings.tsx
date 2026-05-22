@@ -7,6 +7,7 @@ import { DEFAULT_GLOBAL_SHORTCUT, formatAccelerator, globalShortcutFromKeyboardE
 
 export function ShortcutSettings() {
   const t = useT()
+  const shortcutStatusId = 'global-shortcut-status'
   const shortcutsDisabled = useSettingsStore((s) => s.shortcutsDisabled)
   const setShortcutsDisabled = useSettingsStore((s) => s.setShortcutsDisabled)
   const globalShortcut = useSettingsStore((s) => s.globalShortcut)
@@ -92,7 +93,9 @@ export function ShortcutSettings() {
             onKeyDown={recordGlobalShortcut}
             onBlur={() => setRecordingShortcut(false)}
             className="min-w-20 rounded-md border border-border bg-background px-2 py-1 font-mono text-xs text-foreground transition-colors duration-100 hover:bg-accent"
-            aria-label={t('settings.global-shortcut-record')}
+            aria-label={t(recordingShortcut ? 'settings.global-shortcut-recording' : 'settings.global-shortcut-record')}
+            aria-pressed={recordingShortcut}
+            aria-describedby={shortcutStatusId}
           >
             {recordingShortcut ? t('settings.global-shortcut-recording') : formatAccelerator(globalShortcut)}
           </button>
@@ -108,6 +111,7 @@ export function ShortcutSettings() {
       </div>
 
       <div
+        id={shortcutStatusId}
         className={cn(
           'h-4 truncate text-xs leading-4',
           shortcutStatus?.tone === 'error' ? 'text-destructive' : 'text-muted-foreground',

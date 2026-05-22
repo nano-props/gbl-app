@@ -3,55 +3,69 @@
 
 import { Modal } from '#/renderer/components/Modal.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
+import { useSettingsStore } from '#/renderer/stores/settings.ts'
+import { acceleratorToKeyLabels } from '#/shared/accelerator.ts'
 
 interface Props {
   open: boolean
   onClose: () => void
 }
 
-const SECTIONS: { titleKey: string; rows: { keys: string[]; labelKey: string }[] }[] = [
-  {
-    titleKey: 'help.section.nav',
-    rows: [
-      { keys: ['j', '↓'], labelKey: 'help.row.next-branch' },
-      { keys: ['k', '↑'], labelKey: 'help.row.prev-branch' },
-      { keys: ['⌘', ']'], labelKey: 'help.row.next-repo' },
-      { keys: ['⌘', '['], labelKey: 'help.row.prev-repo' },
-    ],
-  },
-  {
-    titleKey: 'help.section.views',
-    rows: [
-      { keys: ['⌘', '1'], labelKey: 'help.row.view-status' },
-      { keys: ['⌘', '2'], labelKey: 'help.row.view-changes' },
-      { keys: ['⌘', '3'], labelKey: 'help.row.view-log' },
-      { keys: ['⌘', 'J'], labelKey: 'help.row.toggle-detail' },
-    ],
-  },
-  {
-    titleKey: 'help.section.branch-actions',
-    rows: [
-      { keys: ['Enter'], labelKey: 'help.row.checkout' },
-      { keys: ['p'], labelKey: 'action.pull' },
-      { keys: ['P'], labelKey: 'action.push' },
-      { keys: ['g'], labelKey: 'worktrees.open-in-ghostty-label' },
-      { keys: ['v'], labelKey: 'worktrees.open-in-vs-code-label' },
-      { keys: ['G'], labelKey: 'action.github' },
-    ],
-  },
-  {
-    titleKey: 'help.section.actions',
-    rows: [
-      { keys: ['⌘', 'O'], labelKey: 'help.row.open-repo' },
-      { keys: ['⌥', 'G'], labelKey: 'help.row.activate-window' },
-      { keys: ['⌘', '⇧', 'W'], labelKey: 'help.row.close-repo' },
-      { keys: ['⌘', 'R'], labelKey: 'help.row.refresh' },
-      { keys: ['⌘', ','], labelKey: 'help.row.settings' },
-      { keys: ['?'], labelKey: 'help.row.this-help' },
-      { keys: ['Esc'], labelKey: 'help.row.dismiss' },
-    ],
-  },
-]
+interface ShortcutRow {
+  keys: string[]
+  labelKey: string
+}
+
+interface ShortcutSectionModel {
+  titleKey: string
+  rows: ShortcutRow[]
+}
+
+function sections(globalShortcut: string): ShortcutSectionModel[] {
+  return [
+    {
+      titleKey: 'help.section.nav',
+      rows: [
+        { keys: ['j', '↓'], labelKey: 'help.row.next-branch' },
+        { keys: ['k', '↑'], labelKey: 'help.row.prev-branch' },
+        { keys: ['⌘', ']'], labelKey: 'help.row.next-repo' },
+        { keys: ['⌘', '['], labelKey: 'help.row.prev-repo' },
+      ],
+    },
+    {
+      titleKey: 'help.section.views',
+      rows: [
+        { keys: ['⌘', '1'], labelKey: 'help.row.view-status' },
+        { keys: ['⌘', '2'], labelKey: 'help.row.view-changes' },
+        { keys: ['⌘', '3'], labelKey: 'help.row.view-log' },
+        { keys: ['⌘', 'J'], labelKey: 'help.row.toggle-detail' },
+      ],
+    },
+    {
+      titleKey: 'help.section.branch-actions',
+      rows: [
+        { keys: ['Enter'], labelKey: 'help.row.checkout' },
+        { keys: ['p'], labelKey: 'action.pull' },
+        { keys: ['P'], labelKey: 'action.push' },
+        { keys: ['g'], labelKey: 'worktrees.open-in-ghostty-label' },
+        { keys: ['v'], labelKey: 'worktrees.open-in-vs-code-label' },
+        { keys: ['G'], labelKey: 'action.github' },
+      ],
+    },
+    {
+      titleKey: 'help.section.actions',
+      rows: [
+        { keys: ['⌘', 'O'], labelKey: 'help.row.open-repo' },
+        { keys: acceleratorToKeyLabels(globalShortcut), labelKey: 'help.row.activate-window' },
+        { keys: ['⌘', '⇧', 'W'], labelKey: 'help.row.close-repo' },
+        { keys: ['⌘', 'R'], labelKey: 'help.row.refresh' },
+        { keys: ['⌘', ','], labelKey: 'help.row.settings' },
+        { keys: ['?'], labelKey: 'help.row.this-help' },
+        { keys: ['Esc'], labelKey: 'help.row.dismiss' },
+      ],
+    },
+  ]
+}
 
 function KeyChips({ keys }: { keys: string[] }) {
   return (
@@ -65,7 +79,7 @@ function KeyChips({ keys }: { keys: string[] }) {
   )
 }
 
-function ShortcutSection({ section }: { section: (typeof SECTIONS)[number] }) {
+function ShortcutSection({ section }: { section: ShortcutSectionModel }) {
   const t = useT()
   return (
     <section className="rounded-xl border border-border bg-card/70 p-3 shadow-sm">
@@ -90,10 +104,11 @@ function ShortcutSection({ section }: { section: (typeof SECTIONS)[number] }) {
 
 export function HelpOverlay({ open, onClose }: Props) {
   const t = useT()
+  const globalShortcut = useSettingsStore((s) => s.globalShortcut)
   return (
     <Modal open={open} title={t('help.title')} onClose={onClose} widthClass="sm:max-w-3xl">
       <div className="grid items-start gap-3 sm:grid-cols-2">
-        {SECTIONS.map((section) => (
+        {sections(globalShortcut).map((section) => (
           <ShortcutSection key={section.titleKey} section={section} />
         ))}
       </div>

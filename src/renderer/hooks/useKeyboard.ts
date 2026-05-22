@@ -17,6 +17,10 @@ import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 
 type BranchShortcutAction = 'pull' | 'push' | 'ghostty' | 'vscode' | 'github'
+const INTERACTIVE_SHORTCUT_TARGET_SELECTOR =
+  'button,a,input,textarea,select,[role="button"],[role="tab"],[role="menuitem"],[data-interactive]'
+const NAVIGATION_SHORTCUT_TARGET_SELECTOR = '[data-shortcut-nav-item]'
+const BRANCH_ACTION_SHORTCUT_TARGET_SELECTOR = '[data-branch-action-shortcut-target]'
 
 interface Options {
   onShowHelp: () => void
@@ -29,6 +33,18 @@ function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   const tag = target.tagName
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(INTERACTIVE_SHORTCUT_TARGET_SELECTOR) !== null
+}
+
+function allowsListNavigationShortcuts(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(NAVIGATION_SHORTCUT_TARGET_SELECTOR) !== null
+}
+
+function allowsBranchActionShortcuts(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(BRANCH_ACTION_SHORTCUT_TARGET_SELECTOR) !== null
 }
 
 function branchShortcutAction(e: KeyboardEvent): BranchShortcutAction | null {
@@ -49,6 +65,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return
       if (useSettingsStore.getState().shortcutsDisabled) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (isTypingTarget(e.target)) return
@@ -58,6 +75,9 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
       const repo = repoId ? state.repos[repoId] : null
       const overlayOpen = isOverlayOpenRef.current() || isShortcutBlockingLayerOpen() || !!repo?.openCommit
       const commitListActive = !!repo && repo.detailTab === 'commits' && !state.detailCollapsed
+      const interactiveTarget = isInteractiveTarget(e.target)
+      const allowListNavigation = allowsListNavigationShortcuts(e.target)
+      const allowBranchAction = allowsBranchActionShortcuts(e.target)
 
       // `?` honours the overlay gate so it doesn't stack a second modal
       // on top of Settings/Help/commit-detail. Modal owns Esc.
@@ -70,6 +90,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
 
       const action = branchShortcutAction(e)
       if (action) {
+        if (interactiveTarget && !allowBranchAction) return
         if (overlayOpen || !repo || !repo.selectedBranch) return
         e.preventDefault()
         window.dispatchEvent(new CustomEvent('gbl:branch-action-shortcut', { detail: action }))
@@ -79,6 +100,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
       switch (e.key) {
         case 'j':
         case 'ArrowDown': {
+          if (interactiveTarget && !allowListNavigation) break
           if (overlayOpen || !repo) break
           if (commitListActive) {
             const branch = branchForVisibleLog(repo)
@@ -103,6 +125,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
         }
         case 'k':
         case 'ArrowUp': {
+          if (interactiveTarget && !allowListNavigation) break
           if (overlayOpen || !repo) break
           if (commitListActive) {
             const branch = branchForVisibleLog(repo)
@@ -126,6 +149,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
           break
         }
         case 'Enter': {
+          if (interactiveTarget) break
           if (overlayOpen || !repo) break
           if (commitListActive) {
             e.preventDefault()

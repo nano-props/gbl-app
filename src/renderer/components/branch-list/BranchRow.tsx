@@ -69,6 +69,8 @@ export function BranchRow({
     >
       <button
         type="button"
+        data-shortcut-nav-item
+        data-branch-action-shortcut-target
         aria-current={isSelected ? 'true' : undefined}
         onClick={() => selectBranch(repo.id, branch.name)}
         className="grid min-w-0 cursor-pointer grid-cols-[1rem_minmax(0,1fr)] items-start gap-2 px-4 py-2 text-left"

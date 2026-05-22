@@ -320,7 +320,7 @@ export const en = {
   'settings.fetch.15m': '15 min',
   'settings.shortcuts': 'Keyboard shortcuts',
   'settings.shortcuts-hint': 'Turn off shortcuts or change the wake shortcut.',
-  'settings.shortcuts-disable-all': 'Disable all shortcuts',
+  'settings.shortcuts-disable-all': 'Disable app shortcuts',
   'settings.global-shortcut': 'Global shortcut',
   'settings.global-shortcut-hint': 'Press a combo. Esc cancels.',
   'settings.global-shortcut-disabled-hint': 'Saved, currently off.',

@@ -44,6 +44,7 @@ export function LogList({ repoId, log, branch, selectedHash }: Props) {
               key={entry.hash}
               ref={isSelected ? selectedRef : undefined}
               data-interactive
+              data-shortcut-nav-item
               role="button"
               tabIndex={0}
               aria-pressed={isSelected}

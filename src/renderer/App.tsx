@@ -66,7 +66,7 @@ export function App() {
   useSessionPersistence()
   useSettingsWriteErrorToast()
   useBackgroundFetch()
-  useMenuActions({ openSettings, showHelp })
+  useMenuActions({ openSettings, showHelp, isOverlayOpen: () => modalOpen })
 
   useKeyboard({
     onShowHelp: showHelp,
