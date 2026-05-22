@@ -14,7 +14,8 @@ interface BranchRowProps {
   selected: string | null
   current: string
   lang: Lang
-  selectBranch: (id: string, branch: string) => void
+  onSelectBranch: (branch: string) => void
+  onOpenBranchStatus: (branch: string) => void
   selectedRef: RefObject<HTMLLIElement | null>
   ghosttyInstalled: boolean
   vscodeInstalled: boolean
@@ -44,7 +45,8 @@ export function BranchRow({
   selected,
   current,
   lang,
-  selectBranch,
+  onSelectBranch,
+  onOpenBranchStatus,
   selectedRef,
   ghosttyInstalled,
   vscodeInstalled,
@@ -72,7 +74,8 @@ export function BranchRow({
         data-shortcut-nav-item
         data-branch-action-shortcut-target
         aria-current={isSelected ? 'true' : undefined}
-        onClick={() => selectBranch(repo.id, branch.name)}
+        onClick={() => onSelectBranch(branch.name)}
+        onDoubleClick={() => onOpenBranchStatus(branch.name)}
         className="grid min-w-0 cursor-pointer grid-cols-[1rem_minmax(0,1fr)] items-start gap-2 px-4 py-2 text-left"
       >
         <span className="flex size-4 shrink-0 items-center justify-center pt-0.5">

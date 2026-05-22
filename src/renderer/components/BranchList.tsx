@@ -7,7 +7,7 @@
 // name. We avoid tinting the whole row so selection, hover, and status
 // semantics don't compete for background colour.
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
@@ -25,9 +25,25 @@ export function BranchList({ repoId }: Props) {
   const t = useT()
   const lang = useI18nStore((s) => s.lang)
   const selectBranch = useReposStore((s) => s.selectBranch)
+  const setDetailTab = useReposStore((s) => s.setDetailTab)
+  const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
   const selectedRef = useRef<HTMLLIElement | null>(null)
   const ghosttyInstalled = useGhosttyInstalled()
   const vscodeInstalled = useVSCodeInstalled()
+  const handleSelectBranch = useCallback(
+    (branch: string) => {
+      selectBranch(repoId, branch)
+    },
+    [repoId, selectBranch],
+  )
+  const handleOpenBranchStatus = useCallback(
+    (branch: string) => {
+      handleSelectBranch(branch)
+      setDetailTab(repoId, 'status')
+      setDetailCollapsed(false)
+    },
+    [repoId, handleSelectBranch, setDetailCollapsed, setDetailTab],
+  )
   const { repo, branches, selected, current } = useStoreWithEqualityFn(
     useReposStore,
     (s) => {
@@ -76,7 +92,8 @@ export function BranchList({ repoId }: Props) {
             selected={selected}
             current={current}
             lang={lang}
-            selectBranch={selectBranch}
+            onSelectBranch={handleSelectBranch}
+            onOpenBranchStatus={handleOpenBranchStatus}
             selectedRef={selectedRef}
             ghosttyInstalled={ghosttyInstalled}
             vscodeInstalled={vscodeInstalled}

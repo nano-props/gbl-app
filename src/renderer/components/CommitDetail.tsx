@@ -8,6 +8,7 @@ import { ArrowLeft, FileText, FileWarning } from 'lucide-react'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
 import { formatRelativeTime } from '#/renderer/lib/dates.ts'
+import { compactDisplayDir, splitDisplayPath } from '#/renderer/lib/display-path.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import type { CommitDetail as CommitDetailType } from '#/renderer/types-bridge.ts'
 
@@ -38,6 +39,7 @@ export function CommitDetail({ repoId, detail }: Props) {
   const { meta, files } = detail
   const totalAdded = files.reduce((n, f) => n + f.added, 0)
   const totalDeleted = files.reduce((n, f) => n + f.deleted, 0)
+  const maxFileChanges = files.reduce((max, f) => Math.max(max, f.added + f.deleted), 1)
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto scroll-thin">
@@ -85,32 +87,42 @@ export function CommitDetail({ repoId, detail }: Props) {
         <div className="p-6 text-center text-sm text-muted-foreground">{t('commit.empty')}</div>
       ) : (
         <ul className="divide-y divide-border">
-          {files.map((f) => (
-            <li key={f.path} className="px-4 py-2 flex items-center gap-3">
-              <span className="shrink-0 text-muted-foreground">
-                {f.binary ? <FileWarning size={14} /> : <FileText size={14} />}
-              </span>
-              <span className="truncate text-sm text-foreground font-mono flex-1 min-w-0">{f.path}</span>
-              <span className="shrink-0 font-mono text-xs">
-                {f.binary ? (
-                  <span className="text-muted-foreground">{t('commit.binary')}</span>
-                ) : (
-                  <>
-                    <span className="text-success">+{f.added}</span> <span className="text-danger">−{f.deleted}</span>
-                    <span
-                      className="ml-2 inline-block align-middle h-1.5 rounded-sm"
-                      style={{
-                        width: `${Math.min(60, Math.max(2, ((f.added + f.deleted) / Math.max(1, ...files.map((x) => x.added + x.deleted))) * 60))}px`,
-                        background: `linear-gradient(to right, var(--color-success) ${
-                          f.added + f.deleted === 0 ? 50 : (f.added / (f.added + f.deleted)) * 100
-                        }%, var(--color-danger) 0%)`,
-                      }}
-                    />
-                  </>
-                )}
-              </span>
-            </li>
-          ))}
+          {files.map((f) => {
+            const { dir, file } = splitDisplayPath(f.path)
+            return (
+              <li key={f.path} className="flex items-start gap-3 px-4 py-2">
+                <span className="shrink-0 pt-0.5 text-muted-foreground">
+                  {f.binary ? <FileWarning size={14} /> : <FileText size={14} />}
+                </span>
+                <span className="min-w-0 flex-1" title={f.path} aria-label={f.path}>
+                  <span className="block truncate font-mono text-sm text-foreground">{file}</span>
+                  {dir && (
+                    <span className="mt-0.5 block truncate font-mono text-xs text-muted-foreground">
+                      {compactDisplayDir(dir)}
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 pt-0.5 font-mono text-xs">
+                  {f.binary ? (
+                    <span className="text-muted-foreground">{t('commit.binary')}</span>
+                  ) : (
+                    <>
+                      <span className="text-success">+{f.added}</span> <span className="text-danger">−{f.deleted}</span>
+                      <span
+                        className="ml-2 inline-block h-1.5 rounded-sm align-middle"
+                        style={{
+                          width: `${Math.min(60, Math.max(2, ((f.added + f.deleted) / maxFileChanges) * 60))}px`,
+                          background: `linear-gradient(to right, var(--color-success) ${
+                            f.added + f.deleted === 0 ? 50 : (f.added / (f.added + f.deleted)) * 100
+                          }%, var(--color-danger) 0%)`,
+                        }}
+                      />
+                    </>
+                  )}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
