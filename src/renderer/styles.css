@@ -46,7 +46,13 @@
  *                          behind / dirty markers read consistently.
  *      `--color-success` — accessible system-green text, used in
  *                          `<Badge variant="success">` and ahead/added
- *                          counts. Like warning, no shadcn equivalent. */
+ *                          counts. Like warning, no shadcn equivalent.
+ *      status token family — every project semantic colour has text /
+ *                          accent-channel / surface / border tokens.
+ *                          The channel token drives tinted surfaces and
+ *                          may be brighter than the small-text colour
+ *                          for contrast. This keeps Badge and StatusChip
+ *                          variants in sync. */
 @theme {
   /* shadcn/ui core */
   --color-background: #ffffff;
@@ -78,21 +84,25 @@
   --color-selected: rgb(var(--color-brand-rgb) / 0.1);
   --color-selected-foreground: var(--color-foreground);
   --color-brand-surface: rgb(var(--color-brand-rgb) / 0.12);
+  --color-brand-border: rgb(var(--color-brand-rgb) / 0.35);
   --color-warning: #a45a00;
   --color-warning-rgb: 255 149 0;
   --color-warning-surface: rgb(var(--color-warning-rgb) / 0.14);
   --color-warning-border: rgb(var(--color-warning-rgb) / 0.4);
+  --color-attention: var(--color-warning);
+  --color-attention-rgb: var(--color-warning-rgb);
+  --color-attention-surface: var(--color-warning-surface);
+  --color-attention-border: var(--color-warning-border);
   --color-success: #1f7f37;
   --color-success-rgb: 52 199 89;
   --color-success-surface: rgb(var(--color-success-rgb) / 0.12);
-  /* `--color-danger` is an alias of `--color-destructive` for sites
-   * that already render destructive content with a translucent fill
-   * (they reach for the rgb-channel form `--color-danger-rgb` to
-   * compose their own alpha). Kept separate so the destructive token
-   * stays a single source of truth — both names point at the same
-   * value. */
+  --color-success-border: rgb(var(--color-success-rgb) / 0.35);
+  /* `--color-danger` is the status-text counterpart to shadcn's
+   * destructive action token. Both currently point at the same red;
+   * the rgb-channel form intentionally matches the text colour so
+   * danger surfaces/borders remain one family. */
   --color-danger: var(--color-destructive);
-  --color-danger-rgb: 255 59 48;
+  --color-danger-rgb: 215 0 21;
   --color-danger-surface: rgb(var(--color-danger-rgb) / 0.12);
   --color-danger-border: rgb(var(--color-danger-rgb) / 0.4);
 
@@ -145,13 +155,20 @@ html[data-theme='dark'] {
   --color-selected: rgb(var(--color-brand-rgb) / 0.2);
   --color-selected-foreground: var(--color-foreground);
   --color-brand-surface: rgb(var(--color-brand-rgb) / 0.18);
+  --color-brand-border: rgb(var(--color-brand-rgb) / 0.45);
   --color-warning: #ff9f0a;
   --color-warning-rgb: 255 159 10;
   --color-warning-surface: rgb(var(--color-warning-rgb) / 0.16);
   --color-warning-border: rgb(var(--color-warning-rgb) / 0.45);
+  --color-attention: var(--color-warning);
+  --color-attention-rgb: var(--color-warning-rgb);
+  --color-attention-surface: var(--color-warning-surface);
+  --color-attention-border: var(--color-warning-border);
   --color-success: #30d158;
   --color-success-rgb: 48 209 88;
   --color-success-surface: rgb(var(--color-success-rgb) / 0.16);
+  --color-success-border: rgb(var(--color-success-rgb) / 0.45);
+  --color-danger: var(--color-destructive);
   --color-danger-rgb: 255 69 58;
   --color-danger-surface: rgb(var(--color-danger-rgb) / 0.16);
   --color-danger-border: rgb(var(--color-danger-rgb) / 0.45);
@@ -199,14 +216,12 @@ button,
  * Scoped to elements WITHOUT `data-slot` so shadcn-generated
  * components (which already render their own ring via
  * `focus-visible:ring-*`) don't get a redundant second ring stacked
- * on top — that's the source of the "double blue line" around buttons
- * and selected list rows. shadcn's ring is the single source of truth
- * for those; this rule covers everything else (kbd chips, anchor
- * links, plain <button> with no shadcn data-slot, etc).
+ * on top. The fallback outline is inset instead of offset outward so
+ * scroll/overflow containers don't clip it into a stray edge.
  *
  * Placed in @layer base so Tailwind utilities (which sit in @layer
  * utilities, defined later) win when a specific element opts out via
- * `focus-visible:outline-none`. Without the explicit layer, this
+ * `focus-visible:outline-none` / `focus:outline-none`. Without the explicit layer, this
  * rule lands in an unlayered block that comes *after* utilities in
  * source order, defeating any utility-level override at equal
  * specificity. */
@@ -228,7 +243,7 @@ button,
 
   :focus-visible:not([data-slot]) {
     outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
+    outline-offset: -2px;
     border-radius: 4px;
   }
   button:focus:not(:focus-visible),

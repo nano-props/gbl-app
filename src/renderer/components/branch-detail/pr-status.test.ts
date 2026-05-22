@@ -18,6 +18,8 @@ function pr(overrides: Partial<PullRequestInfo> = {}): PullRequestInfo {
 
 const success: PrHealthSignal = { tone: 'success', label: 'checks' }
 const neutral: PrHealthSignal = { tone: 'neutral', label: 'checks' }
+const attention: PrHealthSignal = { tone: 'attention', label: 'checks' }
+const danger: PrHealthSignal = { tone: 'danger', label: 'checks' }
 const warning: PrHealthSignal = { tone: 'warning', label: 'checks' }
 
 describe('prChipTone', () => {
@@ -30,27 +32,37 @@ describe('prChipTone', () => {
     expect(prChipTone(pr({ isDraft: true }), [success])).toBe('neutral')
   })
 
-  test('uses neutral when any health signal is pending or unknown', () => {
+  test('keeps draft PRs neutral unless a health signal is failing', () => {
+    expect(prChipTone(pr({ isDraft: true }), [attention])).toBe('neutral')
+    expect(prChipTone(pr({ isDraft: true }), [danger])).toBe('danger')
+  })
+
+  test('uses neutral when any health signal is unknown', () => {
     expect(prChipTone(pr(), [success, neutral])).toBe('neutral')
   })
 
-  test('uses warning for closed PRs or warning health signals', () => {
-    expect(prChipTone(pr({ state: 'closed' }), [success])).toBe('warning')
-    expect(prChipTone(pr(), [warning])).toBe('warning')
+  test('uses attention for cautionary health signals', () => {
+    expect(prChipTone(pr(), [attention])).toBe('attention')
+    expect(prChipTone(pr(), [warning])).toBe('attention')
+  })
+
+  test('uses danger for closed PRs or failing health signals', () => {
+    expect(prChipTone(pr({ state: 'closed' }), [success])).toBe('danger')
+    expect(prChipTone(pr(), [danger])).toBe('danger')
   })
 
   test('uses success for merged PRs', () => {
     expect(prChipTone(pr({ state: 'merged' }), [warning])).toBe('success')
   })
 
-  test('uses warning for closed PRs even when health signals succeeded', () => {
-    expect(prChipTone(pr({ state: 'closed' }), [success])).toBe('warning')
+  test('uses danger for closed PRs even when health signals succeeded', () => {
+    expect(prChipTone(pr({ state: 'closed' }), [success])).toBe('danger')
   })
 })
 
 describe('visiblePrHealthSignals', () => {
   test('hides health signals once a PR is merged or closed', () => {
-    const signals = [warning, success, neutral]
+    const signals = [warning, attention, danger, success, neutral]
 
     expect(visiblePrHealthSignals(pr(), signals)).toEqual(signals)
     expect(visiblePrHealthSignals(pr({ state: 'merged' }), signals)).toEqual([])

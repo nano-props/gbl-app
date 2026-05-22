@@ -3,6 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { Slot } from 'radix-ui'
 
 import { cn } from '#/renderer/lib/cn.ts'
+import { STATUS_TONE_CHIP_CLASS } from '#/renderer/components/ui/status-tones.ts'
 
 // Calibrated for the desktop tool's chip density: small caps on
 // inline list rows, not pill-shaped contact-list avatars. Square
@@ -21,16 +22,18 @@ const badgeVariants = cva(
         // below. Status chips ("conflict", "deleted") read in dense
         // lists, where a saturated fill reads as a screaming pill —
         // the tint conveys the same semantic at the right intensity.
-        destructive: 'border-transparent bg-danger-surface text-destructive',
+        destructive: STATUS_TONE_CHIP_CLASS.danger,
         outline: 'border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
         ghost: '[a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 [a&]:hover:underline',
         // Project extensions — shadcn has no warning/success/brand
         // slot. Same translucent-tint treatment as destructive above
-        // so the four semantic chips read as one family.
-        success: 'border-transparent bg-success-surface text-success',
-        warning: 'border-transparent bg-warning-surface text-warning',
-        brand: 'border-transparent bg-brand-surface text-brand-text',
+        // so the semantic chips read as one family.
+        success: STATUS_TONE_CHIP_CLASS.success,
+        attention: STATUS_TONE_CHIP_CLASS.attention,
+        warning: STATUS_TONE_CHIP_CLASS.warning,
+        danger: STATUS_TONE_CHIP_CLASS.danger,
+        brand: STATUS_TONE_CHIP_CLASS.brand,
       },
       size: {
         xs: 'px-1.5 py-0 text-[10px] [&>svg]:size-3',

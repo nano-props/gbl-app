@@ -60,7 +60,6 @@ export function LogList({ repoId, log, branch, selectedHash }: Props) {
               }}
               className={cn(
                 'px-4 py-2.5 cursor-pointer transition-colors duration-100',
-                'focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset',
                 isSelected ? 'bg-selected text-selected-foreground hover:bg-selected' : 'hover:bg-muted',
               )}
             >

@@ -33,7 +33,7 @@ function SyncValue({
   aheadLabel: string
   behindLabel: string
 }) {
-  if (noUpstream) return <StatusChip tone="warning">{upToDateLabel}</StatusChip>
+  if (noUpstream) return <StatusChip tone="attention">{upToDateLabel}</StatusChip>
   if (ahead === 0 && behind === 0) {
     return (
       <StatusChip tone="success">
@@ -44,7 +44,7 @@ function SyncValue({
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <>
       {ahead > 0 && (
         <StatusChip tone="success">
           <ArrowUp size={12} />
@@ -52,12 +52,12 @@ function SyncValue({
         </StatusChip>
       )}
       {behind > 0 && (
-        <StatusChip tone="warning">
+        <StatusChip tone="attention">
           <ArrowDown size={12} />
           {behindLabel}
         </StatusChip>
       )}
-    </span>
+    </>
   )
 }
 
@@ -78,11 +78,11 @@ export function BranchStatus({ detail }: Props) {
     : branch.mergedToDefault || branch.isDefault
       ? t('branch-status.merged')
       : t('branch-status.not-merged')
-  const mergeTone: Tone = !mergeKnown ? 'neutral' : branch.mergedToDefault ? 'success' : 'warning'
-  const remoteTone: Tone = branch.trackingGone || !branch.tracking ? 'warning' : 'brand'
-  const syncTone: Tone = !branch.tracking ? 'warning' : branch.behind > 0 ? 'warning' : 'success'
+  const mergeTone: Tone = !mergeKnown ? 'neutral' : branch.mergedToDefault ? 'success' : 'attention'
+  const remoteTone: Tone = branch.trackingGone || !branch.tracking ? 'attention' : 'brand'
+  const syncTone: Tone = !branch.tracking ? 'attention' : branch.behind > 0 ? 'attention' : 'success'
   const worktreeTone: Tone =
-    branch.worktreeLocked || hasWorktreeChanges ? 'warning' : branch.worktreePath ? 'brand' : 'neutral'
+    branch.worktreeLocked || hasWorktreeChanges ? 'attention' : branch.worktreePath ? 'brand' : 'neutral'
   const worktreeValue = branch.worktreePath ? (
     <CopyableValue
       value={worktreePath}
@@ -96,18 +96,18 @@ export function BranchStatus({ detail }: Props) {
   const worktreeAfter =
     branch.worktreeLocked || hasWorktreeChanges ? (
       <>
-        {branch.worktreeLocked && <StatusChip tone="warning">{t('branch-status.worktree.locked')}</StatusChip>}
+        {branch.worktreeLocked && <StatusChip tone="attention">{t('branch-status.worktree.locked')}</StatusChip>}
         {hasWorktreeChanges && (
-          <StatusChip tone="warning">{t('branch-status.worktree-dirty', { n: worktreeChangeCount })}</StatusChip>
+          <StatusChip tone="attention">{t('branch-status.worktree-dirty', { n: worktreeChangeCount })}</StatusChip>
         )}
       </>
     ) : undefined
   const remoteValue = branch.tracking ? (
-    <MonoValue tone={branch.trackingGone ? 'warning' : undefined}>{branch.tracking}</MonoValue>
+    <MonoValue tone={branch.trackingGone ? 'attention' : undefined}>{branch.tracking}</MonoValue>
   ) : (
-    <StatusChip tone="warning">{t('branches.no-upstream')}</StatusChip>
+    <StatusChip tone="attention">{t('branches.no-upstream')}</StatusChip>
   )
-  const remoteAfter = branch.trackingGone ? <StatusChip tone="warning">{t('branches.gone')}</StatusChip> : undefined
+  const remoteAfter = branch.trackingGone ? <StatusChip tone="attention">{t('branches.gone')}</StatusChip> : undefined
 
   const roleChips = hasRole ? (
     <>
@@ -130,6 +130,7 @@ export function BranchStatus({ detail }: Props) {
             />
           }
           after={roleChips}
+          valueLayout="inline"
           tone={branch.isCurrent ? 'success' : branch.isDefault ? 'brand' : 'neutral'}
         />
         <StatusRow
@@ -137,6 +138,7 @@ export function BranchStatus({ detail }: Props) {
           label={t('branch-status.signal.worktree')}
           value={worktreeValue}
           after={worktreeAfter}
+          valueLayout="inline"
           tone={worktreeTone}
         />
         <StatusRow
@@ -144,6 +146,7 @@ export function BranchStatus({ detail }: Props) {
           label={t('branch-status.signal.remote')}
           value={remoteValue}
           after={remoteAfter}
+          valueLayout="inline"
           tone={remoteTone}
         />
         <StatusRow
@@ -159,6 +162,7 @@ export function BranchStatus({ detail }: Props) {
               behindLabel={t('branch-status.sync.behind', { n: branch.behind })}
             />
           }
+          valueLayout="chips"
           tone={syncTone}
         />
         {showMerged && (
@@ -171,6 +175,7 @@ export function BranchStatus({ detail }: Props) {
                 {mergeLabel}
               </StatusChip>
             }
+            valueLayout="chips"
             tone={mergeTone}
           />
         )}

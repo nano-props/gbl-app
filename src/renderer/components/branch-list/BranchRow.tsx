@@ -29,7 +29,7 @@ function Delta({ direction, count, label }: { direction: 'ahead' | 'behind'; cou
       title={label}
       className={cn(
         'inline-flex items-center gap-0.5 font-mono text-xs',
-        direction === 'ahead' ? 'text-success' : 'text-warning',
+        direction === 'ahead' ? 'text-success' : 'text-attention',
       )}
     >
       <Icon size={11} />
@@ -71,13 +71,13 @@ export function BranchRow({
         type="button"
         aria-current={isSelected ? 'true' : undefined}
         onClick={() => selectBranch(repo.id, branch.name)}
-        className="grid min-w-0 cursor-pointer grid-cols-[1rem_minmax(0,1fr)] items-start gap-2 px-4 py-2 text-left focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+        className="grid min-w-0 cursor-pointer grid-cols-[1rem_minmax(0,1fr)] items-start gap-2 px-4 py-2 text-left"
       >
         <span className="flex size-4 shrink-0 items-center justify-center pt-0.5">
           {isCurrent ? (
             <Check size={14} className="text-success" />
           ) : isWorktree ? (
-            <FolderTree size={14} className={branch.worktreeDirty ? 'text-warning' : 'text-brand-text'} />
+            <FolderTree size={14} className={branch.worktreeDirty ? 'text-attention' : 'text-brand-text'} />
           ) : (
             <GitBranch size={14} className="text-muted-foreground" />
           )}
@@ -92,7 +92,7 @@ export function BranchRow({
                 </Badge>
               )}
               {hasWorktree && branch.worktreeDirty ? (
-                <Badge variant="warning" className="gap-1 font-mono">
+                <Badge variant="attention" className="gap-1 font-mono">
                   <FolderTree size={10} />
                   {t('branches.dirty')}
                 </Badge>
@@ -103,7 +103,7 @@ export function BranchRow({
                 </Badge>
               ) : null}
               {branch.trackingGone && (
-                <Badge variant="warning" className="font-mono">
+                <Badge variant="attention" className="font-mono">
                   {t('branches.gone')}
                 </Badge>
               )}

@@ -1,12 +1,9 @@
 // Status detail tab — parsed `git status --porcelain` for the selected
-// branch worktree. Entries are grouped by Staged / Unstaged / Untracked
-// using git's X (index) / Y (worktree) two-letter convention. The
-// two-letter code is preserved verbatim in the leading column (matches
-// what users see in the terminal); a friendlier word + colour chip sits
-// beside it.
+// branch worktree. Entries use git's X (index) / Y (worktree)
+// two-letter convention in the leading column, matching what users see
+// in the terminal.
 
 import { useT } from '#/renderer/stores/i18n.ts'
-import { Badge, type BadgeVariant } from '#/renderer/components/ui/badge.tsx'
 import { EmptyState, ScrollPane } from '#/renderer/components/Layout.tsx'
 import type { StatusEntry, WorktreeStatus } from '#/renderer/types.ts'
 
@@ -16,65 +13,28 @@ interface Props {
   emptyBodyKey?: string
 }
 
-type LabelKey =
-  | 'status.label.untracked'
-  | 'status.label.ignored'
-  | 'status.label.added'
-  | 'status.label.deleted'
-  | 'status.label.modified'
-  | 'status.label.renamed'
-  | 'status.label.copied'
-  | 'status.label.conflict'
-  | 'status.label.changed'
-
-function statusLabel(code: string): { key: LabelKey; variant: BadgeVariant; raw?: string } {
-  if (code === '?') return { key: 'status.label.untracked', variant: 'warning' }
-  if (code === '!') return { key: 'status.label.ignored', variant: 'secondary' }
-  if (code === 'A') return { key: 'status.label.added', variant: 'success' }
-  if (code === 'D') return { key: 'status.label.deleted', variant: 'destructive' }
-  if (code === 'M') return { key: 'status.label.modified', variant: 'warning' }
-  if (code === 'R') return { key: 'status.label.renamed', variant: 'warning' }
-  if (code === 'C') return { key: 'status.label.copied', variant: 'success' }
-  if (code === 'U') return { key: 'status.label.conflict', variant: 'destructive' }
-  const raw = code.trim()
-  return { key: 'status.label.changed', variant: 'secondary', raw: raw || undefined }
+function isUnmergedStatus(entry: StatusEntry): boolean {
+  return entry.x === 'U' || entry.y === 'U' || (entry.x === entry.y && (entry.x === 'A' || entry.x === 'D'))
 }
 
-type GroupKind = 'staged' | 'unstaged' | 'untracked'
-
-interface Group {
-  kind: GroupKind
-  titleKey: string
-  hintKey: string
-  entries: StatusEntry[]
+function statusCodeClass(entry: StatusEntry, column: 'x' | 'y'): string {
+  const code = column === 'x' ? entry.x : entry.y
+  if (code === ' ' || !code) return 'text-transparent'
+  if (code === '!') return 'text-muted-foreground'
+  if (code === '?' || isUnmergedStatus(entry)) return 'text-danger'
+  return column === 'x' ? 'text-success' : 'text-danger'
 }
 
-function groupStatus(entries: StatusEntry[]): Group[] {
-  const staged: StatusEntry[] = []
-  const unstaged: StatusEntry[] = []
-  const untracked: StatusEntry[] = []
-  for (const e of entries) {
-    if (e.x === '?' && e.y === '?') {
-      untracked.push(e)
-    } else {
-      if (e.x !== ' ' && e.x !== '?') staged.push(e)
-      if (e.y !== ' ' && e.y !== '?') unstaged.push(e)
-    }
-  }
-  const out: Group[] = []
-  if (staged.length)
-    out.push({ kind: 'staged', titleKey: 'status.staged', hintKey: 'status.staged-hint', entries: staged })
-  if (unstaged.length)
-    out.push({ kind: 'unstaged', titleKey: 'status.unstaged', hintKey: 'status.unstaged-hint', entries: unstaged })
-  if (untracked.length)
-    out.push({ kind: 'untracked', titleKey: 'status.untracked', hintKey: 'status.untracked-hint', entries: untracked })
-  return out
-}
-
-function groupCode(group: GroupKind, entry: StatusEntry): string {
-  if (group === 'staged') return entry.x
-  if (group === 'unstaged') return entry.y
-  return '?'
+function StatusCode({ entry }: { entry: StatusEntry }) {
+  return (
+    <span
+      className="inline-grid w-[2ch] shrink-0 grid-cols-[1ch_1ch] font-mono text-xs font-semibold leading-none"
+      aria-label={`${entry.x}${entry.y}`}
+    >
+      <span className={statusCodeClass(entry, 'x')}>{entry.x === ' ' ? '\u00a0' : entry.x}</span>
+      <span className={statusCodeClass(entry, 'y')}>{entry.y === ' ' ? '\u00a0' : entry.y}</span>
+    </span>
+  )
 }
 
 export function StatusList({
@@ -84,6 +44,7 @@ export function StatusList({
 }: Props) {
   const t = useT()
   const totalEntries = status.reduce((n, w) => n + w.entries.length, 0)
+  const dirtyWorktrees = status.filter((wt) => wt.entries.length > 0)
 
   if (totalEntries === 0) {
     return <EmptyState icon="✓" title={t(emptyTitleKey)} body={t(emptyBodyKey)} tone="success" />
@@ -91,52 +52,21 @@ export function StatusList({
 
   return (
     <ScrollPane>
-      {status.map((wt) => {
-        const groups = groupStatus(wt.entries)
-        return (
-          <div key={wt.path}>
-            {groups.map((group) => (
-              <section key={`${wt.path}-${group.titleKey}`} className="border-b border-border last:border-b-0">
-                <header className="flex items-baseline justify-between px-4 py-1.5 bg-background border-b border-border">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                      {t(group.titleKey)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{t(group.hintKey)}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground font-mono">{group.entries.length}</span>
-                </header>
-                <ul className="divide-y divide-border">
-                  {group.entries.map((entry) => {
-                    const label = statusLabel(groupCode(group.kind, entry))
-                    return (
-                      <li
-                        key={`${wt.path}-${group.titleKey}-${entry.path}`}
-                        className="px-4 py-2 flex items-center gap-3"
-                      >
-                        <span className="font-mono text-xs text-muted-foreground shrink-0 w-7">
-                          {entry.x}
-                          {entry.y}
-                        </span>
-                        <Badge
-                          variant={label.variant}
-                          size="sm"
-                          className="tracking-wide shrink-0 min-w-[68px] justify-center"
-                        >
-                          {label.raw ?? t(label.key)}
-                        </Badge>
-                        <span className="truncate text-sm text-foreground font-mono flex-1 min-w-0" title={entry.path}>
-                          {entry.path}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )
-      })}
+      {dirtyWorktrees.map((wt) => (
+        <ul key={wt.path} className="divide-y divide-border border-b border-border last:border-b-0">
+          {wt.entries.map((entry) => (
+            <li
+              key={`${wt.path}-${entry.path}`}
+              className="grid grid-cols-[2ch_minmax(0,1fr)] items-center gap-4 px-4 py-2"
+            >
+              <StatusCode entry={entry} />
+              <span className="truncate text-sm text-foreground font-mono flex-1 min-w-0" title={entry.path}>
+                {entry.path}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ))}
     </ScrollPane>
   )
 }

@@ -8,7 +8,12 @@ import {
   visiblePrHealthSignals,
   type PrHealthSignal,
 } from '#/renderer/components/branch-detail/pr-status.ts'
-import { StatusChip, StatusRow, type Tone } from '#/renderer/components/branch-detail/status-ui.tsx'
+import {
+  STATUS_INLINE_GROUP_CLASS,
+  StatusChip,
+  StatusRow,
+  type Tone,
+} from '#/renderer/components/branch-detail/status-ui.tsx'
 import type { PullRequestInfo } from '#/shared/git-types.ts'
 import type { Lang } from '#/renderer/types-bridge.ts'
 
@@ -17,8 +22,8 @@ type TFn = (key: string, params?: Record<string, string | number>) => string
 function prChecksSignal(pr: PullRequestInfo, t: TFn): PrHealthSignal | null {
   if (!pr.checks) return null
   const params = { n: pr.checks.failing || pr.checks.pending || pr.checks.passing, total: pr.checks.total }
-  if (pr.checks.failing > 0) return { tone: 'warning', label: t('branch-status.pr.checks-failing', params) }
-  if (pr.checks.pending > 0) return { tone: 'neutral', label: t('branch-status.pr.checks-pending', params) }
+  if (pr.checks.failing > 0) return { tone: 'danger', label: t('branch-status.pr.checks-failing', params) }
+  if (pr.checks.pending > 0) return { tone: 'attention', label: t('branch-status.pr.checks-pending', params) }
   return { tone: 'success', label: t('branch-status.pr.checks-passing', params) }
 }
 
@@ -28,15 +33,15 @@ function prReviewSignal(pr: PullRequestInfo, t: TFn): PrHealthSignal | null {
     return { tone: 'success', label: t('branch-status.pr.review-approved') }
   }
   if (pr.reviewDecision === 'CHANGES_REQUESTED') {
-    return { tone: 'warning', label: t('branch-status.pr.review-changes-requested') }
+    return { tone: 'danger', label: t('branch-status.pr.review-changes-requested') }
   }
-  return { tone: 'neutral', label: t('branch-status.pr.review-required') }
+  return { tone: 'attention', label: t('branch-status.pr.review-required') }
 }
 
 function prMergeSignal(pr: PullRequestInfo, t: TFn): PrHealthSignal | null {
   if (!pr.mergeable) return null
   if (pr.mergeable === 'MERGEABLE') return { tone: 'success', label: t('branch-status.pr.mergeable') }
-  if (pr.mergeable === 'CONFLICTING') return { tone: 'warning', label: t('branch-status.pr.merge-conflicting') }
+  if (pr.mergeable === 'CONFLICTING') return { tone: 'danger', label: t('branch-status.pr.merge-conflicting') }
   return { tone: 'neutral', label: t('branch-status.pr.merge-unknown') }
 }
 
@@ -58,8 +63,8 @@ function prSummary(pr: PullRequestInfo, t: TFn): string {
 }
 
 function prSignalLabel(signal: PrHealthSignal): string {
-  if (signal.tone === 'warning') return `× ${signal.label}`
-  if (signal.tone === 'neutral') return `○ ${signal.label}`
+  if (signal.tone === 'danger') return `× ${signal.label}`
+  if (signal.tone === 'neutral' || signal.tone === 'attention' || signal.tone === 'warning') return `○ ${signal.label}`
   return `✓ ${signal.label}`
 }
 
@@ -98,7 +103,7 @@ function PullRequestValue({
   copiedLabel: string
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    <div className={STATUS_INLINE_GROUP_CLASS}>
       <Tip
         label={
           <div className="max-w-[min(24rem,calc(100vw-2rem),var(--radix-tooltip-content-available-width))] space-y-1">
@@ -149,6 +154,7 @@ export function PullRequestStatusRow({ pullRequest }: { pullRequest: PullRequest
           copiedLabel={t('branch-status.copied')}
         />
       }
+      valueLayout="inline"
       tone={tone}
     />
   )

@@ -116,7 +116,7 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
             >
               {t(tab.key)}
               {tab.id === 'changes' && detail.statusCount > 0 && (
-                <Badge variant="warning" className="ml-1.5 rounded-full">
+                <Badge variant="attention" className="ml-1.5 rounded-full">
                   {detail.statusCount}
                 </Badge>
               )}
