@@ -47,6 +47,11 @@ export function buildAppMenu(): void {
     label: t('menu.file'),
     submenu: [
       { label: t('menu.file.open-repo'), accelerator: accelerator('CmdOrCtrl+O'), click: () => send('open-repo') },
+      {
+        label: t('menu.file.clone-repo'),
+        accelerator: accelerator('CmdOrCtrl+Shift+O'),
+        click: () => send('clone-repo'),
+      },
       { label: t('menu.file.open-recent'), submenu: recentSubmenu },
       { label: t('menu.file.open-data-folder'), click: () => void openDataFolder() },
       // ⌘W is the standard OS shortcut for closing the window — keep

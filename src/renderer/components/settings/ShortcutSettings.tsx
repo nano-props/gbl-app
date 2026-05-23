@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { Switch } from '#/renderer/components/ui/switch.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
@@ -67,9 +68,12 @@ export function ShortcutSettings() {
           : null
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-card px-3 py-2">
-      <div className="flex items-center justify-between gap-3 text-sm text-foreground">
-        <label htmlFor="shortcuts-disabled-switch" className="cursor-pointer select-none">
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
+      <div className="flex min-h-11 items-center justify-between gap-4 px-3 py-2">
+        <label
+          htmlFor="shortcuts-disabled-switch"
+          className="min-w-0 cursor-pointer select-none text-sm text-foreground"
+        >
           {t('settings.shortcuts-disable-all')}
         </label>
         <Switch
@@ -80,9 +84,14 @@ export function ShortcutSettings() {
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-separator pt-2">
-        <span className="text-sm text-foreground">{t('settings.global-shortcut')}</span>
-        <div className="flex items-center gap-2">
+      <div className="flex min-h-11 items-center justify-between gap-4 border-t border-separator px-3 py-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm text-foreground">{t('settings.global-shortcut')}</div>
+          <div id={shortcutStatusId} className="sr-only" aria-live="polite" role="status">
+            {shortcutStatus?.text ?? ''}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             data-interactive
@@ -92,34 +101,38 @@ export function ShortcutSettings() {
             }}
             onKeyDown={recordGlobalShortcut}
             onBlur={() => setRecordingShortcut(false)}
-            className="min-w-20 rounded-md border border-border bg-background px-2 py-1 font-mono text-xs text-foreground transition-colors duration-100 hover:bg-accent"
+            title={shortcutStatus?.text ?? t('settings.global-shortcut-record')}
+            className={cn(
+              'relative inline-flex h-7 w-20 items-center justify-center rounded-md border px-2 font-mono text-[12px] leading-none shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] transition-colors duration-100',
+              shortcutStatus?.tone === 'error'
+                ? 'border-destructive/55 bg-destructive/10 text-destructive hover:bg-destructive/15'
+                : recordingShortcut
+                  ? 'border-primary/70 bg-primary/10 text-primary hover:bg-primary/15'
+                  : 'border-border bg-muted/50 text-foreground hover:bg-accent',
+            )}
             aria-label={t(recordingShortcut ? 'settings.global-shortcut-recording' : 'settings.global-shortcut-record')}
             aria-pressed={recordingShortcut}
             aria-describedby={shortcutStatusId}
           >
-            {recordingShortcut ? t('settings.global-shortcut-recording') : formatAccelerator(globalShortcut)}
+            <span className="truncate">{formatAccelerator(globalShortcut)}</span>
+            <span
+              className={cn(
+                'absolute -right-0.5 -top-0.5 size-2 rounded-full border border-background',
+                shortcutStatus?.tone === 'error' ? 'bg-destructive' : recordingShortcut ? 'bg-primary' : 'hidden',
+              )}
+            />
           </button>
           <button
             type="button"
             data-interactive
             onClick={() => saveGlobalShortcut(DEFAULT_GLOBAL_SHORTCUT)}
-            className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors duration-100 hover:bg-accent hover:text-foreground"
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-100 hover:bg-accent hover:text-foreground"
+            aria-label={t('settings.global-shortcut-reset')}
+            title={t('settings.global-shortcut-reset')}
           >
-            {t('settings.global-shortcut-reset')}
+            <RefreshCw className="size-3.5" aria-hidden="true" />
           </button>
         </div>
-      </div>
-
-      <div
-        id={shortcutStatusId}
-        className={cn(
-          'h-4 truncate text-xs leading-4',
-          shortcutStatus?.tone === 'error' ? 'text-destructive' : 'text-muted-foreground',
-        )}
-        aria-live="polite"
-        role="status"
-      >
-        {shortcutStatus?.text ?? '\u00A0'}
       </div>
     </div>
   )

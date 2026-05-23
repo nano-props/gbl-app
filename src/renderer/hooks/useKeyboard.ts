@@ -19,7 +19,7 @@ import { adjacentDetailTab } from '#/renderer/lib/detail-tabs.ts'
 import { runBranchActionShortcut } from '#/renderer/keyboard/branch-action-shortcuts.ts'
 import type { RepoState, ReposStore } from '#/renderer/stores/repos/types.ts'
 
-type BranchShortcutAction = 'pull' | 'push' | 'ghostty' | 'vscode' | 'github'
+type BranchShortcutAction = 'pull' | 'push' | 'terminal' | 'editor' | 'github'
 type MoveDirection = 1 | -1
 const INTERACTIVE_SHORTCUT_TARGET_SELECTOR =
   'button,a,input,textarea,select,[role="button"],[role="tab"],[role="menuitem"],[data-interactive]'
@@ -47,8 +47,8 @@ function activeElement(): HTMLElement | null {
 
 function branchShortcutAction(e: KeyboardEvent): BranchShortcutAction | null {
   if (e.code === 'KeyP') return e.shiftKey ? 'push' : 'pull'
-  if (e.code === 'KeyG') return e.shiftKey ? 'github' : 'ghostty'
-  if (e.code === 'KeyV' && !e.shiftKey) return 'vscode'
+  if (e.code === 'KeyG') return e.shiftKey ? 'github' : 'terminal'
+  if (e.code === 'KeyV' && !e.shiftKey) return 'editor'
   return null
 }
 

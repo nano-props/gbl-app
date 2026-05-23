@@ -6,11 +6,12 @@ import { onRpcEventType, rpc } from '#/renderer/rpc.ts'
 
 interface MenuActionHandlers {
   openSettings: () => void
+  openCloneRepo: () => void
   showHelp: () => void
   isOverlayOpen: () => boolean
 }
 
-export function useMenuActions({ openSettings, showHelp, isOverlayOpen }: MenuActionHandlers) {
+export function useMenuActions({ openSettings, openCloneRepo, showHelp, isOverlayOpen }: MenuActionHandlers) {
   const syncAndRefresh = useReposStore((s) => s.syncAndRefresh)
   const closeRepo = useReposStore((s) => s.closeRepo)
   const cycleActive = useReposStore((s) => s.cycleActive)
@@ -37,6 +38,9 @@ export function useMenuActions({ openSettings, showHelp, isOverlayOpen }: MenuAc
             if (path) await state.openRepo(path)
             break
           }
+          case 'clone-repo':
+            openCloneRepo()
+            break
           case 'close-repo': {
             if (state.activeId) closeRepo(state.activeId)
             break
@@ -99,6 +103,7 @@ export function useMenuActions({ openSettings, showHelp, isOverlayOpen }: MenuAc
     closeRepo,
     cycleActive,
     cycleTheme,
+    openCloneRepo,
     openSettings,
     setDetailCollapsed,
     setDetailTab,

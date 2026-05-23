@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Check, FolderTree, GitBranch, GitMerge, RadioTower, RefreshCw } from 'lucide-react'
 import { useT } from '#/renderer/stores/i18n.ts'
-import { EmptyState, ScrollPane } from '#/renderer/components/Layout.tsx'
+import { EmptyState } from '#/renderer/components/Layout.tsx'
 import { PullRequestStatusRow } from '#/renderer/components/branch-detail/PullRequestStatusRow.tsx'
 import {
   CopyableValue,
@@ -117,70 +117,68 @@ export function BranchStatus({ detail }: Props) {
     </>
   ) : undefined
   return (
-    <ScrollPane>
-      <StatusRows>
+    <StatusRows>
+      <StatusRow
+        icon={<GitBranch size={15} />}
+        label={t('branch-status.signal.branch')}
+        value={
+          <CopyableValue
+            value={branch.name}
+            copyLabel={t('branch-status.copy-branch-name')}
+            copiedLabel={t('branch-status.copied')}
+          />
+        }
+        after={roleChips}
+        valueLayout="inline"
+        tone={branch.isCurrent ? 'success' : branch.isDefault ? 'brand' : 'neutral'}
+      />
+      <StatusRow
+        icon={<FolderTree size={14} />}
+        label={t('branch-status.signal.worktree')}
+        value={worktreeValue}
+        after={worktreeAfter}
+        valueLayout="inline"
+        tone={worktreeTone}
+      />
+      <StatusRow
+        icon={<RadioTower size={14} />}
+        label={t('branch-status.signal.remote')}
+        value={remoteValue}
+        after={remoteAfter}
+        valueLayout="inline"
+        tone={remoteTone}
+      />
+      <StatusRow
+        icon={<RefreshCw size={14} />}
+        label={t('branch-status.signal.sync')}
+        value={
+          <SyncValue
+            ahead={branch.ahead}
+            behind={branch.behind}
+            noUpstream={!branch.tracking}
+            upToDateLabel={!branch.tracking ? t('branches.no-upstream') : t('branch-status.sync.up-to-date')}
+            aheadLabel={t('branch-status.sync.ahead', { n: branch.ahead })}
+            behindLabel={t('branch-status.sync.behind', { n: branch.behind })}
+          />
+        }
+        valueLayout="chips"
+        tone={syncTone}
+      />
+      {showMerged && (
         <StatusRow
-          icon={<GitBranch size={15} />}
-          label={t('branch-status.signal.branch')}
+          icon={<GitMerge size={14} />}
+          label={t('branch-status.signal.merge')}
           value={
-            <CopyableValue
-              value={branch.name}
-              copyLabel={t('branch-status.copy-branch-name')}
-              copiedLabel={t('branch-status.copied')}
-            />
-          }
-          after={roleChips}
-          valueLayout="inline"
-          tone={branch.isCurrent ? 'success' : branch.isDefault ? 'brand' : 'neutral'}
-        />
-        <StatusRow
-          icon={<FolderTree size={14} />}
-          label={t('branch-status.signal.worktree')}
-          value={worktreeValue}
-          after={worktreeAfter}
-          valueLayout="inline"
-          tone={worktreeTone}
-        />
-        <StatusRow
-          icon={<RadioTower size={14} />}
-          label={t('branch-status.signal.remote')}
-          value={remoteValue}
-          after={remoteAfter}
-          valueLayout="inline"
-          tone={remoteTone}
-        />
-        <StatusRow
-          icon={<RefreshCw size={14} />}
-          label={t('branch-status.signal.sync')}
-          value={
-            <SyncValue
-              ahead={branch.ahead}
-              behind={branch.behind}
-              noUpstream={!branch.tracking}
-              upToDateLabel={!branch.tracking ? t('branches.no-upstream') : t('branch-status.sync.up-to-date')}
-              aheadLabel={t('branch-status.sync.ahead', { n: branch.ahead })}
-              behindLabel={t('branch-status.sync.behind', { n: branch.behind })}
-            />
+            <StatusChip tone={mergeTone}>
+              {mergeKnown && branch.mergedToDefault && <Check size={11} />}
+              {mergeLabel}
+            </StatusChip>
           }
           valueLayout="chips"
-          tone={syncTone}
+          tone={mergeTone}
         />
-        {showMerged && (
-          <StatusRow
-            icon={<GitMerge size={14} />}
-            label={t('branch-status.signal.merge')}
-            value={
-              <StatusChip tone={mergeTone}>
-                {mergeKnown && branch.mergedToDefault && <Check size={11} />}
-                {mergeLabel}
-              </StatusChip>
-            }
-            valueLayout="chips"
-            tone={mergeTone}
-          />
-        )}
-        <PullRequestStatusRow pullRequest={branch.pullRequest} />
-      </StatusRows>
-    </ScrollPane>
+      )}
+      <PullRequestStatusRow pullRequest={branch.pullRequest} />
+    </StatusRows>
   )
 }

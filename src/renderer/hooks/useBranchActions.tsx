@@ -17,12 +17,12 @@ export type BranchUiAction =
   | 'push'
   | 'createWorktree'
   | 'github'
-  | 'ghostty'
-  | 'vscode'
+  | 'terminal'
+  | 'editor'
   | 'deleteBranch'
   | 'removeWorktree'
 
-const SILENT_SUCCESS_OPS = new Set<BranchUiAction>(['github', 'ghostty', 'vscode'])
+const SILENT_SUCCESS_OPS = new Set<BranchUiAction>(['github', 'terminal', 'editor'])
 
 interface RemoveConfirm {
   branch: string
@@ -119,16 +119,16 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
     void runRepoAction('push', { kind: 'push', branch: branch.name })
   }
 
-  function openGhostty() {
+  function openTerminal() {
     if (!branch.worktreePath) return
     const worktreePath = branch.worktreePath
-    void runUiAction('ghostty', () => rpc.repo.openInGhostty.mutate({ path: worktreePath }))
+    void runUiAction('terminal', () => rpc.repo.openTerminal.mutate({ path: worktreePath }))
   }
 
-  function openVSCode() {
+  function openEditor() {
     if (!branch.worktreePath) return
     const worktreePath = branch.worktreePath
-    void runUiAction('vscode', () => rpc.repo.openInVSCode.mutate({ path: worktreePath }))
+    void runUiAction('editor', () => rpc.repo.openEditor.mutate({ path: worktreePath }))
   }
 
   function openGitHub() {
@@ -355,16 +355,16 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
       isRegularBranch,
       canCopyPatch,
       canPull: !!branch.tracking,
-      canOpenGhostty: !!branch.worktreePath,
-      canOpenVSCode: !!branch.worktreePath,
+      canOpenTerminal: !!branch.worktreePath,
+      canOpenEditor: !!branch.worktreePath,
     },
     actions: {
       copyPatch,
       checkout,
       pull,
       push,
-      openGhostty,
-      openVSCode,
+      openTerminal,
+      openEditor,
       openGitHub,
       requestDeleteBranch,
       requestRemoveWorktree,

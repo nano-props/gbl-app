@@ -14,8 +14,7 @@ import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
 import { visibleBranches } from '#/renderer/stores/repos/branch-view-mode.ts'
 import { BranchRow } from '#/renderer/components/branch-list/BranchRow.tsx'
 import { EmptyState } from '#/renderer/components/Layout.tsx'
-import { useGhosttyInstalled } from '#/renderer/hooks/useGhosttyInstalled.ts'
-import { useVSCodeInstalled } from '#/renderer/hooks/useVSCodeInstalled.ts'
+import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 
 interface Props {
   repoId: string
@@ -28,8 +27,6 @@ export function BranchList({ repoId }: Props) {
   const setDetailTab = useReposStore((s) => s.setDetailTab)
   const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
   const selectedRef = useRef<HTMLLIElement | null>(null)
-  const ghosttyInstalled = useGhosttyInstalled()
-  const vscodeInstalled = useVSCodeInstalled()
   const handleSelectBranch = useCallback(
     (branch: string) => {
       selectBranch(repoId, branch)
@@ -82,24 +79,24 @@ export function BranchList({ repoId }: Props) {
   }
 
   return (
-    <ul className="overflow-y-auto scroll-thin flex-1 divide-y divide-separator">
-      {branches.map((branch) => {
-        return (
-          <BranchRow
-            key={branch.name}
-            repo={repo}
-            branch={branch}
-            selected={selected}
-            current={current}
-            lang={lang}
-            onSelectBranch={handleSelectBranch}
-            onOpenBranchStatus={handleOpenBranchStatus}
-            selectedRef={selectedRef}
-            ghosttyInstalled={ghosttyInstalled}
-            vscodeInstalled={vscodeInstalled}
-          />
-        )
-      })}
-    </ul>
+    <ScrollArea className="min-h-0 flex-1">
+      <ul className="divide-y divide-separator">
+        {branches.map((branch) => {
+          return (
+            <BranchRow
+              key={branch.name}
+              repo={repo}
+              branch={branch}
+              selected={selected}
+              current={current}
+              lang={lang}
+              onSelectBranch={handleSelectBranch}
+              onOpenBranchStatus={handleOpenBranchStatus}
+              selectedRef={selectedRef}
+            />
+          )
+        })}
+      </ul>
+    </ScrollArea>
   )
 }

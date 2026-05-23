@@ -10,6 +10,9 @@ export function resolveKnownWorktree(
   worktreePath: string,
   branch?: string,
 ): KnownWorktreeResult {
+  // Match the exact path identity reported by `git worktree list`, not
+  // arbitrary symlink aliases. `realpath` here would broaden what stale
+  // renderer input can refer to instead of tightening it.
   const target = worktrees.find(
     (wt) => path.resolve(wt.path) === path.resolve(worktreePath) && (!branch || wt.branch === branch),
   )
@@ -25,7 +28,9 @@ type RemovableWorktreeResult =
 /** Locate the worktree the renderer asked to remove and reject removing
  *  the main / repo-root worktree. Match on path AND branch so a stale
  *  renderer (branch checked out elsewhere since the snapshot) can't
- *  accidentally remove the wrong worktree. */
+ *  accidentally remove the wrong worktree. We intentionally compare the
+ *  git-reported path identity rather than accepting realpath-equivalent
+ *  symlink aliases. */
 export function resolveRemovableWorktree(
   worktrees: WorktreeInfo[],
   branch: string,

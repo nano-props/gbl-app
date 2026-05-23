@@ -35,35 +35,33 @@ export function LogList({ repoId, log, branch, selectedHash }: Props) {
     return <EmptyState title={branch ? t('log.empty-for-branch', { branch }) : t('log.empty')} />
   }
   return (
-    <div className="flex flex-1 min-h-0 flex-col">
-      <ul className="overflow-y-auto scroll-thin flex-1 divide-y divide-separator">
-        {log.map((entry) => {
-          const isSelected = entry.hash === selectedHash
-          return (
-            <li
-              key={entry.hash}
-              ref={isSelected ? selectedRef : undefined}
-              aria-current={isSelected ? 'true' : undefined}
-              onClick={() => {
-                selectLog(repoId, branch, entry.hash)
-                void openCommit(repoId, entry.hash)
-              }}
-              className={cn(
-                'px-4 py-2.5 cursor-pointer transition-colors duration-100',
-                isSelected ? 'bg-selected text-selected-foreground hover:bg-selected' : 'hover:bg-muted',
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-brand-text shrink-0">{entry.shortHash}</span>
-                <span className="truncate text-sm text-foreground">{entry.message}</span>
-              </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {entry.author} · {formatRelativeTime(entry.date, lang)}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
+    <ul className="divide-y divide-separator">
+      {log.map((entry) => {
+        const isSelected = entry.hash === selectedHash
+        return (
+          <li
+            key={entry.hash}
+            ref={isSelected ? selectedRef : undefined}
+            aria-current={isSelected ? 'true' : undefined}
+            onClick={() => {
+              selectLog(repoId, branch, entry.hash)
+              void openCommit(repoId, entry.hash)
+            }}
+            className={cn(
+              'px-4 py-2.5 cursor-pointer transition-colors duration-100',
+              isSelected ? 'bg-selected text-selected-foreground hover:bg-selected' : 'hover:bg-muted',
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-brand-text shrink-0">{entry.shortHash}</span>
+              <span className="truncate text-sm text-foreground">{entry.message}</span>
+            </div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {entry.author} · {formatRelativeTime(entry.date, lang)}
+            </div>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

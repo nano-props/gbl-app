@@ -20,7 +20,7 @@ function KeyCombo({ keys }: { keys: string[] }) {
     <span className="inline-flex items-center gap-0.5">
       {keys.map((k, i) => (
         <span key={i} className="inline-flex items-center gap-0.5">
-          {i > 0 && <span className="text-[10px] text-muted-foreground/70">+</span>}
+          {i > 0 && <span className="text-[10px] text-muted-foreground/60">+</span>}
           <span className="kbd">{k}</span>
         </span>
       ))}
@@ -33,7 +33,7 @@ function KeyCombos({ combos }: { combos: string[][] }) {
     <span className="flex shrink-0 flex-wrap justify-end gap-x-1 gap-y-0.5">
       {combos.map((combo, i) => (
         <span key={`${combo.join('+')}:${i}`} className="inline-flex items-center gap-1">
-          {i > 0 && <span className="text-[11px] text-muted-foreground/70">/</span>}
+          {i > 0 && <span className="text-[11px] text-muted-foreground/60">/</span>}
           <KeyCombo keys={combo} />
         </span>
       ))}
@@ -44,18 +44,15 @@ function KeyCombos({ combos }: { combos: string[][] }) {
 function ShortcutSection({ section }: { section: HelpShortcutSection }) {
   const t = useT()
   return (
-    <section className="min-w-0">
-      <div className="mb-1.5 flex items-center gap-2 border-b border-separator pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-        <span>{t(section.titleKey)}</span>
-      </div>
-      <ul className="divide-y divide-separator">
+    <section className="space-y-1.5">
+      <div className="px-3 text-[11px] font-medium text-muted-foreground">{t(section.titleKey)}</div>
+      <ul className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
         {section.rows.map((row: HelpShortcutRow) => (
           <li
             key={`${row.labelKey}:${row.combos.map((combo) => combo.join('+')).join('/')}`}
-            className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1 text-xs"
+            className="flex min-h-10 items-center justify-between gap-4 px-3 py-2 [&+&]:border-t [&+&]:border-separator"
           >
-            <span className="min-w-0 truncate text-foreground">{t(row.labelKey)}</span>
+            <span className="min-w-0 truncate text-sm text-foreground">{t(row.labelKey)}</span>
             <KeyCombos combos={row.combos} />
           </li>
         ))}
@@ -69,13 +66,13 @@ export function HelpOverlay({ open, onClose }: Props) {
   const globalShortcut = useSettingsStore((s) => s.globalShortcut)
   return (
     <Modal open={open} title={t('help.title')} onClose={onClose} widthClass="sm:max-w-2xl">
-      <div className="space-y-3">
-        <div className="grid items-start gap-x-6 gap-y-4 sm:grid-cols-2">
+      <div className="-m-4 space-y-5 bg-muted/30 px-5 py-4">
+        <p className="px-3 text-xs leading-snug text-muted-foreground">{t('help.hint')}</p>
+        <div className="grid items-start gap-5 sm:grid-cols-2">
           {helpShortcutSections(globalShortcut).map((section) => (
             <ShortcutSection key={section.titleKey} section={section} />
           ))}
         </div>
-        <p className="truncate pt-0.5 text-[11px] text-muted-foreground/75">{t('help.hint')}</p>
       </div>
     </Modal>
   )

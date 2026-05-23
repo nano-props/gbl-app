@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import type { RepoEvent } from '#/renderer/stores/repos/types.ts'
@@ -57,8 +58,10 @@ export function useRepoToasts(repoId: string) {
 
 function ToastDescription({ children }: { children: React.ReactNode }) {
   return (
-    <pre className="block max-h-32 w-full max-w-full min-w-0 overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono text-[11px] leading-relaxed scroll-thin">
-      {children}
-    </pre>
+    <ScrollArea className="max-h-32 w-full max-w-full min-w-0" viewportClassName="max-h-32">
+      <pre className="block w-full max-w-full min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono text-[11px] leading-relaxed">
+        {children}
+      </pre>
+    </ScrollArea>
   )
 }

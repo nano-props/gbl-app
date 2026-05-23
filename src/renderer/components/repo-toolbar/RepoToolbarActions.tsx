@@ -4,7 +4,7 @@
 //   Refresh — `git fetch --all --prune` on origin, then rebuilds the
 //             local snapshot (branches, status, log) from disk.
 //
-// Branch-scoped operations (Checkout / Pull / Push / Open in Ghostty
+// Branch-scoped operations (Checkout / Pull / Push / Open in Terminal
 // / Open in GitHub) live with the selected-branch detail, not here —
 // those need a branch context to be meaningful.
 

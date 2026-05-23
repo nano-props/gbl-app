@@ -9,6 +9,7 @@ import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
 import { formatRelativeTime } from '#/renderer/lib/dates.ts'
 import { FilePathText } from '#/renderer/components/FilePathText.tsx'
+import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import type { CommitDetail as CommitDetailType } from '#/renderer/types-bridge.ts'
 
@@ -42,7 +43,7 @@ export function CommitDetail({ repoId, detail }: Props) {
   const maxFileChanges = files.reduce((max, f) => Math.max(max, f.added + f.deleted), 1)
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto scroll-thin">
+    <ScrollArea className="min-h-0 flex-1">
       <div className="flex items-start gap-3 border-b border-separator bg-muted px-4 py-3">
         <button
           type="button"
@@ -115,6 +116,6 @@ export function CommitDetail({ repoId, detail }: Props) {
           ))}
         </ul>
       )}
-    </div>
+    </ScrollArea>
   )
 }

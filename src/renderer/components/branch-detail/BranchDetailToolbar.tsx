@@ -1,5 +1,5 @@
 import { ChevronDown, Loader2 } from 'lucide-react'
-import type { KeyboardEvent, MouseEvent } from 'react'
+import type { KeyboardEvent } from 'react'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { idleOperation, operationBusy } from '#/renderer/stores/repos/operations.ts'
 import type { RepoState, DetailTab } from '#/renderer/stores/repos/types.ts'
@@ -9,8 +9,6 @@ import { Badge } from '#/renderer/components/ui/badge.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import { BranchActionBar } from '#/renderer/components/BranchActionBar.tsx'
 import { Toolbar } from '#/renderer/components/Layout.tsx'
-import { useGhosttyInstalled } from '#/renderer/hooks/useGhosttyInstalled.ts'
-import { useVSCodeInstalled } from '#/renderer/hooks/useVSCodeInstalled.ts'
 import { DETAIL_TABS } from '#/renderer/lib/detail-tabs.ts'
 import { cn } from '#/renderer/lib/cn.ts'
 import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
@@ -23,17 +21,12 @@ interface Props {
   collapsed: boolean
 }
 
-const TOOLBAR_TOGGLE_IGNORE_SELECTOR =
-  'button,a,input,textarea,select,[role="button"],[role="tab"],[role="menuitem"],[data-toolbar-toggle-ignore]'
-
 export function BranchDetailToolbar({ repo, detail, detailId, contentId, collapsed }: Props) {
   const t = useT()
   const setDetailTab = useReposStore((s) => s.setDetailTab)
   const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
   const toggleDetailCollapsed = useReposStore((s) => s.toggleDetailCollapsed)
   const shortcutsDisabled = useSettingsStore((s) => s.shortcutsDisabled)
-  const ghosttyInstalled = useGhosttyInstalled()
-  const vscodeInstalled = useVSCodeInstalled()
   const logLoading =
     detail.branchLog?.loading ||
     operationBusy(repo.ops.logsByBranch[detail.branch?.name ?? ''] ?? idleOperation(), { includeSilent: true })
@@ -61,14 +54,8 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
     window.requestAnimationFrame(() => document.getElementById(`${detailId}-${nextTab.id}-tab`)?.focus())
   }
 
-  function handleToolbarClick(e: MouseEvent<HTMLDivElement>) {
-    if (!(e.target instanceof Element)) return
-    if (e.target.closest(TOOLBAR_TOGGLE_IGNORE_SELECTOR)) return
-    toggleDetailCollapsed()
-  }
-
   return (
-    <Toolbar variant="detail" onClick={handleToolbarClick}>
+    <Toolbar variant="detail">
       <Button
         variant="ghost"
         size="icon"
@@ -129,13 +116,7 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
           )
         })}
       </div>
-      <BranchActionBar
-        key={`${repo.id}:${detail.branch.name}`}
-        repo={repo}
-        branch={detail.branch}
-        ghosttyInstalled={ghosttyInstalled}
-        vscodeInstalled={vscodeInstalled}
-      />
+      <BranchActionBar key={`${repo.id}:${detail.branch.name}`} repo={repo} branch={detail.branch} />
     </Toolbar>
   )
 }

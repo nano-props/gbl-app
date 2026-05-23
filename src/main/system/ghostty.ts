@@ -30,11 +30,12 @@ function isUsableDirectory(p: string): boolean {
  *  dictionary (see ghostty/macos/Ghostty.sdef). */
 function openInRunningGhostty(dir: string): Promise<boolean> {
   // The path is passed as argv (item 1 of argv), not interpolated,
-  // so AppleScript string-escaping isn't a concern. We deliberately
-  // don't call `activate` here — Ghostty's `new window` handler
-  // already runs NSApp.activate internally (TerminalController.swift),
-  // and an extra activate makes macOS pull the user to whichever
-  // Space already has a Ghostty window. See ghostty-org/ghostty#11457.
+  // so AppleScript string-escaping isn't a concern. The bundle id is
+  // a hardcoded app identifier, not user/settings input. We deliberately
+  // don't call `activate` here — Ghostty's `new window` handler already
+  // runs NSApp.activate internally (TerminalController.swift), and an
+  // extra activate makes macOS pull the user to whichever Space already
+  // has a Ghostty window. See ghostty-org/ghostty#11457.
   const script = `
     on run argv
       set dir to item 1 of argv
@@ -66,7 +67,8 @@ function openInRunningGhostty(dir: string): Promise<boolean> {
 // --args --working-directory=<path>`. The cold-start path can't
 // use AppleScript (no process to talk to) and Ghostty parses
 // --args via ghostty_init(argc, argv) at launch — so -n is needed
-// to ensure the args are read instead of dropped on activation.
+// to ensure the args are read instead of dropped on activation. The
+// working-directory flag is one argv element, not shell text.
 //
 // Spawned children are detached + unref'd so quitting Goblin doesn't
 // bring the terminal down with it.

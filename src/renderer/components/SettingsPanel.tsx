@@ -1,15 +1,15 @@
-// Settings overlay — theme pref, language, auto-fetch interval, shortcuts.
-// Mounted unconditionally and gated by `open`; the modal itself
-// returns null when closed.
+// Settings overlay — grouped by function: general look & feel, external
+// apps (terminal / editor), sync, and keyboard shortcuts.
 
 import { Laptop, Moon, Sun } from 'lucide-react'
 import { Modal } from '#/renderer/components/Modal.tsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#/renderer/components/ui/select.tsx'
+import { GitHubMark } from '#/renderer/components/GitHubMark.tsx'
 import { ShortcutSettings } from '#/renderer/components/settings/ShortcutSettings.tsx'
 import { useThemeStore } from '#/renderer/stores/theme.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
-import type { LangPref, ThemePref } from '#/renderer/types-bridge.ts'
+import type { EditorPref, LangPref, TerminalPref, ThemePref } from '#/renderer/types-bridge.ts'
 import { rpc } from '#/renderer/rpc.ts'
 
 interface Props {
@@ -25,6 +25,10 @@ export function SettingsPanel({ open, onClose }: Props) {
   const setLangPref = useI18nStore((s) => s.setPref)
   const fetchInterval = useSettingsStore((s) => s.fetchIntervalSec)
   const setFetchInterval = useSettingsStore((s) => s.setFetchInterval)
+  const terminalApp = useSettingsStore((s) => s.terminalApp)
+  const setTerminalApp = useSettingsStore((s) => s.setTerminalApp)
+  const editorApp = useSettingsStore((s) => s.editorApp)
+  const setEditorApp = useSettingsStore((s) => s.setEditorApp)
 
   const themeOptions: { value: ThemePref; labelKey: string; icon: React.ReactNode }[] = [
     { value: 'auto', labelKey: 'settings.theme.auto', icon: <Laptop className="size-4" /> },
@@ -38,6 +42,17 @@ export function SettingsPanel({ open, onClose }: Props) {
     { value: 'ko', labelKey: 'settings.lang.ko', emoji: '🇰🇷' },
     { value: 'ja', labelKey: 'settings.lang.ja', emoji: '🇯🇵' },
   ]
+  const terminalOptions: { value: TerminalPref; labelKey: string }[] = [
+    { value: 'auto', labelKey: 'settings.terminal.auto' },
+    { value: 'ghostty', labelKey: 'settings.terminal.ghostty' },
+    { value: 'terminal', labelKey: 'settings.terminal.terminal' },
+  ]
+  const editorOptions: { value: EditorPref; labelKey: string }[] = [
+    { value: 'auto', labelKey: 'settings.editor.auto' },
+    { value: 'vscode', labelKey: 'settings.editor.vscode' },
+    { value: 'cursor', labelKey: 'settings.editor.cursor' },
+    { value: 'windsurf', labelKey: 'settings.editor.windsurf' },
+  ]
   const intervalOptions: { value: number; labelKey: string }[] = [
     { value: 0, labelKey: 'settings.fetch.off' },
     { value: 30, labelKey: 'settings.fetch.30s' },
@@ -48,20 +63,8 @@ export function SettingsPanel({ open, onClose }: Props) {
 
   const commit = __BUILD_INFO__.commit
   const buildInfo = commit ? `Goblin · v${__APP_VERSION__} · ${commit}` : `Goblin · v${__APP_VERSION__}`
-  const saveThemePref = (pref: ThemePref) => {
-    void setThemePref(pref).catch((err) => {
-      console.warn('[settings] theme update failed', err)
-    })
-  }
-  const saveLangPref = (pref: LangPref) => {
-    void setLangPref(pref).catch((err) => {
-      console.warn('[settings] language update failed', err)
-    })
-  }
-  const saveFetchInterval = (sec: number) => {
-    void setFetchInterval(sec).catch((err) => {
-      console.warn('[settings] fetch interval update failed', err)
-    })
+  const save = (fn: () => Promise<unknown>, label: string) => {
+    void fn().catch((err) => console.warn(`[settings] ${label} update failed`, err))
   }
   const openProjectGitHub = () => {
     void rpc.app.openProjectGitHub.mutate().catch((err) => {
@@ -70,45 +73,100 @@ export function SettingsPanel({ open, onClose }: Props) {
   }
 
   return (
-    <Modal open={open} title={t('settings.title')} onClose={onClose}>
-      <div className="space-y-5">
-        <div className="grid grid-cols-3 gap-3">
-          <Section label={t('settings.appearance')}>
-            <SettingsSelect
-              value={themePref}
-              options={themeOptions.map((o) => ({ value: o.value, label: t(o.labelKey), icon: o.icon }))}
-              onChange={saveThemePref}
+    <Modal open={open} title={t('settings.title')} onClose={onClose} widthClass="sm:max-w-lg">
+      <div className="-m-4 space-y-5 bg-muted/30 px-5 py-4">
+        {/* ---- General ---- */}
+        <SettingsGroup label={t('settings.group.general')}>
+          <SettingsList>
+            <SettingsRow
+              controlId="settings-theme"
+              label={t('settings.appearance')}
+              control={
+                <SettingsSelect
+                  id="settings-theme"
+                  value={themePref}
+                  options={themeOptions.map((o) => ({ value: o.value, label: t(o.labelKey), icon: o.icon }))}
+                  onChange={(v) => save(() => setThemePref(v), 'theme')}
+                />
+              }
             />
-          </Section>
-
-          <Section label={t('settings.lang')}>
-            <SettingsSelect
-              value={langPref}
-              options={langOptions.map((o) => ({ value: o.value, label: `${o.emoji} ${t(o.labelKey)}` }))}
-              onChange={saveLangPref}
+            <SettingsRow
+              controlId="settings-language"
+              label={t('settings.lang')}
+              control={
+                <SettingsSelect
+                  id="settings-language"
+                  value={langPref}
+                  options={langOptions.map((o) => ({ value: o.value, label: `${o.emoji} ${t(o.labelKey)}` }))}
+                  onChange={(v) => save(() => setLangPref(v), 'language')}
+                />
+              }
             />
-          </Section>
+          </SettingsList>
+        </SettingsGroup>
 
-          <Section label={t('settings.fetch')} hint={t('settings.fetch-hint')} hintPlacement="bottom">
-            <SettingsSelect
-              value={fetchInterval}
-              options={intervalOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-              onChange={saveFetchInterval}
+        {/* ---- External apps ---- */}
+        <SettingsGroup label={t('settings.group.apps')}>
+          <SettingsList>
+            <SettingsRow
+              controlId="settings-terminal"
+              label={t('settings.terminal')}
+              control={
+                <SettingsSelect
+                  id="settings-terminal"
+                  value={terminalApp}
+                  options={terminalOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                  onChange={(v) => save(() => setTerminalApp(v), 'terminal')}
+                />
+              }
             />
-          </Section>
-        </div>
+            <SettingsRow
+              controlId="settings-editor"
+              label={t('settings.editor')}
+              control={
+                <SettingsSelect
+                  id="settings-editor"
+                  value={editorApp}
+                  options={editorOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                  onChange={(v) => save(() => setEditorApp(v), 'editor')}
+                />
+              }
+            />
+          </SettingsList>
+        </SettingsGroup>
 
-        <Section label={t('settings.shortcuts')} hint={t('settings.shortcuts-hint')}>
+        {/* ---- Sync ---- */}
+        <SettingsGroup label={t('settings.group.sync')}>
+          <SettingsList>
+            <SettingsRow
+              controlId="settings-fetch"
+              label={t('settings.fetch')}
+              hint={t('settings.fetch-hint')}
+              control={
+                <SettingsSelect
+                  id="settings-fetch"
+                  value={fetchInterval}
+                  options={intervalOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                  onChange={(v) => save(() => setFetchInterval(v), 'fetch interval')}
+                />
+              }
+            />
+          </SettingsList>
+        </SettingsGroup>
+
+        {/* ---- Shortcuts ---- */}
+        <SettingsGroup label={t('settings.shortcuts')}>
           <ShortcutSettings />
-        </Section>
+        </SettingsGroup>
 
-        <div className="flex items-center justify-between gap-3 border-t border-separator pt-3 text-xs text-muted-foreground">
+        {/* ---- Footer ---- */}
+        <div className="flex min-h-8 items-center justify-between gap-3 text-xs text-muted-foreground">
           <span className="truncate">{buildInfo}</span>
           <button
             type="button"
             data-interactive
-            aria-label="Open project on GitHub"
-            title="GitHub"
+            aria-label={t('settings.open-github')}
+            title={t('settings.open-github')}
             className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors duration-100 hover:bg-accent hover:text-foreground"
             onClick={openProjectGitHub}
           >
@@ -120,34 +178,55 @@ export function SettingsPanel({ open, onClose }: Props) {
   )
 }
 
-function Section({
+function SettingsGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="space-y-1.5">
+      <legend className="px-3 text-[11px] font-medium text-muted-foreground">{label}</legend>
+      {children}
+    </fieldset>
+  )
+}
+
+function SettingsList({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
+      {children}
+    </div>
+  )
+}
+
+function SettingsRow({
+  controlId,
   label,
   hint,
-  hintPlacement = 'top',
-  children,
+  control,
 }: {
+  controlId: string
   label: string
   hint?: string
-  hintPlacement?: 'top' | 'bottom'
-  children: React.ReactNode
+  control: React.ReactNode
 }) {
   return (
-    <div>
-      <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-      {hint && hintPlacement === 'top' && <div className="mb-2 text-xs text-muted-foreground">{hint}</div>}
-      {children}
-      {hint && hintPlacement === 'bottom' && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+    <div className="flex min-h-11 items-center justify-between gap-4 px-3 py-2 [&+&]:border-t [&+&]:border-separator">
+      <div className="min-w-0">
+        <label className="block truncate text-sm text-foreground" htmlFor={controlId}>
+          {label}
+        </label>
+        {hint && <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{hint}</div>}
+      </div>
+      <div className="shrink-0">{control}</div>
     </div>
   )
 }
 
 interface SettingsSelectProps<T extends string | number> {
+  id: string
   value: T
   options: { value: T; label: string; icon?: React.ReactNode }[]
   onChange: (value: T) => void
 }
 
-function SettingsSelect<T extends string | number>({ value, options, onChange }: SettingsSelectProps<T>) {
+function SettingsSelect<T extends string | number>({ id, value, options, onChange }: SettingsSelectProps<T>) {
   return (
     <Select
       value={String(value)}
@@ -156,25 +235,17 @@ function SettingsSelect<T extends string | number>({ value, options, onChange }:
         if (matched) onChange(matched.value)
       }}
     >
-      <SelectTrigger className="w-full">
+      <SelectTrigger id={id} className="h-8 min-w-36 rounded-md bg-muted/50 px-2.5 text-xs shadow-none">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {options.map((opt) => (
-          <SelectItem key={String(opt.value)} value={String(opt.value)}>
+          <SelectItem key={String(opt.value)} value={String(opt.value)} textValue={opt.label}>
             {opt.icon}
             {opt.label}
           </SelectItem>
         ))}
       </SelectContent>
     </Select>
-  )
-}
-
-function GitHubMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
-      <path d="M12 0.75C5.79 0.75 0.75 5.79 0.75 12c0 4.97 3.22 9.19 7.69 10.68 0.56 0.1 0.77-0.24 0.77-0.54v-1.92c-3.13 0.68-3.79-1.34-3.79-1.34-0.51-1.3-1.25-1.65-1.25-1.65-1.02-0.7 0.08-0.68 0.08-0.68 1.13 0.08 1.73 1.16 1.73 1.16 1 1.72 2.63 1.22 3.27 0.93 0.1-0.72 0.39-1.22 0.71-1.5-2.5-0.28-5.13-1.25-5.13-5.56 0-1.23 0.44-2.23 1.16-3.02-0.12-0.28-0.5-1.43 0.11-2.98 0 0 0.95-0.3 3.1 1.15A10.8 10.8 0 0 1 12 6.35c0.96 0 1.91 0.13 2.81 0.38 2.15-1.45 3.1-1.15 3.1-1.15 0.61 1.55 0.23 2.7 0.11 2.98 0.72 0.79 1.16 1.79 1.16 3.02 0 4.32-2.63 5.27-5.14 5.55 0.4 0.35 0.76 1.04 0.76 2.1v3.11c0 0.3 0.2 0.65 0.77 0.54A11.26 11.26 0 0 0 23.25 12C23.25 5.79 18.21 0.75 12 0.75Z" />
-    </svg>
   )
 }

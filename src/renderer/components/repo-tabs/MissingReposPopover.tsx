@@ -7,6 +7,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '#/renderer/components/ui/popover.tsx'
+import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 import { tildify } from '#/renderer/lib/paths.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import type { MissingRepo } from '#/renderer/stores/repos/types.ts'
@@ -42,18 +43,20 @@ export function MissingReposPopover({ missing, title, dismissLabel, onDismiss }:
             {title}
           </PopoverTitle>
         </PopoverHeader>
-        <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto scroll-thin">
-          {missing.map((entry) => {
-            const displayPath = tildify(entry.path)
-            const reason = formatReason(entry.reason, t)
-            return (
-              <li key={entry.path} className="rounded-sm bg-muted px-1.5 py-1" title={`${displayPath}\n${reason}`}>
-                <div className="truncate font-mono text-[11px] text-muted-foreground">{displayPath}</div>
-                <div className="mt-0.5 truncate text-[11px] text-warning">{reason}</div>
-              </li>
-            )
-          })}
-        </ul>
+        <ScrollArea className="mt-2 max-h-56" viewportClassName="max-h-56">
+          <ul className="space-y-1.5">
+            {missing.map((entry) => {
+              const displayPath = tildify(entry.path)
+              const reason = formatReason(entry.reason, t)
+              return (
+                <li key={entry.path} className="rounded-sm bg-muted px-1.5 py-1" title={`${displayPath}\n${reason}`}>
+                  <div className="truncate font-mono text-[11px] text-muted-foreground">{displayPath}</div>
+                  <div className="mt-0.5 truncate text-[11px] text-warning">{reason}</div>
+                </li>
+              )
+            })}
+          </ul>
+        </ScrollArea>
         <Button type="button" variant="ghost" size="sm" className="mt-2 h-6 px-1.5" onClick={onDismiss}>
           {dismissLabel}
         </Button>

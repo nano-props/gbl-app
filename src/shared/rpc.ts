@@ -13,6 +13,8 @@ export type ThemePref = 'auto' | 'light' | 'dark'
 export type ResolvedTheme = 'light' | 'dark'
 export type LangPref = 'auto' | 'en' | 'zh' | 'ko' | 'ja'
 export type Lang = 'en' | 'zh' | 'ko' | 'ja'
+export type TerminalPref = 'auto' | 'ghostty' | 'terminal'
+export type EditorPref = 'auto' | 'vscode' | 'cursor' | 'windsurf'
 export type NetworkOpKind = 'user' | 'background'
 
 export interface ThemeState {
@@ -32,6 +34,10 @@ export interface SettingsSnapshot {
   shortcutsDisabled: boolean
   globalShortcut: string
   globalShortcutRegistered: boolean
+  terminalApp: TerminalPref
+  terminalAvailable: boolean
+  editorApp: EditorPref
+  editorAvailable: boolean
   session: SessionState
   recentRepos: string[]
 }
@@ -39,6 +45,16 @@ export interface SettingsSnapshot {
 export interface GlobalShortcutState {
   accelerator: string
   registered: boolean
+}
+
+export interface TerminalAppState {
+  pref: TerminalPref
+  available: boolean
+}
+
+export interface EditorAppState {
+  pref: EditorPref
+  available: boolean
 }
 
 export interface I18nPayload {
@@ -82,6 +98,10 @@ export interface ProbeResult {
   message?: string
 }
 
+export interface CloneRepoResult extends ExecResult {
+  path?: string
+}
+
 export interface PullRequestEntry {
   branch: string
   pullRequest: PullRequestInfo
@@ -104,6 +124,7 @@ export type RpcResponse =
 
 export type MenuAction =
   | 'open-repo'
+  | 'clone-repo'
   | 'close-repo'
   | 'next-repo'
   | 'prev-repo'
@@ -122,6 +143,8 @@ export type RpcEvent =
   | { type: 'fetch-interval-changed'; sec: number }
   | { type: 'shortcuts-disabled-changed'; disabled: boolean }
   | { type: 'global-shortcut-changed'; state: GlobalShortcutState }
+  | { type: 'terminal-app-changed'; pref: TerminalPref; available: boolean }
+  | { type: 'editor-app-changed'; pref: EditorPref; available: boolean }
   | { type: 'settings-write-error'; message: string }
   | { type: 'menu-action'; action: MenuAction }
   | { type: 'i18n-changed'; payload: I18nPayload }
@@ -132,7 +155,15 @@ export interface AppRpcHandlers {
   }
   repo: {
     openDialog: () => Promise<string | null>
+    cloneParentDialog: () => Promise<string | null>
     probe: (input: { cwd: string }) => Promise<ProbeResult>
+    clone: (input: {
+      operationId: string
+      url: string
+      parentPath: string
+      directoryName: string
+    }) => Promise<CloneRepoResult>
+    abortClone: (input: { operationId: string }) => Promise<boolean>
     snapshot: (input: { cwd: string }) => Promise<RepoSnapshot | null>
     pullRequests: (input: {
       cwd: string
@@ -164,10 +195,8 @@ export interface AppRpcHandlers {
     abort: (input: { cwd: string }) => Promise<boolean>
     openGitHub: (input: { cwd: string; branch?: string }) => Promise<ExecResult>
     openInFinder: (input: { path: string }) => Promise<ExecResult>
-    openInGhostty: (input: { path: string }) => Promise<ExecResult>
-    openInVSCode: (input: { path: string }) => Promise<ExecResult>
-    ghosttyInstalled: () => Promise<boolean>
-    vscodeInstalled: () => Promise<boolean>
+    openTerminal: (input: { path: string }) => Promise<ExecResult>
+    openEditor: (input: { path: string }) => Promise<ExecResult>
   }
   theme: {
     get: () => ThemeState
@@ -178,6 +207,8 @@ export interface AppRpcHandlers {
     setFetchInterval: (input: { sec: number }) => Promise<void>
     setShortcutsDisabled: (input: { disabled: boolean }) => Promise<void>
     setGlobalShortcut: (input: { accelerator: string }) => Promise<GlobalShortcutState>
+    setTerminalApp: (input: { pref: TerminalPref }) => Promise<TerminalAppState>
+    setEditorApp: (input: { pref: EditorPref }) => Promise<EditorAppState>
     saveSession: (input: { session: SessionState }) => Promise<void>
     addRecentRepo: (input: { repoPath: string }) => Promise<string[]>
     clearRecentRepos: () => Promise<void>
@@ -204,7 +235,16 @@ export function createAppRouter(handlers: AppRpcHandlers) {
     }),
     repo: t.router({
       openDialog: p.input(EmptyInput).query(() => handlers.repo.openDialog()),
+      cloneParentDialog: p.input(EmptyInput).query(() => handlers.repo.cloneParentDialog()),
       probe: p.input(CwdInput).query(({ input }) => handlers.repo.probe(input)),
+      clone: p
+        .input(
+          v.object({ operationId: v.string(), url: v.string(), parentPath: v.string(), directoryName: v.string() }),
+        )
+        .mutation(({ input }) => handlers.repo.clone(input)),
+      abortClone: p
+        .input(v.object({ operationId: v.string() }))
+        .mutation(({ input }) => handlers.repo.abortClone(input)),
       snapshot: p.input(CwdInput).query(({ input }) => handlers.repo.snapshot(input)),
       pullRequests: p
         .input(
@@ -261,10 +301,8 @@ export function createAppRouter(handlers: AppRpcHandlers) {
         .input(v.object({ cwd: v.string(), branch: v.optional(v.string()) }))
         .mutation(({ input }) => handlers.repo.openGitHub(input)),
       openInFinder: p.input(PathInput).mutation(({ input }) => handlers.repo.openInFinder(input)),
-      openInGhostty: p.input(PathInput).mutation(({ input }) => handlers.repo.openInGhostty(input)),
-      openInVSCode: p.input(PathInput).mutation(({ input }) => handlers.repo.openInVSCode(input)),
-      ghosttyInstalled: p.input(EmptyInput).query(() => handlers.repo.ghosttyInstalled()),
-      vscodeInstalled: p.input(EmptyInput).query(() => handlers.repo.vscodeInstalled()),
+      openTerminal: p.input(PathInput).mutation(({ input }) => handlers.repo.openTerminal(input)),
+      openEditor: p.input(PathInput).mutation(({ input }) => handlers.repo.openEditor(input)),
     }),
     theme: t.router({
       get: p.input(EmptyInput).query(() => handlers.theme.get()),
@@ -283,6 +321,12 @@ export function createAppRouter(handlers: AppRpcHandlers) {
       setGlobalShortcut: p
         .input(v.object({ accelerator: v.string() }))
         .mutation(({ input }) => handlers.settings.setGlobalShortcut(input)),
+      setTerminalApp: p
+        .input(v.object({ pref: v.picklist(['auto', 'ghostty', 'terminal']) }))
+        .mutation(({ input }) => handlers.settings.setTerminalApp(input)),
+      setEditorApp: p
+        .input(v.object({ pref: v.picklist(['auto', 'vscode', 'cursor', 'windsurf']) }))
+        .mutation(({ input }) => handlers.settings.setEditorApp(input)),
       saveSession: p
         .input(
           v.object({

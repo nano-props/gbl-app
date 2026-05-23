@@ -1,4 +1,4 @@
-import { Code2, GitBranch, GitPullRequest, Terminal } from 'lucide-react'
+import { Code2, GitBranch, GitPullRequest, Terminal, type LucideIcon } from 'lucide-react'
 import { Modal } from '#/renderer/components/Modal.tsx'
 import { Badge } from '#/renderer/components/ui/badge.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
@@ -9,9 +9,17 @@ interface Props {
   onClose: () => void
 }
 
-const DEPENDENCIES = [
+interface DependencyItem {
+  Icon: LucideIcon
+  badgeVariant: BadgeVariant
+  badgeKey: string
+  titleKey: string
+  commandKey: string
+  bodyKey: string
+}
+
+const CORE: DependencyItem[] = [
   {
-    id: 'git',
     Icon: GitBranch,
     badgeVariant: 'warning',
     badgeKey: 'dependencies.required',
@@ -20,7 +28,6 @@ const DEPENDENCIES = [
     bodyKey: 'dependencies.git.body',
   },
   {
-    id: 'gh',
     Icon: GitPullRequest,
     badgeVariant: 'brand',
     badgeKey: 'dependencies.optional',
@@ -28,8 +35,10 @@ const DEPENDENCIES = [
     commandKey: 'dependencies.gh.command',
     bodyKey: 'dependencies.gh.body',
   },
+]
+
+const TERMINALS: DependencyItem[] = [
   {
-    id: 'ghostty',
     Icon: Terminal,
     badgeVariant: 'brand',
     badgeKey: 'dependencies.optional',
@@ -38,7 +47,17 @@ const DEPENDENCIES = [
     bodyKey: 'dependencies.ghostty.body',
   },
   {
-    id: 'vscode',
+    Icon: Terminal,
+    badgeVariant: 'brand',
+    badgeKey: 'dependencies.optional',
+    titleKey: 'dependencies.terminal.title',
+    commandKey: 'dependencies.terminal.command',
+    bodyKey: 'dependencies.terminal.body',
+  },
+]
+
+const EDITORS: DependencyItem[] = [
+  {
     Icon: Code2,
     badgeVariant: 'brand',
     badgeKey: 'dependencies.optional',
@@ -46,52 +65,78 @@ const DEPENDENCIES = [
     commandKey: 'dependencies.vscode.command',
     bodyKey: 'dependencies.vscode.body',
   },
-] satisfies {
-  id: string
-  Icon: typeof GitBranch
-  badgeVariant: BadgeVariant
-  badgeKey: string
-  titleKey: string
-  commandKey: string
-  bodyKey: string
-}[]
+  {
+    Icon: Code2,
+    badgeVariant: 'brand',
+    badgeKey: 'dependencies.optional',
+    titleKey: 'dependencies.cursor.title',
+    commandKey: 'dependencies.cursor.command',
+    bodyKey: 'dependencies.cursor.body',
+  },
+  {
+    Icon: Code2,
+    badgeVariant: 'brand',
+    badgeKey: 'dependencies.optional',
+    titleKey: 'dependencies.windsurf.title',
+    commandKey: 'dependencies.windsurf.command',
+    bodyKey: 'dependencies.windsurf.body',
+  },
+]
 
 export function DependenciesOverlay({ open, onClose }: Props) {
   const t = useT()
   return (
     <Modal open={open} title={t('dependencies.title')} onClose={onClose} widthClass="sm:max-w-2xl">
-      <div className="space-y-3">
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {DEPENDENCIES.map((dependency) => (
-            <DependencyCard key={dependency.id} dependency={dependency} />
-          ))}
-        </ul>
-        <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground/75">{t('dependencies.intro')}</p>
+      <div className="-m-4 space-y-5 bg-muted/30 px-5 py-4">
+        <p className="px-3 text-xs leading-snug text-muted-foreground">{t('dependencies.intro')}</p>
+        <DependencyList items={CORE} />
+        <DependencySection label={t('dependencies.group.terminals')} hint={t('dependencies.group.terminals-hint')}>
+          <DependencyList items={TERMINALS} />
+        </DependencySection>
+        <DependencySection label={t('dependencies.group.editors')} hint={t('dependencies.group.editors-hint')}>
+          <DependencyList items={EDITORS} />
+        </DependencySection>
       </div>
     </Modal>
   )
 }
 
-function DependencyCard({ dependency }: { dependency: (typeof DEPENDENCIES)[number] }) {
-  const t = useT()
-  const Icon = dependency.Icon
+function DependencySection({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <li className="min-w-0 rounded-lg border border-border/70 bg-muted/25 px-3 py-2.5">
-      <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground shadow-sm ring-1 ring-border/60">
-          <Icon size={14} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="min-w-0 truncate text-sm font-semibold text-foreground">{t(dependency.titleKey)}</span>
-            <Badge variant={dependency.badgeVariant}>{t(dependency.badgeKey)}</Badge>
-          </div>
-          <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">{t(dependency.commandKey)}</div>
-        </div>
+    <section className="space-y-1.5">
+      <div className="px-3">
+        <div className="text-[11px] font-medium text-muted-foreground">{label}</div>
+        {hint && <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground/80">{hint}</div>}
       </div>
-      <p className="mt-2 text-xs leading-snug text-muted-foreground" title={t(dependency.bodyKey)}>
-        {t(dependency.bodyKey)}
-      </p>
+      {children}
+    </section>
+  )
+}
+
+function DependencyList({ items }: { items: DependencyItem[] }) {
+  return (
+    <ul className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
+      {items.map((item) => (
+        <DependencyRow key={item.titleKey} item={item} />
+      ))}
+    </ul>
+  )
+}
+
+function DependencyRow({ item }: { item: DependencyItem }) {
+  const t = useT()
+  const Icon = item.Icon
+  return (
+    <li className="flex min-h-14 items-center gap-3 px-3 py-2.5 [&+&]:border-t [&+&]:border-separator">
+      <Icon size={16} className="shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="truncate text-sm font-medium text-foreground">{t(item.titleKey)}</span>
+          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{t(item.commandKey)}</span>
+        </div>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">{t(item.bodyKey)}</p>
+      </div>
+      <Badge variant={item.badgeVariant}>{t(item.badgeKey)}</Badge>
     </li>
   )
 }

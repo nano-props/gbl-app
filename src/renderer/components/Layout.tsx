@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from 'react'
+import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 import { cn } from '#/renderer/lib/cn.ts'
 
 interface ShellProps {
@@ -81,7 +82,7 @@ export function RepoWorkspacePane({ children, border = false }: PaneProps) {
 }
 
 export function ScrollPane({ children }: ShellProps) {
-  return <div className="min-h-0 flex-1 overflow-y-auto scroll-thin">{children}</div>
+  return <ScrollArea className="min-h-0 flex-1">{children}</ScrollArea>
 }
 
 export function EmptyState({ icon, title, body, tone = 'neutral' }: EmptyStateProps) {

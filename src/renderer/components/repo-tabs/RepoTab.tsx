@@ -90,6 +90,9 @@ export function RepoTab({
       </button>
       <button
         type="button"
+        // Keep the tablist on roving tab focus; close stays pointer/menu
+        // accessible instead of adding an extra Tab stop inside every tab.
+        tabIndex={-1}
         aria-label={closeLabel}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {

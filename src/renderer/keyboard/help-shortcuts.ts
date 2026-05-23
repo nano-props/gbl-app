@@ -28,8 +28,8 @@ export function helpShortcutSections(globalShortcut: string): HelpShortcutSectio
         { combos: [['Enter']], labelKey: 'help.row.checkout' },
         { combos: [['p']], labelKey: 'action.pull' },
         { combos: [['⇧', 'P']], labelKey: 'action.push' },
-        { combos: [['g']], labelKey: 'worktrees.open-in-ghostty-label' },
-        { combos: [['v']], labelKey: 'worktrees.open-in-vs-code-label' },
+        { combos: [['g']], labelKey: 'worktrees.open-in-terminal-label' },
+        { combos: [['v']], labelKey: 'worktrees.open-in-editor-label' },
         { combos: [['⇧', 'G']], labelKey: 'action.github' },
       ],
     },
@@ -46,6 +46,7 @@ export function helpShortcutSections(globalShortcut: string): HelpShortcutSectio
       titleKey: 'help.section.app',
       rows: [
         { combos: [['⌘', 'O']], labelKey: 'help.row.open-repo' },
+        { combos: [['⌘', '⇧', 'O']], labelKey: 'help.row.clone-repo' },
         { combos: [acceleratorToKeyLabels(globalShortcut)], labelKey: 'help.row.activate-window' },
         { combos: [['⌘', '⇧', 'W']], labelKey: 'help.row.close-repo' },
         { combos: [['⌘', 'R']], labelKey: 'help.row.refresh' },

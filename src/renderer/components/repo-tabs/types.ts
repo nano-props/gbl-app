@@ -11,6 +11,10 @@ export interface RepoTabStripLabels {
   close: string
   dragToReorder: string
   open: string
+  openLocal: string
+  openLocalShortcut: string | null
+  clone: string
+  cloneShortcut: string | null
   missingTitle: string
   missingDismiss: string
 }

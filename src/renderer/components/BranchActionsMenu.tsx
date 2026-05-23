@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '#/renderer/components/ui/dropdown-menu.tsx'
 import { useBranchActionItems, type BranchActionItem } from '#/renderer/hooks/useBranchActionItems.ts'
@@ -15,18 +16,11 @@ import type { BranchInfo } from '#/renderer/types.ts'
 interface Props {
   repo: RepoState
   branch: BranchInfo
-  ghosttyInstalled: boolean
-  vscodeInstalled: boolean
 }
 
-export function BranchActionsMenu({ repo, branch, ghosttyInstalled, vscodeInstalled }: Props) {
+export function BranchActionsMenu({ repo, branch }: Props) {
   const t = useT()
-  const { busy, patchItems, mainItems, destructiveItems, dialogs } = useBranchActionItems(
-    repo,
-    branch,
-    ghosttyInstalled,
-    vscodeInstalled,
-  )
+  const { busy, patchItems, mainItems, destructiveItems, dialogs } = useBranchActionItems(repo, branch)
   const visiblePatchItems = patchItems.filter((item) => item.visible)
   const visibleMainItems = mainItems.filter((item) => item.visible)
   const visibleDestructiveItems = destructiveItems.filter((item) => item.visible)
@@ -75,16 +69,16 @@ export function BranchActionsMenu({ repo, branch, ghosttyInstalled, vscodeInstal
 }
 
 function BranchActionMenuItem({ item, busy }: { item: BranchActionItem; busy: BranchActionItem['id'] | null }) {
-  const Icon = item.Icon
-
   return (
     <DropdownMenuItem
       disabled={item.disabled}
       onClick={item.onSelect}
       variant={item.destructive ? 'destructive' : 'default'}
+      className={item.shortcut ? 'whitespace-nowrap' : undefined}
     >
-      {busy === item.id ? <Loader2 className="animate-spin" /> : <Icon />}
+      {busy === item.id ? <Loader2 className="animate-spin" /> : item.icon}
       {item.label}
+      {item.shortcut && <DropdownMenuShortcut>{item.shortcut}</DropdownMenuShortcut>}
     </DropdownMenuItem>
   )
 }

@@ -359,15 +359,11 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
         priority: 100,
       })
       if (!result) return
-      try {
-        if (!result.ok && result.message === 'cancelled') return
-        get().setLastResult(id, result, token)
-        if (!result.ok && result.message === 'error.network-op-in-progress') return
-        await get().refreshAll(id, { token })
-        if (result.ok) get().clearFetchFailed(id, token)
-      } catch (err) {
-        throw err
-      }
+      if (!result.ok && result.message === 'cancelled') return
+      get().setLastResult(id, result, token)
+      if (!result.ok && result.message === 'error.network-op-in-progress') return
+      await get().refreshAll(id, { token })
+      if (result.ok) get().clearFetchFailed(id, token)
     },
 
     async backgroundFetch(id: string) {

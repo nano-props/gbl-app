@@ -3,11 +3,7 @@
 // title bar like a native window title.
 //
 // Uses the project's `--font-sans` stack (system UI face, e.g. SF Pro
-// on macOS) at weight 500. We deliberately do NOT use `--font-display`
-// here: that stack is Manrope, and `@font-face` only ships the 800
-// weight asset — asking for 500 would either synthetic-bold to 800
-// or silently fall back, which is what made earlier revisions of
-// the wordmark read as bold.
+// on macOS) at weight 500.
 
 import { cn } from '#/renderer/lib/cn.ts'
 

@@ -7,7 +7,7 @@
 // eventually open stays in sync.
 
 import { create } from 'zustand'
-import type { GlobalShortcutState, SessionState } from '#/renderer/types-bridge.ts'
+import type { EditorPref, GlobalShortcutState, SessionState, TerminalPref } from '#/renderer/types-bridge.ts'
 import { DEFAULT_GLOBAL_SHORTCUT } from '#/shared/accelerator.ts'
 import { onRpcEventType, rpc } from '#/renderer/rpc.ts'
 
@@ -16,6 +16,10 @@ interface SettingsStore {
   shortcutsDisabled: boolean
   globalShortcut: string
   globalShortcutRegistered: boolean
+  terminalApp: TerminalPref
+  terminalAvailable: boolean
+  editorApp: EditorPref
+  editorAvailable: boolean
   /** Saved session from previous run — consumed once by App.tsx during
    *  hydration, then irrelevant. We keep it in state for diagnostics. */
   savedSession: SessionState
@@ -24,6 +28,8 @@ interface SettingsStore {
   setFetchInterval: (sec: number) => Promise<void>
   setShortcutsDisabled: (disabled: boolean) => Promise<void>
   setGlobalShortcut: (accelerator: string) => Promise<GlobalShortcutState>
+  setTerminalApp: (pref: TerminalPref) => Promise<void>
+  setEditorApp: (pref: EditorPref) => Promise<void>
 }
 
 let unsubscribers: Array<() => void> = []
@@ -43,6 +49,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   shortcutsDisabled: false,
   globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
   globalShortcutRegistered: false,
+  terminalApp: 'auto',
+  terminalAvailable: true,
+  editorApp: 'auto',
+  editorAvailable: false,
   savedSession: { openRepos: [], activeRepo: null, detailCollapsed: true },
 
   async hydrate() {
@@ -54,6 +64,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       shortcutsDisabled: snap.shortcutsDisabled,
       globalShortcut: snap.globalShortcut,
       globalShortcutRegistered: snap.globalShortcutRegistered,
+      terminalApp: snap.terminalApp,
+      terminalAvailable: snap.terminalAvailable,
+      editorApp: snap.editorApp,
+      editorAvailable: snap.editorAvailable,
       savedSession: snap.session,
     })
     const nextUnsubscribers: Array<() => void> = []
@@ -71,6 +85,20 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
             s.globalShortcut === accelerator && s.globalShortcutRegistered === registered
               ? s
               : { globalShortcut: accelerator, globalShortcutRegistered: registered },
+          )
+        }),
+        onRpcEventType('terminal-app-changed', (event) => {
+          set((s) =>
+            s.terminalApp === event.pref && s.terminalAvailable === event.available
+              ? s
+              : { terminalApp: event.pref, terminalAvailable: event.available },
+          )
+        }),
+        onRpcEventType('editor-app-changed', (event) => {
+          set((s) =>
+            s.editorApp === event.pref && s.editorAvailable === event.available
+              ? s
+              : { editorApp: event.pref, editorAvailable: event.available },
           )
         }),
       )
@@ -106,5 +134,23 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
         : { globalShortcut: state.accelerator, globalShortcutRegistered: state.registered },
     )
     return state
+  },
+
+  async setTerminalApp(pref) {
+    const state = await rpc.settings.setTerminalApp.mutate({ pref })
+    set((s) =>
+      s.terminalApp === state.pref && s.terminalAvailable === state.available
+        ? s
+        : { terminalApp: state.pref, terminalAvailable: state.available },
+    )
+  },
+
+  async setEditorApp(pref) {
+    const state = await rpc.settings.setEditorApp.mutate({ pref })
+    set((s) =>
+      s.editorApp === state.pref && s.editorAvailable === state.available
+        ? s
+        : { editorApp: state.pref, editorAvailable: state.available },
+    )
   },
 }))

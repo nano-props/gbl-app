@@ -1,17 +1,10 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  ClipboardCopy,
-  Code2,
-  ExternalLink,
-  GitBranch,
-  Terminal,
-  Trash2,
-  type LucideIcon,
-} from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ArrowDown, ArrowUp, ClipboardCopy, GitBranch, GitPullRequest, Trash2 } from 'lucide-react'
+import { createElement, type ReactNode } from 'react'
+import { GitHubOutlineIcon } from '#/renderer/components/GitHubOutlineIcon.tsx'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
+import { useSettingsStore } from '#/renderer/stores/settings.ts'
+import { EditorAppIcon, TerminalAppIcon } from '#/renderer/components/ExternalAppIcon/index.tsx'
 import { useBranchActions, type BranchUiAction } from '#/renderer/hooks/useBranchActions.tsx'
 import type { BranchInfo } from '#/renderer/types.ts'
 
@@ -23,7 +16,8 @@ export interface BranchActionItem {
   disabled: boolean
   visible: boolean
   destructive?: boolean
-  Icon: LucideIcon
+  shortcut?: string
+  icon: ReactNode
   onSelect: () => void
 }
 
@@ -35,14 +29,14 @@ export interface BranchActionItemGroups {
   dialogs: ReactNode
 }
 
-export function useBranchActionItems(
-  repo: RepoState,
-  branch: BranchInfo,
-  ghosttyInstalled: boolean,
-  vscodeInstalled: boolean,
-): BranchActionItemGroups {
+export function useBranchActionItems(repo: RepoState, branch: BranchInfo): BranchActionItemGroups {
   const t = useT()
+  const terminalApp = useSettingsStore((s) => s.terminalApp)
+  const terminalAvailable = useSettingsStore((s) => s.terminalAvailable)
+  const editorApp = useSettingsStore((s) => s.editorApp)
+  const editorAvailable = useSettingsStore((s) => s.editorAvailable)
   const { busy, capabilities, actions, dialogs } = useBranchActions(repo, branch)
+  const githubIcon = branch.pullRequest ? GitPullRequest : GitHubOutlineIcon
 
   const patchItems: BranchActionItem[] = capabilities.canCopyPatch
     ? [
@@ -53,7 +47,7 @@ export function useBranchActionItems(
           ariaLabel: t('status.copy-patch-title'),
           disabled: !!busy,
           visible: true,
-          Icon: ClipboardCopy,
+          icon: createElement(ClipboardCopy),
           onSelect: actions.copyPatch,
         },
       ]
@@ -65,7 +59,8 @@ export function useBranchActionItems(
       label: t('action.checkout'),
       disabled: !!busy,
       visible: !capabilities.isCurrent && !capabilities.checkedOutInAnotherWorktree,
-      Icon: GitBranch,
+      shortcut: '↩',
+      icon: createElement(GitBranch),
       onSelect: actions.checkout,
     },
     {
@@ -73,7 +68,8 @@ export function useBranchActionItems(
       label: t('action.pull'),
       disabled: !!busy,
       visible: capabilities.canPull,
-      Icon: ArrowDown,
+      shortcut: 'P',
+      icon: createElement(ArrowDown),
       onSelect: actions.pull,
     },
     {
@@ -81,30 +77,33 @@ export function useBranchActionItems(
       label: t('action.push'),
       disabled: !!busy,
       visible: true,
-      Icon: ArrowUp,
+      shortcut: '⇧P',
+      icon: createElement(ArrowUp),
       onSelect: actions.push,
     },
-    ...(capabilities.canOpenGhostty && ghosttyInstalled
+    ...(capabilities.canOpenTerminal && terminalAvailable
       ? [
           {
-            id: 'ghostty' as const,
-            label: t('worktrees.open-in-ghostty-label'),
+            id: 'terminal' as const,
+            label: t('worktrees.open-in-terminal-label'),
             disabled: !!busy,
             visible: true,
-            Icon: Terminal,
-            onSelect: actions.openGhostty,
+            shortcut: 'G',
+            icon: createElement(TerminalAppIcon, { pref: terminalApp }),
+            onSelect: actions.openTerminal,
           },
         ]
       : []),
-    ...(capabilities.canOpenVSCode && vscodeInstalled
+    ...(capabilities.canOpenEditor && editorAvailable
       ? [
           {
-            id: 'vscode' as const,
-            label: t('worktrees.open-in-vs-code-label'),
+            id: 'editor' as const,
+            label: t('worktrees.open-in-editor-label'),
             disabled: !!busy,
             visible: true,
-            Icon: Code2,
-            onSelect: actions.openVSCode,
+            shortcut: 'V',
+            icon: createElement(EditorAppIcon, { pref: editorApp }),
+            onSelect: actions.openEditor,
           },
         ]
       : []),
@@ -113,7 +112,8 @@ export function useBranchActionItems(
       label: branch.pullRequest ? t('action.github-pr', { n: branch.pullRequest.number }) : t('action.github'),
       disabled: !!busy,
       visible: true,
-      Icon: ExternalLink,
+      shortcut: '⇧G',
+      icon: createElement(githubIcon),
       onSelect: actions.openGitHub,
     },
   ]
@@ -127,7 +127,7 @@ export function useBranchActionItems(
             disabled: !!busy,
             visible: true,
             destructive: true,
-            Icon: Trash2,
+            icon: createElement(Trash2),
             onSelect: actions.requestRemoveWorktree,
           },
         ]
@@ -140,7 +140,7 @@ export function useBranchActionItems(
             disabled: !!busy,
             visible: true,
             destructive: true,
-            Icon: Trash2,
+            icon: createElement(Trash2),
             onSelect: actions.requestDeleteBranch,
           },
         ]

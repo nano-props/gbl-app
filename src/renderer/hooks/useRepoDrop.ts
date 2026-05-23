@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { goblin } from '#/renderer/rpc.ts'
+import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 
 interface Options {
   /** True when an overlay (Settings/Help) is up. While blocked, the
@@ -15,6 +16,10 @@ interface Options {
 
 function hasFiles(event: DragEvent<HTMLDivElement>): boolean {
   return event.dataTransfer.types.includes('Files')
+}
+
+function isDropBlocked(blocked: boolean): boolean {
+  return blocked || isShortcutBlockingLayerOpen()
 }
 
 export function useRepoDrop({ blocked }: Options) {
@@ -37,14 +42,14 @@ export function useRepoDrop({ blocked }: Options) {
   const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
     if (!hasFiles(event)) return
     event.preventDefault()
-    if (blockedRef.current) return
+    if (isDropBlocked(blockedRef.current)) return
     setActive(true)
   }
 
   const onDragOver = (event: DragEvent<HTMLDivElement>) => {
     if (!hasFiles(event)) return
     event.preventDefault()
-    if (blockedRef.current) return
+    if (isDropBlocked(blockedRef.current)) return
     event.dataTransfer.dropEffect = 'copy'
   }
 
@@ -61,7 +66,7 @@ export function useRepoDrop({ blocked }: Options) {
     if (!hasFiles(event)) return
     event.preventDefault()
     setActive(false)
-    if (blockedRef.current) return
+    if (isDropBlocked(blockedRef.current)) return
     const paths = Array.from(event.dataTransfer.files)
       .map((file) => goblin.pathForFile(file))
       .filter((path) => path.length > 0)

@@ -4,7 +4,7 @@
 // in the terminal.
 
 import { useT } from '#/renderer/stores/i18n.ts'
-import { EmptyState, ScrollPane } from '#/renderer/components/Layout.tsx'
+import { EmptyState } from '#/renderer/components/Layout.tsx'
 import { FilePathText } from '#/renderer/components/FilePathText.tsx'
 import type { StatusEntry, WorktreeStatus } from '#/renderer/types.ts'
 
@@ -51,21 +51,17 @@ export function StatusList({
     return <EmptyState icon="✓" title={t(emptyTitleKey)} body={t(emptyBodyKey)} tone="success" />
   }
 
-  return (
-    <ScrollPane>
-      {dirtyWorktrees.map((wt) => (
-        <ul key={wt.path} className="divide-y divide-separator border-b border-separator last:border-b-0">
-          {wt.entries.map((entry) => (
-            <li
-              key={`${wt.path}-${entry.path}`}
-              className="grid grid-cols-[2ch_minmax(0,1fr)] items-center gap-4 px-4 py-2"
-            >
-              <StatusCode entry={entry} />
-              <FilePathText path={entry.path} />
-            </li>
-          ))}
-        </ul>
+  return dirtyWorktrees.map((wt) => (
+    <ul key={wt.path} className="divide-y divide-separator border-b border-separator last:border-b-0">
+      {wt.entries.map((entry) => (
+        <li
+          key={`${wt.path}-${entry.path}`}
+          className="grid grid-cols-[2ch_minmax(0,1fr)] items-center gap-4 px-4 py-2"
+        >
+          <StatusCode entry={entry} />
+          <FilePathText path={entry.path} />
+        </li>
       ))}
-    </ScrollPane>
-  )
+    </ul>
+  ))
 }

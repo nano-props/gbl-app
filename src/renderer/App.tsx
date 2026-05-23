@@ -46,7 +46,9 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
+  const [cloneOpen, setCloneOpen] = useState(false)
   const openSettings = useCallback(() => setSettingsOpen(true), [])
+  const openCloneRepo = useCallback(() => setCloneOpen(true), [])
   const showHelp = useCallback(() => {
     if (!shortcutsDisabled) setHelpOpen(true)
   }, [shortcutsDisabled])
@@ -55,7 +57,7 @@ export function App() {
   // keyboard shortcuts and the file-drop dashed border. useKeyboard
   // additionally OR's in commit-detail, which is per-repo state read
   // from the store inside the hook itself.
-  const modalOpen = settingsOpen || helpOpen || dependenciesOpen
+  const modalOpen = settingsOpen || helpOpen || dependenciesOpen || cloneOpen
   const repoDrop = useRepoDrop({ blocked: modalOpen })
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export function App() {
   useSessionPersistence()
   useSettingsWriteErrorToast()
   useBackgroundFetch()
-  useMenuActions({ openSettings, showHelp, isOverlayOpen: () => modalOpen })
+  useMenuActions({ openSettings, openCloneRepo, showHelp, isOverlayOpen: () => modalOpen })
 
   useKeyboard({
     onShowHelp: showHelp,
@@ -90,7 +92,7 @@ export function App() {
         onDrop={repoDrop.onDrop}
       >
         <Topbar onOpenSettings={openSettings} onShowDependencies={showDependencies} onShowHelp={showHelp} />
-        <RepoTabs />
+        <RepoTabs cloneOpen={cloneOpen} onCloneOpenChange={setCloneOpen} />
         <main className="flex flex-1 min-h-0 min-w-0">
           <ErrorBoundary resetKey={activeId}>
             {activeId ? (

@@ -33,7 +33,7 @@
       }
 
       @media (prefers-color-scheme: dark) {
-        :root {
+        html:not([data-theme='light']) {
           --bg: #111111;
           --bg-card: #1a1a1a;
           --text: #e8e5e0;
@@ -43,6 +43,17 @@
           --border: #2a2a2a;
           --gradient: linear-gradient(135deg, #151525 0%, #121e22 50%, #141e30 100%);
         }
+      }
+
+      html[data-theme='dark'] {
+        --bg: #111111;
+        --bg-card: #1a1a1a;
+        --text: #e8e5e0;
+        --text-secondary: #999;
+        --accent: #5b9bf8;
+        --accent-light: #1a2440;
+        --border: #2a2a2a;
+        --gradient: linear-gradient(135deg, #151525 0%, #121e22 50%, #141e30 100%);
       }
 
       html {
@@ -75,10 +86,15 @@
       }
 
       @media (prefers-color-scheme: dark) {
-        nav {
+        html:not([data-theme='light']) nav {
           background: rgba(17, 17, 17, 0.8);
           box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
         }
+      }
+
+      html[data-theme='dark'] nav {
+        background: rgba(17, 17, 17, 0.8);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
       }
 
       .nav-brand {
@@ -100,12 +116,19 @@
       .nav-right {
         display: flex;
         align-items: center;
-        gap: 28px;
+        gap: 8px;
       }
 
       .nav-links {
         display: flex;
         gap: 28px;
+      }
+
+      .sep {
+        width: 1px;
+        height: 16px;
+        background: var(--border);
+        margin: 0 4px;
       }
 
       .nav-links a {
@@ -121,27 +144,31 @@
       }
 
       .lang-toggle {
-        display: flex;
-        align-items: center;
-        gap: 0;
-        background: var(--bg-card);
+        display: inline-flex;
         border: 1px solid var(--border);
         border-radius: 8px;
         overflow: hidden;
-        cursor: pointer;
-        flex-shrink: 0;
+        background: var(--bg-card);
       }
 
       .lang-toggle button {
-        padding: 5px 12px;
-        font-size: 13px;
-        font-weight: 500;
-        border: none;
+        border: 0;
         background: transparent;
         color: var(--text-secondary);
+        padding: 0 12px;
+        height: 34px;
         cursor: pointer;
+        font:
+          600 12px/1 ui-monospace,
+          'SF Mono',
+          Menlo,
+          monospace;
+        letter-spacing: 0.06em;
         transition: all 0.2s;
-        line-height: 1;
+      }
+
+      .lang-toggle button + button {
+        border-left: 1px solid var(--border);
       }
 
       .lang-toggle button.active {
@@ -367,24 +394,43 @@
       }
 
       @media (prefers-color-scheme: dark) {
-        .fi-blue {
+        html:not([data-theme='light']) .fi-blue {
           background: #1a2440;
         }
-        .fi-indigo {
+        html:not([data-theme='light']) .fi-indigo {
           background: #1e1b3a;
         }
-        .fi-sky {
+        html:not([data-theme='light']) .fi-sky {
           background: #122030;
         }
-        .fi-amber {
+        html:not([data-theme='light']) .fi-amber {
           background: #2e2418;
         }
-        .fi-green {
+        html:not([data-theme='light']) .fi-green {
           background: #1a2e1e;
         }
-        .fi-purple {
+        html:not([data-theme='light']) .fi-purple {
           background: #2a2040;
         }
+      }
+
+      html[data-theme='dark'] .fi-blue {
+        background: #1a2440;
+      }
+      html[data-theme='dark'] .fi-indigo {
+        background: #1e1b3a;
+      }
+      html[data-theme='dark'] .fi-sky {
+        background: #122030;
+      }
+      html[data-theme='dark'] .fi-amber {
+        background: #2e2418;
+      }
+      html[data-theme='dark'] .fi-green {
+        background: #1a2e1e;
+      }
+      html[data-theme='dark'] .fi-purple {
+        background: #2a2040;
       }
 
       .feature-card h3 {
@@ -463,10 +509,8 @@
         background: var(--gradient);
         border-radius: 24px;
         padding: 80px 24px;
-        margin: 0 24px 100px;
+        margin: 100px auto;
         max-width: 960px;
-        margin-left: auto;
-        margin-right: auto;
       }
 
       .cta-section h2 {
@@ -538,18 +582,70 @@
         }
 
         .cta-section {
-          margin: 0 16px 64px;
+          margin: 64px 16px;
           padding: 56px 20px;
         }
 
         .step {
           gap: 16px;
         }
+      }
 
-        .lang-toggle button {
-          padding: 5px 8px;
-          font-size: 12px;
+      /* THEME TOGGLE */
+      .theme-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          color 0.2s;
+        flex-shrink: 0;
+      }
+
+      .theme-toggle:hover {
+        border-color: var(--text-secondary);
+        color: var(--text);
+      }
+
+      .theme-toggle svg {
+        width: 15px;
+        height: 15px;
+      }
+
+      .theme-toggle .icon-sun {
+        display: none;
+      }
+      .theme-toggle .icon-moon {
+        display: block;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme='light']) .theme-toggle .icon-sun {
+          display: block;
         }
+        html:not([data-theme='light']) .theme-toggle .icon-moon {
+          display: none;
+        }
+      }
+
+      html[data-theme='dark'] .theme-toggle .icon-sun {
+        display: block;
+      }
+      html[data-theme='dark'] .theme-toggle .icon-moon {
+        display: none;
+      }
+      html[data-theme='light'] .theme-toggle .icon-sun {
+        display: none;
+      }
+      html[data-theme='light'] .theme-toggle .icon-moon {
+        display: block;
       }
 
       /* ANIMATE ON SCROLL */
@@ -580,12 +676,40 @@
           <a href="#how-it-works" data-i18n="nav_how">How It Works</a>
           <a href="https://github.com/nano-props/goblin" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
+        <span class="sep"></span>
         <div class="lang-toggle">
-          <button id="lang-en" class="active" onclick="setLang('en')">English</button>
-          <button id="lang-zh" onclick="setLang('zh')">中文</button>
-          <button id="lang-ko" onclick="setLang('ko')">한국어</button>
-          <button id="lang-ja" onclick="setLang('ja')">日本語</button>
+          <button id="lang-en" lang="en" class="active" onclick="setLang('en')">EN</button>
+          <button id="lang-zh" lang="zh" onclick="setLang('zh')">中</button>
+          <button id="lang-ko" lang="ko" onclick="setLang('ko')">한</button>
+          <button id="lang-ja" lang="ja" onclick="setLang('ja')">日</button>
         </div>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+          <svg
+            class="icon-sun"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+            />
+          </svg>
+          <svg
+            class="icon-moon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
       </div>
     </nav>
 
@@ -661,7 +785,9 @@
     <section id="features">
       <div class="container">
         <div class="section-label" data-i18n="features_label">Features</div>
-        <h2 class="section-title" data-i18n-html="features_title">Everything about your branches,<br />nothing in the way</h2>
+        <h2 class="section-title" data-i18n-html="features_title">
+          Everything about your branches,<br />nothing in the way
+        </h2>
         <p class="section-desc" data-i18n="features_desc">
           Goblin gives you a bird's-eye view of every branch, worktree, and pull request across all your repositories.
         </p>
@@ -974,13 +1100,12 @@
           f3_title: 'Pull Request 上下文',
           f3_desc: '在每个分支旁直接查看 PR 状态、Review 进度、CI 检查结果和合并就绪状态——由 GitHub CLI 驱动。',
           f4_title: '提交日志与状态',
-          f4_desc:
-            '查看带 diff 的提交历史，按分支检查工作区变更，并将补丁复制到剪贴板。自动 fetch 保持一切最新。',
+          f4_desc: '查看带 diff 的提交历史，按分支检查工作区变更，并将补丁复制到剪贴板。自动 fetch 保持一切最新。',
           f5_title: '键盘优先',
-          f5_desc:
-            '用 j/k 浏览分支，用方括号切换仓库，切换视图，触发操作——全程键盘完成。可配置的全局快捷键唤醒窗口。',
+          f5_desc: '用 j/k 浏览分支，用方括号切换仓库，切换视图，触发操作——全程键盘完成。可配置的全局快捷键唤醒窗口。',
           f6_title: '多语言与主题',
-          f6_desc: '支持英语、中文、韩语、日语并自动检测系统语言。在浅色、深色和跟随系统主题间切换——所有偏好跨会话保持。',
+          f6_desc:
+            '支持英语、中文、韩语、日语并自动检测系统语言。在浅色、深色和跟随系统主题间切换——所有偏好跨会话保持。',
           how_label: '使用方式',
           how_title: '三步上手，全局纵览。',
           how_desc: '把仓库交给 Goblin，即刻获得分支、状态和 PR 的实时概览。',
@@ -1008,8 +1133,7 @@
           btn_github: 'GitHub에서 보기',
           features_label: '기능',
           features_title: '브랜치에 대한 모든 것,<br/>방해는 제로',
-          features_desc:
-            'Goblin은 모든 리포지토리의 브랜치, 워크트리, Pull Request를 한눈에 보여줍니다.',
+          features_desc: 'Goblin은 모든 리포지토리의 브랜치, 워크트리, Pull Request를 한눈에 보여줍니다.',
           f1_title: '멀티 리포 탭',
           f1_desc:
             '여러 Git 리포지토리를 탭으로 열고, 드래그로 순서를 바꾸고, 다음 실행 시 이전 세션을 복원합니다. 폴더를 드롭해서 추가할 수 있습니다.',
@@ -1056,8 +1180,7 @@
           btn_github: 'GitHub で見る',
           features_label: '機能',
           features_title: 'ブランチのすべてを、<br/>邪魔なく',
-          features_desc:
-            'Goblin はすべてのリポジトリのブランチ、ワークツリー、Pull Request を俯瞰できます。',
+          features_desc: 'Goblin はすべてのリポジトリのブランチ、ワークツリー、Pull Request を俯瞰できます。',
           f1_title: 'マルチリポタブ',
           f1_desc:
             '複数の Git リポジトリをタブで開き、ドラッグで並べ替え、次回起動時に前回のセッションを復元します。フォルダをドロップして追加できます。',
@@ -1078,8 +1201,7 @@
             '英語、中国語、韓国語、日本語を自動検出でサポート。ライト、ダーク、システムテーマを切り替え — すべての設定がセッション間で保持されます。',
           how_label: '使い方',
           how_title: '3ステップ。全体像を把握。',
-          how_desc:
-            'Goblin にリポジトリを指定するだけで、ブランチ、ステータス、PR のライブ概要を取得できます。',
+          how_desc: 'Goblin にリポジトリを指定するだけで、ブランチ、ステータス、PR のライブ概要を取得できます。',
           s1_title: 'リポジトリを開く',
           s1_desc:
             'ファイルピッカーまたはドラッグ＆ドロップで Git リポジトリを追加。Goblin は各リポをタブで開き、次回起動時にセッションを復元します。',
@@ -1138,6 +1260,28 @@
       }
 
       setLang(currentLang)
+
+      /* Theme toggle */
+      function getEffectiveTheme() {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme)
+        try {
+          localStorage.setItem('theme', theme)
+        } catch {}
+      }
+
+      function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme') || getEffectiveTheme()
+        applyTheme(current === 'dark' ? 'light' : 'dark')
+      }
+
+      try {
+        const savedTheme = localStorage.getItem('theme')
+        if (savedTheme === 'dark' || savedTheme === 'light') applyTheme(savedTheme)
+      } catch {}
 
       const observer = new IntersectionObserver(
         (entries) => {

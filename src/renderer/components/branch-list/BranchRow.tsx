@@ -17,8 +17,6 @@ interface BranchRowProps {
   onSelectBranch: (branch: string) => void
   onOpenBranchStatus: (branch: string) => void
   selectedRef: RefObject<HTMLLIElement | null>
-  ghosttyInstalled: boolean
-  vscodeInstalled: boolean
 }
 
 function Delta({ direction, count, label }: { direction: 'ahead' | 'behind'; count: number; label: string }) {
@@ -48,8 +46,6 @@ export function BranchRow({
   onSelectBranch,
   onOpenBranchStatus,
   selectedRef,
-  ghosttyInstalled,
-  vscodeInstalled,
 }: BranchRowProps) {
   const t = useT()
   const isSelected = branch.name === selected
@@ -145,12 +141,7 @@ export function BranchRow({
       </div>
       <div className="pointer-events-none relative z-20 flex shrink-0 items-center py-2 pr-4">
         <div className="pointer-events-auto">
-          <BranchActionsMenu
-            repo={repo}
-            branch={branch}
-            ghosttyInstalled={ghosttyInstalled}
-            vscodeInstalled={vscodeInstalled}
-          />
+          <BranchActionsMenu repo={repo} branch={branch} />
         </div>
       </div>
     </li>

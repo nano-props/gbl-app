@@ -8,12 +8,16 @@
 // a regular click still focus the repo without triggering a drag; keyboard
 // users use Arrow keys for tab activation.
 
+import { toast } from 'sonner'
 import { useShallow } from 'zustand/react/shallow'
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
+import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { RepoTabStrip } from '#/renderer/components/repo-tabs/RepoTabStrip.tsx'
+import { CloneRepositoryDialog, type CloneRepositoryRequest } from '#/renderer/components/CloneRepositoryDialog.tsx'
 import type { RepoTabSummary } from '#/renderer/components/repo-tabs/types.ts'
+import type { CloneRepoResult } from '#/renderer/types-bridge.ts'
 import { rpc } from '#/renderer/rpc.ts'
 
 /** Equality fn for the summaries array. Zustand's `useShallow` does
@@ -32,8 +36,14 @@ function summariesEqual(a: RepoTabSummary[], b: RepoTabSummary[]): boolean {
   return true
 }
 
-export function RepoTabs() {
+interface RepoTabsProps {
+  cloneOpen: boolean
+  onCloneOpenChange: (open: boolean) => void
+}
+
+export function RepoTabs({ cloneOpen, onCloneOpenChange }: RepoTabsProps) {
   const t = useT()
+  const shortcutsDisabled = useSettingsStore((s) => s.shortcutsDisabled)
   // Build the summary array inside the selector but compare with our
   // explicit equality fn so re-derivations with identical contents
   // don't trigger a re-render. Zustand v5's primary `useReposStore`
@@ -60,33 +70,60 @@ export function RepoTabs() {
   const missing = useReposStore(useShallow((s) => s.missingFromSession))
   const dismissMissing = useReposStore((s) => s.dismissMissing)
 
-  async function handleOpen() {
+  async function handleOpenLocal() {
     const path = await rpc.repo.openDialog.query()
     if (!path) return
-    await openRepo(path)
+    const result = await openRepo(path)
+    if (!result.ok) {
+      toast.error(t('drop.open-failed'), {
+        description: t(result.message),
+      })
+    }
+  }
+
+  async function handleClone(request: CloneRepositoryRequest): Promise<CloneRepoResult> {
+    const result = await rpc.repo.clone.mutate(request)
+    if (!result.ok || !result.path) return result
+    const openResult = await openRepo(result.path)
+    if (!openResult.ok) {
+      toast.error(t('drop.open-failed'), {
+        description: `${result.path}\n${t(openResult.message)}`,
+      })
+      return { ok: false, message: openResult.message, path: result.path }
+    }
+    toast.success(t('repo-tabs.clone-opened'), { description: result.path })
+    return result
   }
 
   return (
-    <RepoTabStrip
-      repos={summaries}
-      activeId={activeId}
-      missing={missing}
-      labels={{
-        repositories: t('repo-tabs.repos'),
-        emptyBefore: t('repo-tabs.empty.before'),
-        emptyOpenLabel: t('repo-tabs.empty.open-label'),
-        emptyAfter: t('repo-tabs.empty.after'),
-        close: t('repo-tabs.close'),
-        dragToReorder: t('repo-tabs.drag-to-reorder'),
-        open: t('topbar.open'),
-        missingTitle: t('repo-tabs.missing-title', { n: missing.length }),
-        missingDismiss: t('repo-tabs.missing-dismiss'),
-      }}
-      onActivate={setActive}
-      onClose={closeRepo}
-      onReorder={reorderRepos}
-      onOpen={handleOpen}
-      onDismissMissing={dismissMissing}
-    />
+    <>
+      <RepoTabStrip
+        repos={summaries}
+        activeId={activeId}
+        missing={missing}
+        labels={{
+          repositories: t('repo-tabs.repos'),
+          emptyBefore: t('repo-tabs.empty.before'),
+          emptyOpenLabel: t('repo-tabs.empty.open-label'),
+          emptyAfter: t('repo-tabs.empty.after'),
+          close: t('repo-tabs.close'),
+          dragToReorder: t('repo-tabs.drag-to-reorder'),
+          open: t('topbar.open'),
+          openLocal: t('repo-tabs.open-local'),
+          openLocalShortcut: shortcutsDisabled ? null : '⌘O',
+          clone: t('repo-tabs.clone'),
+          cloneShortcut: shortcutsDisabled ? null : '⌘⇧O',
+          missingTitle: t('repo-tabs.missing-title', { n: missing.length }),
+          missingDismiss: t('repo-tabs.missing-dismiss'),
+        }}
+        onActivate={setActive}
+        onClose={closeRepo}
+        onReorder={reorderRepos}
+        onOpenLocal={handleOpenLocal}
+        onClone={() => onCloneOpenChange(true)}
+        onDismissMissing={dismissMissing}
+      />
+      <CloneRepositoryDialog open={cloneOpen} onClose={() => onCloneOpenChange(false)} onClone={handleClone} />
+    </>
   )
 }

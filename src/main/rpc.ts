@@ -27,6 +27,7 @@ import { getWorkingStatus } from '#/main/git/status.ts'
 import { getWorktreePatch } from '#/main/git/patch.ts'
 import { resolveKnownWorktree, resolveRemovableWorktree } from '#/main/git/guards.ts'
 import { createWorktree, getWorktrees, removeWorktree } from '#/main/git/worktrees.ts'
+import { cloneRepository } from '#/main/git/clone.ts'
 import { getBranchPullRequest, getBranchPullRequests } from '#/main/git/pull-requests.ts'
 import { getCommitFileStats, getCommitMeta } from '#/main/git/log.ts'
 import { PROTECTED_BRANCHES, type ExecResult, type PullRequestFetchMode } from '#/shared/git-types.ts'
@@ -46,17 +47,26 @@ import {
   setLangPref,
   setSession,
   setShortcutsDisabled,
+  setTerminalApp,
+  getTerminalApp,
+  setEditorApp,
+  getEditorApp,
 } from '#/main/settings.ts'
 import { isGlobalShortcutRegistered, replaceGlobalShortcut, syncGlobalShortcuts } from '#/main/shortcuts.ts'
 import { buildAppMenu } from '#/main/menu.ts'
 import { getCurrentLang, getDictionary, resolveLang, setCurrentLang } from '#/main/i18n/index.ts'
-import { isGhosttyInstalled, openInGhostty } from '#/main/system/ghostty.ts'
-import { isVSCodeInstalled, openInVSCode } from '#/main/system/vscode.ts'
+import { isTerminalAvailable, openInPreferredTerminal } from '#/main/system/terminals.ts'
+import { isEditorAvailable, openInPreferredEditor } from '#/main/system/editors.ts'
 import { broadcastRpcEvent } from '#/main/events.ts'
 
 const PROJECT_GITHUB_URL = 'https://github.com/nano-props/goblin'
 const GIT_HASH_RE = /^[0-9a-fA-F]{7,64}$/
 const PATCH_TIMEOUT_MS = 90_000
+const MAX_CLONE_URL_LENGTH = 4096
+const MAX_CLONE_DIR_NAME_LENGTH = 255
+const CLONE_URL_SCHEME_RE = /^(?:https?|ssh|git|file):\/\/\S+$/i
+const SCP_LIKE_CLONE_URL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+:[^\s]+$/
+const CLONE_OPERATION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/
 const MAX_RPC_PROCEDURE_PATH_LENGTH = 128
 const RPC_PATH_SEGMENT_RE = /^[A-Za-z0-9_-]+$/
 const FORBIDDEN_RPC_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'])
@@ -67,7 +77,13 @@ interface ActiveNetworkOp {
   done: Promise<void>
 }
 
+interface ActiveCloneOp {
+  ctrl: AbortController
+  done: Promise<void>
+}
+
 const activeOpControllers = new Map<string, ActiveNetworkOp>()
+const activeCloneControllers = new Map<string, ActiveCloneOp>()
 
 let wired = false
 
@@ -108,6 +124,7 @@ function isValidRpcRequest(request: unknown): request is RpcRequest {
   const { path } = request as { path?: unknown }
   if (typeof path !== 'string' || path.length === 0 || path.length > MAX_RPC_PROCEDURE_PATH_LENGTH) return false
   const segments = path.split('.')
+  if (segments.some((segment) => segment.length === 0)) return false
   if (!segments.every((segment) => RPC_PATH_SEGMENT_RE.test(segment) && !FORBIDDEN_RPC_PATH_SEGMENTS.has(segment))) {
     return false
   }
@@ -136,6 +153,7 @@ function createRpcHandlers(): AppRpcHandlers {
     },
     repo: {
       openDialog: openRepoDialog,
+      cloneParentDialog: () => openDirectoryDialog('Choose Clone Destination'),
       probe: async ({ cwd }) => {
         if (!isValidCwd(cwd)) return { ok: false, message: 'error.invalid-path' }
         const gitAvailable = await checkGitAvailable()
@@ -149,6 +167,22 @@ function createRpcHandlers(): AppRpcHandlers {
         const name = await getRepoName(cwd)
         return { ok: true, root, name }
       },
+      clone: async ({ operationId, url, parentPath, directoryName }) => {
+        if (!isValidCloneOperationId(operationId)) return { ok: false, message: 'error.invalid-arguments' }
+        const repoUrl = typeof url === 'string' ? url.trim() : ''
+        const targetParent = typeof parentPath === 'string' ? parentPath.trim() : ''
+        const targetName = typeof directoryName === 'string' ? directoryName.trim() : ''
+        if (!isValidCloneUrl(repoUrl) || !isValidCloneDirectoryName(targetName)) {
+          return { ok: false, message: 'error.invalid-arguments' }
+        }
+        if (!isValidAbsolutePath(targetParent)) return { ok: false, message: 'error.invalid-path' }
+        const gitAvailable = await checkGitAvailable()
+        if (!gitAvailable.ok) return gitAvailable
+        const writable = await ensureWritableDirectory(targetParent)
+        if (!writable.ok) return writable
+        return runCloneOperation(operationId, (signal) => cloneRepository(targetParent, targetName, repoUrl, signal))
+      },
+      abortClone: async ({ operationId }) => abortCloneOperation(operationId),
       snapshot: async ({ cwd }) => {
         if (!isValidCwd(cwd)) return null
         const worktrees = await getWorktrees(cwd)
@@ -247,16 +281,14 @@ function createRpcHandlers(): AppRpcHandlers {
         shell.showItemInFolder(p)
         return { ok: true, message: p }
       },
-      openInGhostty: async ({ path: p }) => {
+      openTerminal: async ({ path: p }) => {
         if (!isValidAbsolutePath(p)) return { ok: false, message: 'error.invalid-path' }
-        return openInGhostty(p)
+        return openInPreferredTerminal(p, getTerminalApp())
       },
-      openInVSCode: async ({ path: p }) => {
+      openEditor: async ({ path: p }) => {
         if (!isValidAbsolutePath(p)) return { ok: false, message: 'error.invalid-path' }
-        return openInVSCode(p)
+        return openInPreferredEditor(p, getEditorApp()) ?? { ok: false, message: 'error.editor-not-installed' }
       },
-      ghosttyInstalled: async () => isGhosttyInstalled(),
-      vscodeInstalled: () => isVSCodeInstalled(),
     },
     theme: {
       get: () => getTheme(),
@@ -274,6 +306,10 @@ function createRpcHandlers(): AppRpcHandlers {
           shortcutsDisabled: s.shortcutsDisabled,
           globalShortcut: s.globalShortcut,
           globalShortcutRegistered: isGlobalShortcutRegistered(),
+          terminalApp: s.terminalApp,
+          terminalAvailable: isTerminalAvailable(s.terminalApp),
+          editorApp: s.editorApp,
+          editorAvailable: isEditorAvailable(s.editorApp),
           session: s.session,
           recentRepos: s.recentRepos,
         }
@@ -302,6 +338,18 @@ function createRpcHandlers(): AppRpcHandlers {
         const saved = await setGlobalShortcut(parsed)
         const payload = globalShortcutPayload(saved)
         broadcastRpcEvent({ type: 'global-shortcut-changed', state: payload })
+        return payload
+      },
+      setTerminalApp: async ({ pref }) => {
+        const saved = await setTerminalApp(pref)
+        const payload = { pref: saved, available: isTerminalAvailable(saved) }
+        broadcastRpcEvent({ type: 'terminal-app-changed', ...payload })
+        return payload
+      },
+      setEditorApp: async ({ pref }) => {
+        const saved = await setEditorApp(pref)
+        const payload = { pref: saved, available: isEditorAvailable(saved) }
+        broadcastRpcEvent({ type: 'editor-app-changed', ...payload })
         return payload
       },
       saveSession: async ({ session }) => saveSession(session),
@@ -340,10 +388,14 @@ function createRpcHandlers(): AppRpcHandlers {
 }
 
 async function openRepoDialog(): Promise<string | null> {
+  return openDirectoryDialog('Open Git Repository')
+}
+
+async function openDirectoryDialog(title: string): Promise<string | null> {
   const win = getMainWindow() ?? BrowserWindow.getFocusedWindow()
   const opts: Electron.OpenDialogOptions = {
     properties: ['openDirectory'],
-    title: 'Open Git Repository',
+    title,
   }
   const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
   if (result.canceled || result.filePaths.length === 0) return null
@@ -505,6 +557,34 @@ async function runCancellable(
   }
 }
 
+async function runCloneOperation(
+  operationId: string,
+  fn: (signal: AbortSignal) => Promise<ExecResult & { path?: string }>,
+): Promise<ExecResult & { path?: string }> {
+  if (activeCloneControllers.has(operationId)) return { ok: false, message: 'error.network-op-in-progress' }
+  const ctrl = new AbortController()
+  let resolveDone!: () => void
+  const done = new Promise<void>((resolve) => {
+    resolveDone = resolve
+  })
+  const slot: ActiveCloneOp = { ctrl, done }
+  activeCloneControllers.set(operationId, slot)
+  try {
+    return await fn(ctrl.signal)
+  } finally {
+    if (activeCloneControllers.get(operationId) === slot) activeCloneControllers.delete(operationId)
+    resolveDone()
+  }
+}
+
+function abortCloneOperation(operationId: string): boolean {
+  if (!isValidCloneOperationId(operationId)) return false
+  const active = activeCloneControllers.get(operationId)
+  if (!active) return false
+  active.ctrl.abort()
+  return true
+}
+
 async function probeReadableDirectory(cwd: string): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const stat = await fs.stat(cwd)
@@ -517,6 +597,59 @@ async function probeReadableDirectory(cwd: string): Promise<{ ok: true } | { ok:
     if (code === 'EACCES' || code === 'EPERM') return { ok: false, message: 'error.path-permission-denied' }
     return { ok: false, message: err instanceof Error ? err.message : 'error.failed-read-repo' }
   }
+}
+
+async function probeWritableDirectory(cwd: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const stat = await fs.stat(cwd)
+    if (!stat.isDirectory()) return { ok: false, message: 'error.path-not-directory' }
+    await fs.access(cwd, fs.constants.R_OK | fs.constants.W_OK)
+    return { ok: true }
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code === 'ENOENT' || code === 'ENOTDIR') return { ok: false, message: 'error.path-not-found' }
+    if (code === 'EACCES' || code === 'EPERM') return { ok: false, message: 'error.path-permission-denied' }
+    return { ok: false, message: err instanceof Error ? err.message : 'error.failed-read-repo' }
+  }
+}
+
+async function ensureWritableDirectory(cwd: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    await fs.mkdir(cwd, { recursive: true })
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code === 'EACCES' || code === 'EPERM') return { ok: false, message: 'error.path-permission-denied' }
+    return { ok: false, message: err instanceof Error ? err.message : 'error.failed-read-repo' }
+  }
+  return probeWritableDirectory(cwd)
+}
+
+function isValidCloneUrl(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= MAX_CLONE_URL_LENGTH &&
+    !/[\0-\x1f\x7f]/.test(value) &&
+    (CLONE_URL_SCHEME_RE.test(value) || SCP_LIKE_CLONE_URL_RE.test(value))
+  )
+}
+
+function isValidCloneDirectoryName(value: unknown): value is string {
+  // Only reject names that can change the path shape. Names like `...`
+  // or `-repo` are valid single folder names; git receives the full
+  // target path after `--`, so they are not parsed as traversal or flags.
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= MAX_CLONE_DIR_NAME_LENGTH &&
+    value !== '.' &&
+    value !== '..' &&
+    !/[\\/:\0]/.test(value)
+  )
+}
+
+function isValidCloneOperationId(value: unknown): value is string {
+  return typeof value === 'string' && CLONE_OPERATION_ID_RE.test(value)
 }
 
 async function openHttpsExternal(url: string): Promise<boolean> {

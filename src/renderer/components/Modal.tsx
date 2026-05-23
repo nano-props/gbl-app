@@ -8,6 +8,7 @@
 
 import { type ReactNode } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '#/renderer/components/ui/dialog.tsx'
+import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 import { cn } from '#/renderer/lib/cn.ts'
 
 interface Props {
@@ -31,7 +32,9 @@ export function Modal({ open, title, onClose, children, widthClass = 'sm:max-w-m
         <DialogHeader className="px-4 py-3 border-b border-separator text-left">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="p-4 max-h-[70vh] overflow-y-auto scroll-thin">{children}</div>
+        <ScrollArea className="max-h-[70vh]" viewportClassName="max-h-[70vh]">
+          <div className="p-4">{children}</div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )

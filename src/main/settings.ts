@@ -16,6 +16,8 @@ import { DEFAULT_GLOBAL_SHORTCUT, normalizeGlobalShortcut } from '#/shared/accel
 
 export type ThemePref = 'auto' | 'light' | 'dark'
 export type LangPref = 'auto' | 'en' | 'zh' | 'ko' | 'ja'
+export type TerminalPref = 'auto' | 'ghostty' | 'terminal'
+export type EditorPref = 'auto' | 'vscode' | 'cursor' | 'windsurf'
 
 export interface WindowBounds {
   x?: number
@@ -48,6 +50,8 @@ export interface Settings {
   fetchIntervalSec: number
   shortcutsDisabled: boolean
   globalShortcut: string
+  terminalApp: TerminalPref
+  editorApp: EditorPref
   windowBounds: WindowBounds | null
   session: SessionState
   recentRepos: string[]
@@ -60,6 +64,8 @@ const DEFAULTS: Settings = {
   fetchIntervalSec: 60,
   shortcutsDisabled: false,
   globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
+  terminalApp: 'auto',
+  editorApp: 'auto',
   windowBounds: null,
   session: { openRepos: [], activeRepo: null, detailCollapsed: DEFAULT_SESSION_DETAIL_COLLAPSED },
   recentRepos: [],
@@ -118,6 +124,9 @@ function normalizeRecentRepos(recentRepos: unknown): string[] {
 
 function toSafeSessionPath(p: unknown): string | null {
   if (typeof p !== 'string' || p.length === 0 || p.includes('\0') || !path.isAbsolute(p)) return null
+  // Session/recent-repo entries are persisted local paths, not a sandbox
+  // boundary. Normalize odd absolute spellings; repo probes still decide
+  // whether the path is usable when it is opened.
   return path.normalize(p)
 }
 
@@ -129,6 +138,16 @@ function normalizeLangPref(value: unknown): LangPref {
   return value === 'auto' || value === 'en' || value === 'zh' || value === 'ko' || value === 'ja'
     ? value
     : DEFAULTS.lang
+}
+
+function normalizeTerminalPref(value: unknown): TerminalPref {
+  return value === 'auto' || value === 'ghostty' || value === 'terminal' ? value : DEFAULTS.terminalApp
+}
+
+function normalizeEditorPref(value: unknown): EditorPref {
+  return value === 'auto' || value === 'vscode' || value === 'cursor' || value === 'windsurf'
+    ? value
+    : DEFAULTS.editorApp
 }
 
 function normalizeFetchInterval(value: unknown): number {
@@ -171,6 +190,8 @@ export async function loadSettings(): Promise<Settings> {
       fetchIntervalSec: normalizeFetchInterval(parsed.fetchIntervalSec),
       shortcutsDisabled: parsed.shortcutsDisabled === true,
       globalShortcut: normalizeGlobalShortcut(parsed.globalShortcut),
+      terminalApp: normalizeTerminalPref(parsed.terminalApp),
+      editorApp: normalizeEditorPref(parsed.editorApp),
       windowBounds: normalizeWindowBounds(parsed.windowBounds),
       session: normalizeSession(parsed.session),
       recentRepos: normalizeRecentRepos(parsed.recentRepos),
@@ -193,6 +214,14 @@ export function getShortcutsDisabled(): boolean {
 
 export function getGlobalShortcut(): string {
   return cache?.globalShortcut ?? DEFAULTS.globalShortcut
+}
+
+export function getTerminalApp(): TerminalPref {
+  return cache?.terminalApp ?? DEFAULTS.terminalApp
+}
+
+export function getEditorApp(): EditorPref {
+  return cache?.editorApp ?? DEFAULTS.editorApp
 }
 
 function scheduleWrite(): void {
@@ -300,6 +329,24 @@ export async function setGlobalShortcut(accelerator: string): Promise<string> {
   const normalized = normalizeGlobalShortcut(accelerator)
   if (s.globalShortcut === normalized) return normalized
   s.globalShortcut = normalized
+  scheduleWrite()
+  return normalized
+}
+
+export async function setTerminalApp(pref: TerminalPref): Promise<TerminalPref> {
+  const s = await loadSettings()
+  const normalized = normalizeTerminalPref(pref)
+  if (s.terminalApp === normalized) return normalized
+  s.terminalApp = normalized
+  scheduleWrite()
+  return normalized
+}
+
+export async function setEditorApp(pref: EditorPref): Promise<EditorPref> {
+  const s = await loadSettings()
+  const normalized = normalizeEditorPref(pref)
+  if (s.editorApp === normalized) return normalized
+  s.editorApp = normalized
   scheduleWrite()
   return normalized
 }
