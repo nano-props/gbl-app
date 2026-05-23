@@ -23,16 +23,15 @@ function repoToolbarEqual(a: RepoState | undefined, b: RepoState | undefined): b
       a.ui.selectedBranch === b.ui.selectedBranch &&
       a.ui.branchViewMode === b.ui.branchViewMode &&
       a.data.logsByBranch === b.data.logsByBranch &&
-      a.async.loading === b.async.loading &&
-      a.async.statusLoading === b.async.statusLoading &&
-      a.async.syncing === b.async.syncing &&
-      a.async.fetching === b.async.fetching &&
+      a.ops.snapshot === b.ops.snapshot &&
+      a.ops.status === b.ops.status &&
+      a.ops.fetch === b.ops.fetch &&
+      a.ops.pullRequests === b.ops.pullRequests &&
+      a.ops.branchAction === b.ops.branchAction &&
       a.cache.source === b.cache.source &&
-      a.async.refreshing === b.async.refreshing &&
       a.cache.savedAt === b.cache.savedAt &&
       a.remote.fetchFailed === b.remote.fetchFailed &&
-      a.remote.fetchError === b.remote.fetchError &&
-      a.async.pullRequestsLoading === b.async.pullRequestsLoading)
+      a.remote.fetchError === b.remote.fetchError)
   )
 }
 

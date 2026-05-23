@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { FolderPlus, Loader2 } from 'lucide-react'
+import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
@@ -17,7 +18,6 @@ import { Tip } from '#/renderer/components/Tip.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import { CreateWorktreeDialog, type CreateWorktreeRequest } from '#/renderer/components/CreateWorktreeDialog.tsx'
 import { RepoSyncControl } from '#/renderer/components/repo-sync/RepoSyncControl.tsx'
-import { rpc } from '#/renderer/rpc.ts'
 
 interface Props {
   repo: RepoState
@@ -25,9 +25,7 @@ interface Props {
 
 export function RepoToolbarActions({ repo }: Props) {
   const t = useT()
-  const setLastResult = useReposStore((s) => s.setLastResult)
-  const refreshSnapshot = useReposStore((s) => s.refreshSnapshot)
-  const refreshStatus = useReposStore((s) => s.refreshStatus)
+  const runBranchAction = useReposStore((s) => s.runBranchAction)
   const [createOpen, setCreateOpen] = useState(false)
   const [creatingByRepo, setCreatingByRepo] = useState<Record<string, string>>({})
   const [createTipByRepo, setCreateTipByRepo] = useState<Record<string, boolean>>({})
@@ -68,24 +66,21 @@ export function RepoToolbarActions({ repo }: Props) {
   async function handleCreateWorktree(request: CreateWorktreeRequest) {
     const targetRepoId = repo.id
     const token = repo.instanceToken
-    if (creatingRef.current[targetRepoId]) return
+    if (creatingRef.current[targetRepoId] || operationBusy(repo.ops.branchAction, { includeSilent: true })) return
     creatingRef.current[targetRepoId] = true
     setCreatingByRepo((s) => ({ ...s, [targetRepoId]: request.newBranch }))
     showCreateTip(targetRepoId)
     try {
-      const result = await rpc.repo.createWorktree.mutate({
-        cwd: targetRepoId,
-        worktreePath: request.worktreePath,
-        newBranch: request.newBranch,
-        baseBranch: request.baseBranch,
-      })
-      setLastResult(targetRepoId, result, token)
-      if (result.ok) {
-        await refreshSnapshot(targetRepoId, { token })
-        await refreshStatus(targetRepoId, { token })
-      }
-    } catch (err) {
-      setLastResult(targetRepoId, { ok: false, message: err instanceof Error ? err.message : String(err) }, token)
+      await runBranchAction(
+        targetRepoId,
+        {
+          kind: 'createWorktree',
+          worktreePath: request.worktreePath,
+          newBranch: request.newBranch,
+          baseBranch: request.baseBranch,
+        },
+        { token, refreshOnError: false },
+      )
     } finally {
       delete creatingRef.current[targetRepoId]
       setCreatingByRepo((s) => {
@@ -99,6 +94,7 @@ export function RepoToolbarActions({ repo }: Props) {
 
   const creatingBranch = creatingByRepo[repo.id]
   const createBusy = !!creatingBranch
+  const branchActionBusy = operationBusy(repo.ops.branchAction, { includeSilent: true })
   const createTip = createBusy
     ? t('action.create-worktree-creating-title', { branch: creatingBranch })
     : t('action.create-worktree-title')
@@ -112,9 +108,11 @@ export function RepoToolbarActions({ repo }: Props) {
         <span className="inline-flex">
           <Button
             variant="ghost"
-            onClick={() => setCreateOpen(true)}
-            disabled={createBusy}
-            aria-busy={createBusy}
+            onClick={() => {
+              if (!createBusy && !branchActionBusy) setCreateOpen(true)
+            }}
+            disabled={createBusy || branchActionBusy}
+            aria-busy={createBusy ? true : undefined}
             aria-label={createTip}
           >
             {createBusy ? <Loader2 className="animate-spin" /> : <FolderPlus />}

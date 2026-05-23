@@ -21,6 +21,7 @@
 
 import { create } from 'zustand'
 import { persist, type PersistStorage, type StorageValue } from 'zustand/middleware'
+import { createBranchActions } from '#/renderer/stores/repos/branch-actions.ts'
 import { createCommitActions } from '#/renderer/stores/repos/commit.ts'
 import { createLifecycleActions } from '#/renderer/stores/repos/lifecycle.ts'
 import { createRefreshActions } from '#/renderer/stores/repos/refresh.ts'
@@ -106,6 +107,7 @@ export const useReposStore = create<ReposStore>()(
       ...createLifecycleActions(set, get),
       ...createSelectionActions(set, get),
       ...createRefreshActions(set, get),
+      ...createBranchActions(set, get),
       ...createCommitActions(set, get),
     }),
     {

@@ -12,11 +12,11 @@ import {
 import type { ReactNode } from 'react'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
-import { useBranchActions, type BranchActionOp } from '#/renderer/hooks/useBranchActions.tsx'
+import { useBranchActions, type BranchUiAction } from '#/renderer/hooks/useBranchActions.tsx'
 import type { BranchInfo } from '#/renderer/types.ts'
 
 export interface BranchActionItem {
-  id: BranchActionOp
+  id: BranchUiAction
   label: string
   title?: string
   ariaLabel?: string
@@ -28,7 +28,7 @@ export interface BranchActionItem {
 }
 
 export interface BranchActionItemGroups {
-  busy: BranchActionOp | null
+  busy: BranchUiAction | null
   patchItems: BranchActionItem[]
   mainItems: BranchActionItem[]
   destructiveItems: BranchActionItem[]

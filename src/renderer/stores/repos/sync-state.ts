@@ -1,13 +1,13 @@
+import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 
 export function canStartRemoteFetch(repo: RepoState | undefined): repo is RepoState {
+  if (!repo) return false
   return (
-    !!repo &&
-    !repo.async.syncing &&
-    !repo.async.fetching &&
-    !repo.async.loading &&
-    !repo.async.statusLoading &&
-    !repo.async.refreshing
+    !operationBusy(repo.ops.fetch, { includeSilent: true }) &&
+    !operationBusy(repo.ops.branchAction, { includeSilent: true }) &&
+    !operationBusy(repo.ops.snapshot, { includeSilent: true }) &&
+    !operationBusy(repo.ops.status, { includeSilent: true })
   )
 }
 
@@ -17,5 +17,5 @@ export function isRemoteFetchDue(
   now: number = Date.now(),
 ): repo is RepoState {
   if (intervalMs <= 0 || !canStartRemoteFetch(repo)) return false
-  return repo.async.lastFetchSettledAt === null || now - repo.async.lastFetchSettledAt >= intervalMs
+  return repo.ops.fetch.settledAt === null || now - repo.ops.fetch.settledAt >= intervalMs
 }

@@ -15,22 +15,27 @@ export async function getWorktrees(cwd: string, options?: GetWorktreesOptions): 
     const worktrees = parseWorktrees(output)
     if (options?.includeStatus === false) return worktrees
 
-    await mapWithConcurrency(worktrees, WORKTREE_STATUS_CONCURRENCY, async (wt) => {
-      if (wt.isBare) return
-      try {
-        // -z so a filename containing a literal newline doesn't get
-        // counted as two changes. Reuse parseStatus so rename / copy
-        // pairs (R/C take TWO records under -z) collapse into one
-        // entry — matching what `git status` shows the user.
-        const out = await git(wt.path, ['status', '--porcelain', '-z'], { signal: options?.signal })
-        const entries = parseStatus(out)
-        wt.isDirty = entries.length > 0
-        wt.changeCount = entries.length
-      } catch {
-        if (options?.signal?.aborted) throw new Error('cancelled')
-        wt.isDirty = undefined
-      }
-    })
+    await mapWithConcurrency(
+      worktrees,
+      WORKTREE_STATUS_CONCURRENCY,
+      async (wt) => {
+        if (wt.isBare) return
+        try {
+          // -z so a filename containing a literal newline doesn't get
+          // counted as two changes. Reuse parseStatus so rename / copy
+          // pairs (R/C take TWO records under -z) collapse into one
+          // entry — matching what `git status` shows the user.
+          const out = await git(wt.path, ['status', '--porcelain', '-z'], { signal: options?.signal })
+          const entries = parseStatus(out)
+          wt.isDirty = entries.length > 0
+          wt.changeCount = entries.length
+        } catch {
+          if (options?.signal?.aborted) throw new Error('cancelled')
+          wt.isDirty = undefined
+        }
+      },
+      options?.signal,
+    )
 
     return worktrees
   } catch {
@@ -78,10 +83,16 @@ export async function createWorktree(
   )
 }
 
-async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+async function mapWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
   let cursor = 0
   const worker = async () => {
     while (true) {
+      if (signal?.aborted) throw new Error('cancelled')
       const i = cursor++
       if (i >= items.length) return
       await fn(items[i]!)

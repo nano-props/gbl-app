@@ -24,9 +24,9 @@ function branchDetailRepoEqual(a: RepoState | undefined, b: RepoState | undefine
       a.data.currentBranch === b.data.currentBranch &&
       a.data.logsByBranch === b.data.logsByBranch &&
       a.data.status === b.data.status &&
-      a.async.statusLoading === b.async.statusLoading &&
       a.data.statusLoaded === b.data.statusLoaded &&
-      a.async.statusError === b.async.statusError &&
+      a.ops.status === b.ops.status &&
+      a.ops.branchAction === b.ops.branchAction &&
       a.ui.detailTab === b.ui.detailTab)
   )
 }

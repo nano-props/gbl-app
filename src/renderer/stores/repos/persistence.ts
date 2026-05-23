@@ -106,12 +106,6 @@ export function hydrateCachedRepo(repo: RepoState, cached: CachedRepoState | und
       branchViewMode: cached.ui.branchViewMode,
       detailTab: cached.ui.detailTab,
     },
-    async: {
-      ...repo.async,
-      statusLoading: !cached.data.statusLoaded,
-      refreshing: true,
-      loading: cached.data.branches.length === 0,
-    },
     cache: {
       source: 'cache',
       savedAt: cached.savedAt,
@@ -125,6 +119,7 @@ export function persistRepoCache(set: ReposSet, repo: RepoState | undefined, tok
   const entry = repoCacheEntry(repo)
   if (!entry) return
   set((s) => {
+    if (s.repos[repo.id]?.instanceToken !== token) return s
     const repoCache = trimRepoCache({ ...s.repoCache, [repo.id]: entry })
     return { repoCache }
   })

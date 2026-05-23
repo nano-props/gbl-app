@@ -10,6 +10,7 @@ import { RepoToolbar } from '#/renderer/components/repo-toolbar/RepoToolbar.tsx'
 import { RepoWorkspaceSkeleton } from '#/renderer/components/Skeleton.tsx'
 import { RepoWorkspace, RepoWorkspacePane } from '#/renderer/components/Layout.tsx'
 import { useRepoToasts } from '#/renderer/hooks/useRepoToasts.tsx'
+import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 
 interface Props {
   repoId: string
@@ -22,7 +23,8 @@ export function RepoView({ repoId }: Props) {
       const repo = s.repos[repoId]
       return {
         exists: !!repo,
-        initialLoading: !!repo && repo.async.loading && repo.data.branches.length === 0,
+        initialLoading:
+          !!repo && operationBusy(repo.ops.snapshot, { includeSilent: true }) && repo.data.branches.length === 0,
         openCommit: repo?.ui.openCommit ?? null,
         detailCollapsed: s.detailCollapsed,
       }

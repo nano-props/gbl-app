@@ -1,6 +1,8 @@
 import type { StoreApi } from 'zustand'
-import type { BranchInfo, LogEntry, PullRequestFetchMode, WorktreeStatus } from '#/renderer/types.ts'
+import type { BranchInfo, ExecResult, LogEntry, PullRequestFetchMode, WorktreeStatus } from '#/renderer/types.ts'
 import type { CommitDetail } from '#/renderer/types-bridge.ts'
+import type { RepoBranchAction, RunBranchActionOptions } from '#/renderer/stores/repos/branch-action-types.ts'
+import type { RepoOperationsState } from '#/renderer/stores/repos/operations.ts'
 
 export type DetailTab = 'status' | 'changes' | 'commits'
 export type BranchViewMode = 'all' | 'worktrees' | 'no-worktree'
@@ -38,27 +40,15 @@ export interface RepoUiState {
   openingCommitHash: string | null
 }
 
-export interface RepoAsyncState {
-  statusLoading: boolean
-  statusError: string | null
-  loading: boolean
-  syncing: boolean
-  lastFetchSettledAt: number | null
-  /** True while a periodic background fetch is running — header indicator. */
-  fetching: boolean
-  refreshing: boolean
-  pullRequestsLoading: boolean
-  pullRequestsRequestId: number
-}
-
 export interface RepoCacheState {
   source: RepoDataSource
   savedAt: number | null
 }
 
 export interface RepoRemoteState {
-  /** True if the most recent background fetch failed (network down,
-   *  remote refused, etc). Cleared on next success. UI badges this. */
+  /** Sticky connectivity badge for background fetch failures. Unlike
+   *  `ops.fetch.error`, this persists after the operation settles and
+   *  is cleared by the next successful network operation. */
   fetchFailed: boolean
   /** Last fetch failure message — populated when fetchFailed flips
    *  true. Surfaced as the title of the red badge so the user can
@@ -82,7 +72,7 @@ export interface RepoState {
   instanceToken: number
   data: RepoDataState
   ui: RepoUiState
-  async: RepoAsyncState
+  ops: RepoOperationsState
   cache: RepoCacheState
   remote: RepoRemoteState
   events: RepoEvent[]
@@ -149,6 +139,11 @@ export interface ReposStore {
   refreshAll: (id: string, options?: { token?: number }) => Promise<void>
   syncAndRefresh: (id: string, options?: { token?: number }) => Promise<void>
   backgroundFetch: (id: string) => Promise<void>
+  runBranchAction: (
+    id: string,
+    action: RepoBranchAction,
+    options?: RunBranchActionOptions,
+  ) => Promise<ExecResult | null>
 
   openCommit: (id: string, hash: string) => Promise<void>
   closeCommit: (id: string) => void

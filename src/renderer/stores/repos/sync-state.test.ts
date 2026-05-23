@@ -1,30 +1,28 @@
 import { describe, expect, test } from 'vitest'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
+import { idleRepoOperations, runningOperation } from '#/renderer/stores/repos/operations.ts'
 import { canStartRemoteFetch, isRemoteFetchDue } from '#/renderer/stores/repos/sync-state.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 
 interface RepoOverrides {
-  syncing?: boolean
-  fetching?: boolean
-  loading?: boolean
-  statusLoading?: boolean
-  refreshing?: boolean
+  fetchBusy?: boolean
+  branchActionBusy?: boolean
+  snapshotBusy?: boolean
+  statusBusy?: boolean
   lastFetchSettledAt?: number | null
 }
 
 function repo(overrides: RepoOverrides = {}): RepoState {
   const base = emptyRepo('/tmp/goblin-sync-state-test', 'repo')
+  const ops = idleRepoOperations()
+  if (overrides.fetchBusy) ops.fetch = runningOperation({ reason: 'fetch' })
+  if (overrides.branchActionBusy) ops.branchAction = runningOperation({ reason: 'branch:checkout' })
+  if (overrides.snapshotBusy) ops.snapshot = runningOperation({ reason: 'snapshot' })
+  if (overrides.statusBusy) ops.status = runningOperation({ reason: 'status' })
+  ops.fetch.settledAt = overrides.lastFetchSettledAt ?? null
   return {
     ...base,
-    async: {
-      ...base.async,
-      loading: overrides.loading ?? false,
-      statusLoading: overrides.statusLoading ?? false,
-      syncing: overrides.syncing ?? base.async.syncing,
-      fetching: overrides.fetching ?? base.async.fetching,
-      refreshing: overrides.refreshing ?? base.async.refreshing,
-      lastFetchSettledAt: overrides.lastFetchSettledAt ?? base.async.lastFetchSettledAt,
-    },
+    ops,
   }
 }
 
@@ -32,11 +30,10 @@ describe('canStartRemoteFetch', () => {
   test('requires a repo that is not already busy with core refresh work', () => {
     expect(canStartRemoteFetch(undefined)).toBe(false)
     expect(canStartRemoteFetch(repo())).toBe(true)
-    expect(canStartRemoteFetch(repo({ syncing: true }))).toBe(false)
-    expect(canStartRemoteFetch(repo({ fetching: true }))).toBe(false)
-    expect(canStartRemoteFetch(repo({ loading: true }))).toBe(false)
-    expect(canStartRemoteFetch(repo({ statusLoading: true }))).toBe(false)
-    expect(canStartRemoteFetch(repo({ refreshing: true }))).toBe(false)
+    expect(canStartRemoteFetch(repo({ fetchBusy: true }))).toBe(false)
+    expect(canStartRemoteFetch(repo({ branchActionBusy: true }))).toBe(false)
+    expect(canStartRemoteFetch(repo({ snapshotBusy: true }))).toBe(false)
+    expect(canStartRemoteFetch(repo({ statusBusy: true }))).toBe(false)
   })
 })
 
@@ -52,7 +49,8 @@ describe('isRemoteFetchDue', () => {
 
   test('is not due when disabled or core fetch state is busy', () => {
     expect(isRemoteFetchDue(repo(), 0, 100_000)).toBe(false)
-    expect(isRemoteFetchDue(repo({ fetching: true, lastFetchSettledAt: null }), 60_000, 100_000)).toBe(false)
-    expect(isRemoteFetchDue(repo({ refreshing: true, lastFetchSettledAt: null }), 60_000, 100_000)).toBe(false)
+    expect(isRemoteFetchDue(repo({ fetchBusy: true, lastFetchSettledAt: null }), 60_000, 100_000)).toBe(false)
+    expect(isRemoteFetchDue(repo({ branchActionBusy: true, lastFetchSettledAt: null }), 60_000, 100_000)).toBe(false)
+    expect(isRemoteFetchDue(repo({ snapshotBusy: true, lastFetchSettledAt: null }), 60_000, 100_000)).toBe(false)
   })
 })

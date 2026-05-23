@@ -1,4 +1,10 @@
-import { appendRepoEvent, errorEvent, resultEvent, updateIfFresh } from '#/renderer/stores/repos/helpers.ts'
+import {
+  appendRepoEvent,
+  errorEvent,
+  replaceRepo,
+  resultEvent,
+  updateIfFresh,
+} from '#/renderer/stores/repos/helpers.ts'
 import type { ReposGet, ReposSet } from '#/renderer/stores/repos/types.ts'
 import { rpc } from '#/renderer/rpc.ts'
 
@@ -32,7 +38,15 @@ export function createCommitActions(set: ReposSet, get: ReposGet) {
       set((s) => {
         const cur = s.repos[id]
         if (!cur) return s
-        return { repos: { ...s.repos, [id]: { ...cur, ui: { ...cur.ui, openCommit: null, openingCommitHash: null } } } }
+        return {
+          repos: {
+            ...s.repos,
+            [id]: replaceRepo(cur, (repo) => {
+              repo.ui.openCommit = null
+              repo.ui.openingCommitHash = null
+            }),
+          },
+        }
       })
     },
 
@@ -41,7 +55,14 @@ export function createCommitActions(set: ReposSet, get: ReposGet) {
         const repo = s.repos[id]
         if (!repo) return s
         if (repo.instanceToken !== token) return s
-        return { repos: { ...s.repos, [id]: { ...repo, events: appendRepoEvent(repo.events, resultEvent(result)) } } }
+        return {
+          repos: {
+            ...s.repos,
+            [id]: replaceRepo(repo, (r) => {
+              r.events = appendRepoEvent(r.events, resultEvent(result))
+            }),
+          },
+        }
       })
     },
 
@@ -53,7 +74,14 @@ export function createCommitActions(set: ReposSet, get: ReposGet) {
         if (!repo) return s
         const events = repo.events.filter((event) => !ids.has(event.id))
         if (events.length === repo.events.length) return s
-        return { repos: { ...s.repos, [id]: { ...repo, events } } }
+        return {
+          repos: {
+            ...s.repos,
+            [id]: replaceRepo(repo, (r) => {
+              r.events = events
+            }),
+          },
+        }
       })
     },
 
@@ -62,7 +90,15 @@ export function createCommitActions(set: ReposSet, get: ReposGet) {
         const repo = s.repos[id]
         if (!repo || !repo.remote.fetchFailed) return s
         if (repo.instanceToken !== token) return s
-        return { repos: { ...s.repos, [id]: { ...repo, remote: { fetchFailed: false, fetchError: null } } } }
+        return {
+          repos: {
+            ...s.repos,
+            [id]: replaceRepo(repo, (r) => {
+              r.remote.fetchFailed = false
+              r.remote.fetchError = null
+            }),
+          },
+        }
       })
     },
   }

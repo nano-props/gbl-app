@@ -1,8 +1,8 @@
 import { arrayMove } from '@dnd-kit/sortable'
 import { branchForVisibleLog, selectedBranchForViewMode } from '#/renderer/stores/repos/branch-view-mode.ts'
+import { replaceRepo } from '#/renderer/stores/repos/helpers.ts'
 import { persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
 import type { BranchViewMode, DetailTab, ReposGet, ReposSet } from '#/renderer/stores/repos/types.ts'
-import { rpc } from '#/renderer/rpc.ts'
 
 export function createSelectionActions(set: ReposSet, get: ReposGet) {
   return {
@@ -56,24 +56,24 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         return {
           repos: {
             ...s.repos,
-            [id]: {
-              ...repo,
-              ui: {
-                ...repo.ui,
-                branchViewMode: viewMode,
-                selectedBranch,
-                openCommit: selectionChanged ? null : repo.ui.openCommit,
-                openingCommitHash: selectionChanged ? null : repo.ui.openingCommitHash,
-              },
-            },
+            [id]: replaceRepo(repo, (r) => {
+              r.ui.branchViewMode = viewMode
+              r.ui.selectedBranch = selectedBranch
+              if (selectionChanged) {
+                r.ui.openCommit = null
+                r.ui.openingCommitHash = null
+              }
+            }),
           },
         }
       })
       const repo = get().repos[id]
       if (changed && token !== undefined) persistRepoCache(set, repo, token)
-      if (shouldRefreshLog && selectedForLog) void get().refreshBranchLog(id, selectedForLog)
-      if (selectedForPullRequest) {
-        void get().refreshPullRequests(id, [selectedForPullRequest], { mode: 'full', silent: true })
+      if (shouldRefreshLog && selectedForLog && token !== undefined) {
+        void get().refreshBranchLog(id, selectedForLog, { token })
+      }
+      if (selectedForPullRequest && token !== undefined) {
+        void get().refreshPullRequests(id, [selectedForPullRequest], { token, mode: 'full', silent: true })
       }
     },
 
@@ -89,17 +89,21 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         return {
           repos: {
             ...s.repos,
-            [id]: { ...repo, ui: { ...repo.ui, detailTab: tab, openCommit: null, openingCommitHash: null } },
+            [id]: replaceRepo(repo, (r) => {
+              r.ui.detailTab = tab
+              r.ui.openCommit = null
+              r.ui.openingCommitHash = null
+            }),
           },
         }
       })
       const repo = get().repos[id]
       if (changed && token !== undefined) persistRepoCache(set, repo, token)
-      if (changed && tab === 'commits') void get().refreshBranchLog(id)
-      if (changed && tab === 'changes') void get().refreshStatus(id)
-      if (changed && tab === 'status') {
+      if (changed && token !== undefined && tab === 'commits') void get().refreshBranchLog(id, undefined, { token })
+      if (changed && token !== undefined && tab === 'changes') void get().refreshStatus(id, { token })
+      if (changed && token !== undefined && tab === 'status') {
         if (repo?.ui.selectedBranch) {
-          void get().refreshPullRequests(id, [repo.ui.selectedBranch], { mode: 'full', silent: true })
+          void get().refreshPullRequests(id, [repo.ui.selectedBranch], { token, mode: 'full', silent: true })
         }
       }
     },
@@ -118,14 +122,22 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         return {
           repos: {
             ...s.repos,
-            [id]: { ...repo, ui: { ...repo.ui, selectedBranch: branch, openCommit: null, openingCommitHash: null } },
+            [id]: replaceRepo(repo, (r) => {
+              r.ui.selectedBranch = branch
+              r.ui.openCommit = null
+              r.ui.openingCommitHash = null
+            }),
           },
         }
       })
       const repo = get().repos[id]
       if (changed && token !== undefined) persistRepoCache(set, repo, token)
-      if (changed && repo?.ui.detailTab === 'commits') void get().refreshBranchLog(id, branch)
-      if (changed) void get().refreshPullRequests(id, [branch], { mode: 'full', silent: true })
+      if (changed && token !== undefined && repo?.ui.detailTab === 'commits') {
+        void get().refreshBranchLog(id, branch, { token })
+      }
+      if (changed && token !== undefined) {
+        void get().refreshPullRequests(id, [branch], { token, mode: 'full', silent: true })
+      }
     },
 
     selectLog(id: string, branch: string, hash: string) {
@@ -137,13 +149,9 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         return {
           repos: {
             ...s.repos,
-            [id]: {
-              ...repo,
-              data: {
-                ...repo.data,
-                logsByBranch: { ...repo.data.logsByBranch, [branch]: { ...prev, selectedHash: hash } },
-              },
-            },
+            [id]: replaceRepo(repo, (r) => {
+              r.data.logsByBranch[branch] = { ...prev, selectedHash: hash }
+            }),
           },
         }
       })
@@ -160,14 +168,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
       if (!branch || branch === repo.data.currentBranch) return
       const branchInfo = repo.data.branches.find((b) => b.name === branch)
       if (!branchInfo || branchInfo.worktreePath) return
-      try {
-        const result = await rpc.repo.checkout.mutate({ cwd: id, branch })
-        get().setLastResult(id, result, token)
-        await get().refreshSnapshot(id, { token })
-        await get().refreshStatus(id, { token })
-      } catch (err) {
-        get().setLastResult(id, { ok: false, message: err instanceof Error ? err.message : String(err) }, token)
-      }
+      await get().runBranchAction(id, { kind: 'checkout', branch }, { token })
     },
 
     async openSelectedCommit() {

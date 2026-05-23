@@ -2,6 +2,7 @@ import pLimit from 'p-limit'
 import { lastPathSegment } from '#/renderer/lib/paths.ts'
 import { emptyRepo, inFlightFetchById } from '#/renderer/stores/repos/helpers.ts'
 import { hydrateCachedRepo } from '#/renderer/stores/repos/persistence.ts'
+import { disposeRepoRuntime } from '#/renderer/stores/repos/runtime.ts'
 import type { MissingRepo, OpenRepoResult, ReposGet, ReposSet, ReposStore } from '#/renderer/stores/repos/types.ts'
 import { rpc } from '#/renderer/rpc.ts'
 
@@ -129,6 +130,7 @@ export function createLifecycleActions(set: ReposSet, get: ReposGet) {
       // Drop any in-flight fetch tracking so a new openRepo of the same
       // path doesn't think a fetch is already running.
       inFlightFetchById.delete(id)
+      disposeRepoRuntime(id)
       // Tell main to abort any cancellable network op for this repo —
       // otherwise a `git push` started right before the user closed the
       // tab keeps running for up to the network timeout, charged to a

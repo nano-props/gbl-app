@@ -57,7 +57,8 @@ function BranchActionButton({ item, busy }: { item: BranchActionItem; busy: Bran
       disabled={item.disabled}
       onClick={item.onSelect}
       title={item.title}
-      aria-label={item.ariaLabel}
+      aria-label={item.ariaLabel ?? item.title ?? item.label}
+      aria-busy={busy === item.id ? true : undefined}
       className={item.destructive ? 'text-danger hover:bg-danger-surface hover:text-danger' : undefined}
     >
       {busy === item.id ? <Loader2 className="animate-spin" /> : <Icon />}

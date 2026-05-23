@@ -7,6 +7,7 @@ import {
   visibleBranches,
 } from '#/renderer/stores/repos/branch-view-mode.ts'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
+import { idleRepoOperations } from '#/renderer/stores/repos/operations.ts'
 import { createBranch as branch } from '#/renderer/stores/repos/test-utils.ts'
 import type { BranchInfo } from '#/renderer/types.ts'
 import type { BranchViewMode, RepoState } from '#/renderer/stores/repos/types.ts'
@@ -32,7 +33,7 @@ function repo(overrides: RepoOverrides = {}): RepoState {
       selectedBranch: overrides.selectedBranch ?? base.ui.selectedBranch,
       branchViewMode: overrides.branchViewMode ?? base.ui.branchViewMode,
     },
-    async: { ...base.async, loading: false, statusLoading: false },
+    ops: idleRepoOperations(),
   }
 }
 

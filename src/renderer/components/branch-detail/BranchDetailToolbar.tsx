@@ -1,6 +1,7 @@
 import { ChevronDown, Loader2 } from 'lucide-react'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
+import { idleOperation, operationBusy } from '#/renderer/stores/repos/operations.ts'
 import type { RepoState, DetailTab } from '#/renderer/stores/repos/types.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
@@ -33,6 +34,9 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
   const shortcutsDisabled = useSettingsStore((s) => s.shortcutsDisabled)
   const ghosttyInstalled = useGhosttyInstalled()
   const vscodeInstalled = useVSCodeInstalled()
+  const logLoading =
+    detail.branchLog?.loading ||
+    operationBusy(repo.ops.logsByBranch[detail.branch?.name ?? ''] ?? idleOperation(), { includeSilent: true })
 
   if (!detail.branch) return null
 
@@ -96,6 +100,8 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
               type="button"
               role="tab"
               aria-selected={selected}
+              // Keep tabs switchable while the commits list loads; aria-busy only announces the panel's pending work.
+              aria-busy={tab.id === 'commits' && logLoading}
               aria-controls={collapsed ? undefined : `${detailId}-${tab.id}-panel`}
               tabIndex={selected ? 0 : -1}
               onClick={() => {
@@ -116,7 +122,7 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
                   {detail.statusCount}
                 </Badge>
               )}
-              {tab.id === 'commits' && detail.branchLog?.loading && (
+              {tab.id === 'commits' && logLoading && (
                 <Loader2 size={11} className="ml-1.5 inline animate-spin text-muted-foreground" />
               )}
             </button>

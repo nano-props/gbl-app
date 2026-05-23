@@ -165,9 +165,14 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
               disabled={!branchTrimmed}
               onChange={(e) => setWorktreePath(e.target.value)}
               placeholder={displayDefaultPath}
+              aria-describedby="cwt-path-hint"
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
             />
-            <div className="mt-1 text-xs text-muted-foreground truncate" title={displayEffectivePath || undefined}>
+            <div
+              id="cwt-path-hint"
+              className="mt-1 text-xs text-muted-foreground truncate"
+              title={displayEffectivePath || undefined}
+            >
               {!branchTrimmed
                 ? t('action.create-worktree-path-disabled-hint')
                 : effectivePath

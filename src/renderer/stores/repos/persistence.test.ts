@@ -1,5 +1,7 @@
-import { describe, expect, test } from 'vitest'
-import { normalizeRepoCache } from '#/renderer/stores/repos/persistence.ts'
+import { beforeEach, describe, expect, test } from 'vitest'
+import { normalizeRepoCache, persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
+import { createBranch, resetReposStore, seedRepoState } from '#/renderer/stores/repos/test-utils.ts'
+import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { CachedRepoState } from '#/renderer/stores/repos/types.ts'
 
 function cachedRepo(savedAt: number): CachedRepoState {
@@ -19,6 +21,8 @@ function cachedRepo(savedAt: number): CachedRepoState {
     },
   }
 }
+
+beforeEach(resetReposStore)
 
 describe('normalizeRepoCache', () => {
   test('keeps only the newest 50 valid cache entries', () => {
@@ -45,5 +49,22 @@ describe('normalizeRepoCache', () => {
     })
 
     expect(Object.keys(normalized)).toEqual(['fresh'])
+  })
+})
+
+describe('persistRepoCache', () => {
+  test('does not write a stale cache entry after the repo instance changes', () => {
+    const staleRepo = seedRepoState({
+      id: '/repo',
+      instanceToken: 1,
+      branches: [createBranch('main')],
+      currentBranch: 'main',
+      selectedBranch: 'main',
+    })
+    seedRepoState({ id: '/repo', instanceToken: 2 })
+
+    persistRepoCache(useReposStore.setState, staleRepo, 1)
+
+    expect(useReposStore.getState().repoCache['/repo']).toBeUndefined()
   })
 })

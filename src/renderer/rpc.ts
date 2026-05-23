@@ -10,6 +10,13 @@ function getGoblinBridge(): Window['goblin'] {
   return bridge
 }
 
+function abortableRepoCwd(path: string, input: unknown): string | null {
+  if (path !== 'repo.fetch' && path !== 'repo.pull' && path !== 'repo.push') return null
+  if (!input || typeof input !== 'object') return null
+  const { cwd } = input as { cwd?: unknown }
+  return typeof cwd === 'string' ? cwd : null
+}
+
 const ipcLink: TRPCLink<AppRouter> = () => {
   return ({ op }) => {
     return observable((observer) => {
@@ -30,6 +37,12 @@ const ipcLink: TRPCLink<AppRouter> = () => {
         observer.error(TRPCClientError.from(cause instanceof Error ? cause : new Error(String(cause))))
       }
       const abort = () => {
+        const cwd = abortableRepoCwd(op.path, op.input)
+        if (cwd) {
+          void getGoblinBridge()
+            .invokeRpc({ path: 'repo.abort', input: { cwd } })
+            .catch(() => {})
+        }
         fail(new Error('Request aborted'))
       }
 

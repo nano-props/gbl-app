@@ -1,5 +1,7 @@
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
+import { idleRepoOperations } from '#/renderer/stores/repos/operations.ts'
+import { disposeAllRepoRuntimes } from '#/renderer/stores/repos/runtime.ts'
 import type { BranchInfo, PullRequestInfo, WorktreeStatus } from '#/renderer/types.ts'
 import type { DetailTab, RepoState } from '#/renderer/stores/repos/types.ts'
 import type { CommitDetail } from '#/renderer/types-bridge.ts'
@@ -47,6 +49,7 @@ export function createCommitDetail(hash = 'abc123'): CommitDetail {
 }
 
 export function resetReposStore(): void {
+  disposeAllRepoRuntimes()
   useReposStore.setState({
     repos: {},
     repoCache: {},
@@ -87,7 +90,7 @@ export function seedRepoState(options: {
   instanceToken?: number
   status?: WorktreeStatus[]
   statusLoaded?: boolean
-  async?: Partial<RepoState['async']>
+  ops?: Partial<RepoState['ops']>
 }): RepoState {
   const base = emptyRepo(options.id, options.name ?? 'repo')
   const repo: RepoState = {
@@ -107,12 +110,7 @@ export function seedRepoState(options: {
       openCommit: options.openCommit ?? base.ui.openCommit,
       openingCommitHash: options.openCommit ? options.openCommit.meta.hash : base.ui.openingCommitHash,
     },
-    async: {
-      ...base.async,
-      loading: false,
-      statusLoading: false,
-      ...options.async,
-    },
+    ops: { ...idleRepoOperations(), ...options.ops },
   }
   useReposStore.setState({
     repos: { [options.id]: repo },

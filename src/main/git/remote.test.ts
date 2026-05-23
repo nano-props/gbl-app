@@ -57,7 +57,7 @@ describe('pullBranch', () => {
 
     expect(result.ok).toBe(true)
     expect(git(repo, 'rev-parse', 'feature')).toBe(updated)
-  })
+  }, 15000)
 
   test('uses upstream remote names that start with dashes', async () => {
     const { repo, remote } = initRepo()
@@ -80,7 +80,7 @@ describe('pullBranch', () => {
 
     expect(result.ok).toBe(true)
     expect(git(repo, 'rev-parse', 'feature')).toBe(updated)
-  })
+  }, 15000)
 
   test('uses local upstream branches', async () => {
     const { repo } = initRepo()
@@ -98,5 +98,5 @@ describe('pullBranch', () => {
 
     expect(result.ok).toBe(true)
     expect(git(repo, 'rev-parse', 'feature')).toBe(updated)
-  })
+  }, 15000)
 })

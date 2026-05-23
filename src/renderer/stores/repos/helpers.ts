@@ -1,4 +1,5 @@
 import { produce, type Draft } from 'immer'
+import { emptyRepoOperations } from '#/renderer/stores/repos/operations.ts'
 import type { RepoEvent, RepoState, ReposSet } from '#/renderer/stores/repos/types.ts'
 
 let nextInstanceToken = 1
@@ -29,17 +30,7 @@ export function emptyRepo(id: string, name: string): RepoState {
       openCommit: null,
       openingCommitHash: null,
     },
-    async: {
-      statusLoading: true,
-      statusError: null,
-      loading: true,
-      syncing: false,
-      lastFetchSettledAt: null,
-      fetching: false,
-      refreshing: false,
-      pullRequestsLoading: false,
-      pullRequestsRequestId: 0,
-    },
+    ops: emptyRepoOperations(),
     cache: {
       source: 'fresh',
       savedAt: null,
@@ -76,4 +67,8 @@ export function updateIfFresh(set: ReposSet, id: string, token: number, mutator:
     if (nextRepo === repo) return s
     return { repos: { ...s.repos, [id]: nextRepo } }
   })
+}
+
+export function replaceRepo(repo: RepoState, mutator: RepoMutator): RepoState {
+  return produce(repo, mutator)
 }

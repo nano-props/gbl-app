@@ -1,6 +1,7 @@
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { branchForVisibleLog } from '#/renderer/stores/repos/branch-view-mode.ts'
 import { canStartRemoteFetch } from '#/renderer/stores/repos/sync-state.ts'
+import { idleOperation, operationBusy } from '#/renderer/stores/repos/operations.ts'
 
 export type RepoSyncStage = 'cache' | 'branches' | 'status' | 'prs' | 'log' | 'remote'
 
@@ -20,19 +21,27 @@ const STAGE_LABEL_KEYS: Record<RepoSyncStage, string> = {
 
 export function getRepoSyncActivity(repo: RepoState): RepoSyncActivity | null {
   const branchForLog = branchForVisibleLog(repo)
-  const logLoading = branchForLog ? (repo.data.logsByBranch[branchForLog]?.loading ?? false) : false
+  const logLoading = branchForLog
+    ? (repo.data.logsByBranch[branchForLog]?.loading ?? false) ||
+      operationBusy(repo.ops.logsByBranch[branchForLog] ?? idleOperation())
+    : false
+  const snapshotLoading = operationBusy(repo.ops.snapshot)
+  const branchActionLoading = operationBusy(repo.ops.branchAction)
+  const statusLoading = operationBusy(repo.ops.status)
+  const pullRequestsLoading = operationBusy(repo.ops.pullRequests)
+  const remoteLoading = operationBusy(repo.ops.fetch)
   const stage =
-    repo.cache.source === 'cache' && repo.async.refreshing
+    repo.cache.source === 'cache' && operationBusy(repo.ops.snapshot)
       ? 'cache'
-      : repo.async.loading
+      : snapshotLoading || branchActionLoading
         ? 'branches'
-        : repo.async.statusLoading
+        : statusLoading
           ? 'status'
-          : repo.async.pullRequestsLoading
+          : pullRequestsLoading
             ? 'prs'
             : logLoading
               ? 'log'
-              : repo.async.fetching || repo.async.syncing
+              : remoteLoading
                 ? 'remote'
                 : null
 

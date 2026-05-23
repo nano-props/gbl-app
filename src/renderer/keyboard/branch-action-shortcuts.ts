@@ -1,6 +1,6 @@
-import type { BranchActionOp } from '#/renderer/hooks/useBranchActions.tsx'
+import type { BranchUiAction } from '#/renderer/hooks/useBranchActions.tsx'
 
-type BranchActionShortcutHandler = (action: BranchActionOp) => void
+type BranchActionShortcutHandler = (action: BranchUiAction) => void
 
 let handler: BranchActionShortcutHandler | null = null
 
@@ -11,6 +11,6 @@ export function setBranchActionShortcutHandler(next: BranchActionShortcutHandler
   }
 }
 
-export function runBranchActionShortcut(action: BranchActionOp) {
+export function runBranchActionShortcut(action: BranchUiAction) {
   handler?.(action)
 }

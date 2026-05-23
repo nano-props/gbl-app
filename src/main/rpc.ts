@@ -206,14 +206,25 @@ function createRpcHandlers(): AppRpcHandlers {
       },
       pull: async ({ cwd, branch, worktreePath }) => {
         if (!isValidCwd(cwd) || !isValidBranch(branch)) return { ok: false, message: 'error.invalid-arguments' }
-        let targetPath: string | undefined
-        if (worktreePath !== undefined) {
-          if (!isValidAbsolutePath(worktreePath)) return { ok: false, message: 'error.invalid-worktree-path' }
-          const target = resolveKnownWorktree(await getWorktrees(cwd), worktreePath, branch)
-          if (!target.ok) return target
-          targetPath = target.path
+        if (worktreePath !== undefined && !isValidAbsolutePath(worktreePath)) {
+          return { ok: false, message: 'error.invalid-worktree-path' }
         }
-        return runCancellable(cwd, 'user', (signal) => pullBranch(cwd, branch, targetPath, signal))
+        return runCancellable(cwd, 'user', async (signal) => {
+          let targetPath: string | undefined
+          if (worktreePath !== undefined) {
+            let worktrees
+            try {
+              worktrees = await getWorktrees(cwd, { signal })
+            } catch (err) {
+              if (signal.aborted) return { ok: false, message: 'cancelled' }
+              throw err
+            }
+            const target = resolveKnownWorktree(worktrees, worktreePath, branch)
+            if (!target.ok) return target
+            targetPath = target.path
+          }
+          return pullBranch(cwd, branch, targetPath, signal)
+        })
       },
       push: async ({ cwd, branch }) => {
         if (!isValidCwd(cwd) || !isValidBranch(branch)) return { ok: false, message: 'error.invalid-arguments' }

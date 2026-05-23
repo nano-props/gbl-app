@@ -16,7 +16,7 @@ export function RepoSyncControl({ repo }: Props) {
   const activity = getRepoSyncActivity(repo)
   const syncBlocked = isRepoSyncBlocked(repo)
   const buttonLabel = activity ? t(activity.labelKey) : t('action.refresh')
-  const buttonDisabled = syncBlocked || activity !== null
+  const buttonDisabled = syncBlocked
   const Icon = activity ? Loader2 : RotateCw
 
   async function handleSync() {
@@ -28,7 +28,7 @@ export function RepoSyncControl({ repo }: Props) {
   return (
     <div className="flex items-center gap-2">
       <Tip label={t('action.fetch-title')}>
-        <Button variant="ghost" onClick={handleSync} disabled={buttonDisabled} aria-busy={activity !== null}>
+        <Button variant="ghost" onClick={handleSync} disabled={buttonDisabled} aria-busy={activity ? true : undefined}>
           <Icon className={activity ? 'animate-spin' : ''} />
           {buttonLabel}
         </Button>

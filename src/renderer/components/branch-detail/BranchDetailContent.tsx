@@ -7,6 +7,7 @@ import { StatusList } from '#/renderer/components/StatusList.tsx'
 import { ListSkeleton } from '#/renderer/components/Skeleton.tsx'
 import { BranchStatus } from '#/renderer/components/branch-detail/BranchStatus.tsx'
 import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
+import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 
 interface Props {
   repo: RepoState
@@ -18,6 +19,8 @@ interface Props {
 export function BranchDetailContent({ repo, detail, detailId, contentId }: Props) {
   const t = useT()
   const { branch, branchLog, selectedStatus } = detail
+  const statusLoading = operationBusy(repo.ops.status)
+  const statusError = repo.ops.status.error
   if (!branch)
     return <EmptyState title={t(repo.data.branches.length === 0 ? 'branches.empty' : 'branches.filter-empty')} />
 
@@ -40,10 +43,10 @@ export function BranchDetailContent({ repo, detail, detailId, contentId }: Props
           aria-labelledby={`${detailId}-changes-tab`}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {branch.worktreePath && repo.async.statusLoading && !repo.data.statusLoaded ? (
+          {branch.worktreePath && statusLoading && !repo.data.statusLoaded ? (
             <ListSkeleton rows={8} variant="status" />
-          ) : branch.worktreePath && !repo.data.statusLoaded && repo.async.statusError ? (
-            <EmptyState title={t(repo.async.statusError)} />
+          ) : branch.worktreePath && !repo.data.statusLoaded && statusError ? (
+            <EmptyState title={t(statusError)} />
           ) : branch.worktreePath ? (
             <StatusList status={selectedStatus} emptyTitleKey="status.clean-title" emptyBodyKey="status.clean-body" />
           ) : (
