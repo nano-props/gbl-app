@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { ellipsizeMiddlePath } from '#/renderer/lib/display-path.ts'
+import { ellipsizeLeftPath } from '#/renderer/lib/display-path.ts'
 
 interface Props {
   path: string
@@ -52,7 +52,7 @@ export function FilePathText({ path }: Props) {
       title={path}
       aria-label={path}
     >
-      {maxChars === null ? path : ellipsizeMiddlePath(path, maxChars)}
+      {maxChars === null ? path : ellipsizeLeftPath(path, maxChars)}
     </span>
   )
 }

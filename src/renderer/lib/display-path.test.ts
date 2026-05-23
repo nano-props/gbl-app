@@ -1,36 +1,36 @@
 import { describe, expect, test } from 'vitest'
-import { ellipsizeMiddlePath } from '#/renderer/lib/display-path.ts'
+import { ellipsizeLeftPath } from '#/renderer/lib/display-path.ts'
 
-describe('ellipsizeMiddlePath', () => {
+describe('ellipsizeLeftPath', () => {
   test('keeps paths that fit unchanged', () => {
-    expect(ellipsizeMiddlePath('apps/web/src/App.tsx', 20)).toBe('apps/web/src/App.tsx')
+    expect(ellipsizeLeftPath('apps/web/src/App.tsx', 20)).toBe('apps/web/src/App.tsx')
   })
 
-  test('keeps the first segment and longest fitting suffix', () => {
-    expect(ellipsizeMiddlePath('a/b/c/d/file.ts', 14)).toBe('a/…/d/file.ts')
+  test('keeps the longest fitting suffix', () => {
+    expect(ellipsizeLeftPath('a/b/c/d/file.ts', 14)).toBe('…/c/d/file.ts')
   })
 
-  test('drops repeated middle prefixes for deeply nested project paths', () => {
+  test('drops left prefixes for deeply nested project paths', () => {
     expect(
-      ellipsizeMiddlePath(
+      ellipsizeLeftPath(
         'seller_promotion_platform/seller-promotion-platform/seller-promotion-platform-frontend/free-exposure-promotion/src/ui/i18n/m-en.yaml',
         60,
       ),
-    ).toBe('seller_promotion_platform/…/src/ui/i18n/m-en.yaml')
+    ).toBe('…/free-exposure-promotion/src/ui/i18n/m-en.yaml')
   })
 
-  test('falls back to middle ellipsis for long filenames', () => {
-    expect(ellipsizeMiddlePath('very-long-filename.component.tsx', 12)).toBe('very-l…t.tsx')
+  test('falls back to left ellipsis for long filenames', () => {
+    expect(ellipsizeLeftPath('very-long-filename.component.tsx', 12)).toBe('…mponent.tsx')
   })
 
   test('never exceeds the requested character budget for tiny widths', () => {
     for (let maxChars = 0; maxChars <= 3; maxChars += 1) {
-      expect(ellipsizeMiddlePath('apps/web/src/App.tsx', maxChars).length).toBeLessThanOrEqual(maxChars)
+      expect(ellipsizeLeftPath('apps/web/src/App.tsx', maxChars).length).toBeLessThanOrEqual(maxChars)
     }
   })
 
   test('normalizes invalid and fractional character budgets', () => {
-    expect(ellipsizeMiddlePath('apps/web/src/App.tsx', Number.NaN)).toBe('')
-    expect(ellipsizeMiddlePath('apps/web/src/App.tsx', 14.9)).toBe('apps/…/App.tsx')
+    expect(ellipsizeLeftPath('apps/web/src/App.tsx', Number.NaN)).toBe('')
+    expect(ellipsizeLeftPath('apps/web/src/App.tsx', 14.9)).toBe('…/src/App.tsx')
   })
 })
