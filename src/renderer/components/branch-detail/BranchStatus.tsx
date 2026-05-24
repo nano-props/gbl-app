@@ -13,9 +13,12 @@ import {
 import { tildify } from '#/renderer/lib/paths.ts'
 import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
 import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
+import type { RepoWorkspaceLayout } from '#/renderer/stores/repos/types.ts'
+import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
 
 interface Props {
   detail: SelectedBranchDetail
+  layout: RepoWorkspaceLayout
 }
 
 function SyncValue({
@@ -61,9 +64,10 @@ function SyncValue({
   )
 }
 
-export function BranchStatus({ detail }: Props) {
+export function BranchStatus({ detail, layout }: Props) {
   const t = useT()
   const { branch, statusCount } = detail
+  const behavior = repoWorkspaceBehavior(layout, false)
   if (!branch) return <EmptyState title={t('branches.empty')} />
 
   const protectedBranch = PROTECTED_BRANCHES.has(branch.name)
@@ -103,7 +107,9 @@ export function BranchStatus({ detail }: Props) {
       </>
     ) : undefined
   const remoteValue = branch.tracking ? (
-    <MonoValue tone={branch.trackingGone ? 'attention' : undefined}>{branch.tracking}</MonoValue>
+    <MonoValue title={branch.tracking} tone={branch.trackingGone ? 'attention' : undefined} truncate>
+      {branch.tracking}
+    </MonoValue>
   ) : (
     <StatusChip tone="attention">{t('branches.no-upstream')}</StatusChip>
   )
@@ -178,7 +184,10 @@ export function BranchStatus({ detail }: Props) {
           tone={mergeTone}
         />
       )}
-      <PullRequestStatusRow pullRequest={branch.pullRequest} />
+      <PullRequestStatusRow
+        pullRequest={branch.pullRequest}
+        tooltipSide={behavior.prTooltipSide}
+      />
     </StatusRows>
   )
 }

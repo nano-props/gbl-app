@@ -83,6 +83,8 @@ export interface LogEntry {
   date: string
 }
 
+export const GIT_HASH_RE = /^[0-9a-fA-F]{7,64}$/
+
 export interface ExecResult {
   ok: boolean
   message: string

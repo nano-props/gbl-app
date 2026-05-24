@@ -1,17 +1,23 @@
 import type { StoreApi } from 'zustand'
 import type { BranchInfo, ExecResult, LogEntry, PullRequestFetchMode, WorktreeStatus } from '#/renderer/types.ts'
-import type { CommitDetail } from '#/renderer/types-bridge.ts'
+import type { CommitDetail, WorkspaceLayout } from '#/renderer/types-bridge.ts'
 import type { RepoBranchAction, RunBranchActionOptions } from '#/renderer/stores/repos/branch-action-types.ts'
 import type { RepoOperationsState } from '#/renderer/stores/repos/operations.ts'
 
 export type DetailTab = 'status' | 'changes' | 'commits'
 export type BranchViewMode = 'all' | 'worktrees' | 'no-worktree'
+export type RepoWorkspaceLayout = WorkspaceLayout
 export type RepoDataSource = 'cache' | 'fresh'
+export type CommitDetailState =
+  | { phase: 'idle' }
+  | { phase: 'opening'; hash: string }
+  | { phase: 'open'; detail: CommitDetail }
 
 export interface BranchLogState {
   entries: LogEntry[]
   selectedHash: string | null
   loading: boolean
+  hasMore: boolean
 }
 
 export type RepoEvent =
@@ -35,9 +41,7 @@ export interface RepoUiState {
   selectedBranch: string | null
   branchViewMode: BranchViewMode
   detailTab: DetailTab
-  /** When set, the log view shows the commit detail overlay. */
-  openCommit: CommitDetail | null
-  openingCommitHash: string | null
+  commitDetail: CommitDetailState
 }
 
 export interface RepoCacheState {
@@ -98,6 +102,7 @@ export interface ReposStore {
    *  saved session. */
   missingFromSession: MissingRepo[]
   detailCollapsed: boolean
+  workspaceLayout: RepoWorkspaceLayout
 
   /** Add a repo to the store. By default also focuses it — pass
    *  `activate: false` for batch flows (e.g. multi-folder drop) that
@@ -116,6 +121,8 @@ export interface ReposStore {
   setDetailTab: (id: string, tab: DetailTab) => void
   setDetailCollapsed: (collapsed: boolean) => void
   toggleDetailCollapsed: () => void
+  setWorkspaceLayout: (layout: RepoWorkspaceLayout) => void
+  resetLayout: () => void
   setBranchViewMode: (id: string, viewMode: BranchViewMode) => void
   selectBranch: (id: string, branch: string) => void
   selectLog: (id: string, branch: string, hash: string) => void
@@ -127,13 +134,18 @@ export interface ReposStore {
   openSelectedCommit: () => Promise<void>
   refreshSnapshot: (
     id: string,
-    options?: { silent?: boolean; skipLogBackfill?: boolean; token?: number },
+    options?: { skipLogBackfill?: boolean; token?: number },
   ) => Promise<void>
   refreshBranchLog: (id: string, branch?: string, options?: { token?: number }) => Promise<void>
+  loadMoreBranchLog: (id: string, branch?: string, options?: { token?: number }) => Promise<void>
   refreshPullRequests: (
     id: string,
     branches?: string[],
-    options?: { token?: number; mode?: PullRequestFetchMode; silent?: boolean; clearMissing?: boolean },
+    options?: {
+      token?: number
+      mode?: PullRequestFetchMode
+      clearMissing?: boolean
+    },
   ) => Promise<void>
   refreshStatus: (id: string, options?: { token?: number }) => Promise<void>
   refreshAll: (id: string, options?: { token?: number }) => Promise<void>

@@ -4,10 +4,10 @@ import type { RepoState } from '#/renderer/stores/repos/types.ts'
 export function canStartRemoteFetch(repo: RepoState | undefined): repo is RepoState {
   if (!repo) return false
   return (
-    !operationBusy(repo.ops.fetch, { includeSilent: true }) &&
-    !operationBusy(repo.ops.branchAction, { includeSilent: true }) &&
-    !operationBusy(repo.ops.snapshot, { includeSilent: true }) &&
-    !operationBusy(repo.ops.status, { includeSilent: true })
+    !operationBusy(repo.ops.fetch) &&
+    !operationBusy(repo.ops.branchAction) &&
+    !operationBusy(repo.ops.snapshot) &&
+    !operationBusy(repo.ops.status)
   )
 }
 

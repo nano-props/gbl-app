@@ -102,8 +102,7 @@ describe('setBranchViewMode', () => {
 
     const repo = useReposStore.getState().repos[REPO_ID]
     expect(repo?.ui.selectedBranch).toBe('main')
-    expect(repo?.ui.openCommit).toBeNull()
-    expect(repo?.ui.openingCommitHash).toBeNull()
+    expect(repo?.ui.commitDetail.phase).toBe('idle')
   })
 
   test('clears the selection when the new view mode has no visible branches', () => {
@@ -149,7 +148,7 @@ describe('setBranchViewMode', () => {
       useReposStore.getState().setBranchViewMode(REPO_ID, 'worktrees')
 
       expect(logCalls[0]).toEqual([REPO_ID, 'main', { token }])
-      expect(pullRequestCalls[0]).toEqual([REPO_ID, ['main'], { token, mode: 'full', silent: true }])
+      expect(pullRequestCalls[0]).toEqual([REPO_ID, ['main'], { token, mode: 'full' }])
     } finally {
       restore()
     }
@@ -177,7 +176,7 @@ describe('setBranchViewMode', () => {
 })
 
 describe('selectBranch', () => {
-  test('refreshes pull request details silently', async () => {
+  test('refreshes pull request details locally', async () => {
     let resolve!: () => void
     const calls: Array<{ branches?: string[]; mode?: string }> = []
     rpcHandlers['repo.pullRequests'] = ({ branches, options }: { branches?: string[]; options?: { mode?: string } }) =>
@@ -214,7 +213,7 @@ describe('selectBranch', () => {
       useReposStore.getState().selectBranch(REPO_ID, 'main')
 
       expect(logCalls[0]).toEqual([REPO_ID, 'main', { token }])
-      expect(pullRequestCalls[0]).toEqual([REPO_ID, ['main'], { token, mode: 'full', silent: true }])
+      expect(pullRequestCalls[0]).toEqual([REPO_ID, ['main'], { token, mode: 'full' }])
     } finally {
       restore()
     }
@@ -232,7 +231,7 @@ describe('selectBranch', () => {
 
     const repo = useReposStore.getState().repos[REPO_ID]
     expect(repo?.ui.selectedBranch).toBe('feature/plain')
-    expect(repo?.ui.openCommit).not.toBeNull()
+    expect(repo?.ui.commitDetail.phase).toBe('open')
     expect(calls).toBe(0)
   })
 
@@ -257,8 +256,7 @@ describe('selectBranch', () => {
 
     const repo = useReposStore.getState().repos[REPO_ID]
     expect(repo?.ui.selectedBranch).toBe('main')
-    expect(repo?.ui.openCommit).toBeNull()
-    expect(repo?.ui.openingCommitHash).toBeNull()
+    expect(repo?.ui.commitDetail.phase).toBe('idle')
   })
 })
 
@@ -311,7 +309,7 @@ describe('setDetailTab', () => {
     try {
       useReposStore.getState().setDetailTab(REPO_ID, 'status')
 
-      expect(pullRequestCalls[0]).toEqual([REPO_ID, ['main'], { token, mode: 'full', silent: true }])
+      expect(pullRequestCalls[0]).toEqual([REPO_ID, ['main'], { token, mode: 'full' }])
     } finally {
       restore()
     }
@@ -347,6 +345,136 @@ describe('setDetailTab', () => {
     await flushAsyncWork()
 
     expect(calls).toBe(0)
+  })
+})
+
+describe('setWorkspaceLayout', () => {
+  test('allows detail collapse changes in top-bottom layout', () => {
+    useReposStore.getState().setDetailCollapsed(false)
+    expect(useReposStore.getState().detailCollapsed).toBe(false)
+
+    useReposStore.getState().setDetailCollapsed(true)
+    expect(useReposStore.getState().detailCollapsed).toBe(true)
+  })
+
+  test('expands detail and blocks collapse in left-right layout', () => {
+    useReposStore.getState().setDetailCollapsed(true)
+
+    useReposStore.getState().setWorkspaceLayout('left-right')
+
+    expect(useReposStore.getState().workspaceLayout).toBe('left-right')
+    expect(useReposStore.getState().detailCollapsed).toBe(false)
+
+    useReposStore.getState().setDetailCollapsed(true)
+    expect(useReposStore.getState().detailCollapsed).toBe(false)
+
+    useReposStore.getState().toggleDetailCollapsed()
+    expect(useReposStore.getState().detailCollapsed).toBe(false)
+  })
+
+  test('allows collapse again after returning to top-bottom layout', () => {
+    useReposStore.getState().setWorkspaceLayout('left-right')
+    useReposStore.getState().setWorkspaceLayout('top-bottom')
+
+    useReposStore.getState().toggleDetailCollapsed()
+
+    expect(useReposStore.getState().workspaceLayout).toBe('top-bottom')
+    expect(useReposStore.getState().detailCollapsed).toBe(true)
+  })
+})
+
+describe('commit detail collapse behavior', () => {
+  test('test fixture represents an opened commit as a stable tab-local state', () => {
+    seedRepo({ selectedBranch: 'main', detailTab: 'commits', openCommit: true })
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.ui.commitDetail.phase).toBe('open')
+  })
+
+  test('opening a commit expands the detail pane immediately', async () => {
+    seedRepo({ selectedBranch: 'main', detailTab: 'commits' })
+    useReposStore.setState({ detailCollapsed: true })
+    rpcHandlers['repo.commit'] = async ({ hash }: { hash: string }) => createCommitDetail(hash)
+
+    await useReposStore.getState().openCommit(REPO_ID, 'abc123')
+
+    expect(useReposStore.getState().detailCollapsed).toBe(false)
+    const commitDetail = useReposStore.getState().repos[REPO_ID]?.ui.commitDetail
+    expect(commitDetail?.phase).toBe('open')
+    expect(commitDetail?.phase === 'open' ? commitDetail.detail.meta.hash : null).toBe('abc123')
+  })
+
+  test('collapsing detail preserves a pending commit detail', async () => {
+    let resolveCommit!: () => void
+    rpcHandlers['repo.commit'] = ({ hash }: { hash: string }) =>
+      new Promise((resolve) => {
+        resolveCommit = () => resolve(createCommitDetail(hash))
+      })
+    seedRepo({ selectedBranch: 'main', detailTab: 'commits' })
+    useReposStore.setState({ detailCollapsed: false })
+
+    const work = useReposStore.getState().openCommit(REPO_ID, 'abc123')
+
+    expect(useReposStore.getState().repos[REPO_ID]?.ui.commitDetail).toEqual({ phase: 'opening', hash: 'abc123' })
+    useReposStore.getState().setDetailCollapsed(true)
+    expect(useReposStore.getState().detailCollapsed).toBe(true)
+    expect(useReposStore.getState().repos[REPO_ID]?.ui.commitDetail).toEqual({ phase: 'opening', hash: 'abc123' })
+
+    resolveCommit()
+    await work
+
+    const commitDetail = useReposStore.getState().repos[REPO_ID]?.ui.commitDetail
+    expect(commitDetail?.phase).toBe('open')
+    expect(commitDetail?.phase === 'open' ? commitDetail.detail.meta.hash : null).toBe('abc123')
+  })
+
+  test('collapsing detail preserves an open commit detail as tab-local state', () => {
+    seedRepo({ selectedBranch: 'main', detailTab: 'commits', openCommit: true })
+    useReposStore.setState({ detailCollapsed: false })
+
+    useReposStore.getState().toggleDetailCollapsed()
+
+    expect(useReposStore.getState().detailCollapsed).toBe(true)
+    expect(useReposStore.getState().repos[REPO_ID]?.ui.commitDetail.phase).toBe('open')
+  })
+
+  test('closing a pending commit detail keeps a late response from reopening it', async () => {
+    let resolveCommit!: () => void
+    rpcHandlers['repo.commit'] = ({ hash }: { hash: string }) =>
+      new Promise((resolve) => {
+        resolveCommit = () => resolve(createCommitDetail(hash))
+      })
+    seedRepo({ selectedBranch: 'main', detailTab: 'commits' })
+
+    const work = useReposStore.getState().openCommit(REPO_ID, 'abc123')
+
+    expect(useReposStore.getState().repos[REPO_ID]?.ui.commitDetail).toEqual({ phase: 'opening', hash: 'abc123' })
+    useReposStore.getState().closeCommit(REPO_ID)
+    expect(useReposStore.getState().repos[REPO_ID]?.ui.commitDetail.phase).toBe('idle')
+
+    resolveCommit()
+    await work
+
+    expect(useReposStore.getState().repos[REPO_ID]?.ui.commitDetail.phase).toBe('idle')
+  })
+})
+
+describe('resetLayout', () => {
+  test('restores the initial workspace layout defaults', () => {
+    useReposStore.setState({ workspaceLayout: 'left-right', detailCollapsed: false })
+
+    useReposStore.getState().resetLayout()
+
+    expect(useReposStore.getState().workspaceLayout).toBe('top-bottom')
+    expect(useReposStore.getState().detailCollapsed).toBe(true)
+  })
+
+  test('is idempotent when layout is already at defaults', () => {
+    const before = useReposStore.getState()
+
+    useReposStore.getState().resetLayout()
+
+    expect(useReposStore.getState()).toBe(before)
   })
 })
 
@@ -416,5 +544,6 @@ function createLogState(selectedHash: string): BranchLogState {
     ],
     selectedHash,
     loading: false,
+    hasMore: false,
   }
 }

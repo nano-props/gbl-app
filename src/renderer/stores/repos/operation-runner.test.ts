@@ -93,7 +93,7 @@ describe('runExclusiveOperation', () => {
     const running = useReposStore.getState().repos[REPO_ID]
     expect(running?.ops.branchAction.phase).toBe('running')
     expect(running?.ops.fetch.phase).toBe('running')
-    expect(operationBusy(running!.ops.branchAction, { includeSilent: true })).toBe(true)
+    expect(operationBusy(running!.ops.branchAction)).toBe(true)
 
     release()
     await expect(work).resolves.toBe('ok')

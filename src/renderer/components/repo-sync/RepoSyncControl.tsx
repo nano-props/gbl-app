@@ -5,41 +5,67 @@ import { useT } from '#/renderer/stores/i18n.ts'
 import { Tip } from '#/renderer/components/Tip.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import { getRepoSyncActivity, isRepoSyncBlocked } from '#/renderer/components/repo-sync/model.ts'
+import { useVisibleLoadingValue } from '#/renderer/hooks/useLoadingVisibility.ts'
 
 interface Props {
   repo: RepoState
 }
 
+interface RepoSyncPresentation {
+  rawBlocked: boolean
+  visibleActivity: ReturnType<typeof getRepoSyncActivity>
+  visualBusy: boolean
+  visualDisabled: boolean
+}
+
+function useRepoSyncPresentation(repo: RepoState): RepoSyncPresentation {
+  const rawActivity = getRepoSyncActivity(repo)
+  const rawBlocked = isRepoSyncBlocked(repo)
+  const visibleActivity = useVisibleLoadingValue(rawActivity)
+  const visualBusy = visibleActivity !== null
+  return {
+    rawBlocked,
+    visibleActivity,
+    visualBusy,
+    // Raw blocked state still guards clicks in handleSync; visual disabled is delayed
+    // with the spinner/label so short background refreshes do not flash button opacity.
+    visualDisabled: visualBusy && rawBlocked,
+  }
+}
+
 export function RepoSyncControl({ repo }: Props) {
   const t = useT()
   const syncAndRefresh = useReposStore((s) => s.syncAndRefresh)
-  const activity = getRepoSyncActivity(repo)
-  const syncBlocked = isRepoSyncBlocked(repo)
-  const buttonLabel = activity ? t(activity.labelKey) : t('action.refresh')
-  const buttonDisabled = syncBlocked
-  const Icon = activity ? Loader2 : RotateCw
+  const { rawBlocked, visibleActivity, visualBusy, visualDisabled } = useRepoSyncPresentation(repo)
+  const buttonLabel = visibleActivity ? t(visibleActivity.labelKey) : t('action.refresh')
+  const Icon = visibleActivity ? Loader2 : RotateCw
 
   async function handleSync() {
     const token = repo.instanceToken
-    if (buttonDisabled) return
+    if (rawBlocked) return
     await syncAndRefresh(repo.id, { token })
   }
 
   return (
     <div className="flex items-center gap-2">
       <Tip label={t('action.fetch-title')}>
-        <Button variant="ghost" onClick={handleSync} disabled={buttonDisabled} aria-busy={activity ? true : undefined}>
-          <Icon className={activity ? 'animate-spin' : ''} />
+        <Button
+          variant="ghost"
+          onClick={handleSync}
+          disabled={visualDisabled}
+          aria-busy={visualBusy ? true : undefined}
+        >
+          <Icon className={visualBusy ? 'animate-spin' : ''} />
           {buttonLabel}
         </Button>
       </Tip>
-      {activity && (
+      {visualBusy && (
         <span className="sr-only" role="status">
           {buttonLabel}
         </span>
       )}
-      {!activity && <RepoCacheIndicator repo={repo} />}
-      {!activity && <RepoFetchFailureIndicator repo={repo} />}
+      {!visualBusy && <RepoCacheIndicator repo={repo} />}
+      {!visualBusy && <RepoFetchFailureIndicator repo={repo} />}
     </div>
   )
 }

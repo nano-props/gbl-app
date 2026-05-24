@@ -13,6 +13,13 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import writeFileAtomic from 'write-file-atomic'
 import { DEFAULT_GLOBAL_SHORTCUT, normalizeGlobalShortcut } from '#/shared/accelerator.ts'
+import {
+  DEFAULT_WORKSPACE_LAYOUT,
+  DEFAULT_DETAIL_COLLAPSED,
+  effectiveDetailCollapsed,
+  normalizeWorkspaceLayout,
+  type WorkspaceLayout,
+} from '#/shared/workspace-layout.ts'
 
 export type ThemePref = 'auto' | 'light' | 'dark'
 export type LangPref = 'auto' | 'en' | 'zh' | 'ko' | 'ja'
@@ -32,13 +39,15 @@ export interface SessionState {
   /** The active tab — null when no repos were open. */
   activeRepo: string | null
   detailCollapsed: boolean
+  workspaceLayout: WorkspaceLayout
 }
 
 /** Bump when a breaking schema change lands (renamed fields, removed
  *  enum values, etc.). loadSettings checks this so a future migration
  *  can rewrite the file before the app reads it. */
 export const SETTINGS_SCHEMA_VERSION = 1
-export const DEFAULT_SESSION_DETAIL_COLLAPSED = true
+export const DEFAULT_SESSION_DETAIL_COLLAPSED = DEFAULT_DETAIL_COLLAPSED
+export const DEFAULT_SESSION_WORKSPACE_LAYOUT: WorkspaceLayout = DEFAULT_WORKSPACE_LAYOUT
 
 export interface Settings {
   /** Schema version of this file. Older files without it are treated as
@@ -67,7 +76,12 @@ const DEFAULTS: Settings = {
   terminalApp: 'auto',
   editorApp: 'auto',
   windowBounds: null,
-  session: { openRepos: [], activeRepo: null, detailCollapsed: DEFAULT_SESSION_DETAIL_COLLAPSED },
+  session: {
+    openRepos: [],
+    activeRepo: null,
+    detailCollapsed: DEFAULT_SESSION_DETAIL_COLLAPSED,
+    workspaceLayout: DEFAULT_SESSION_WORKSPACE_LAYOUT,
+  },
   recentRepos: [],
 }
 
@@ -100,11 +114,14 @@ function normalizeSession(session: unknown): SessionState {
     : []
   const activePath = toSafeSessionPath(value.activeRepo)
   const activeRepo = activePath && openRepos.includes(activePath) ? activePath : null
+  const workspaceLayout = normalizeWorkspaceLayout(value.workspaceLayout)
+  const detailCollapsed =
+    typeof value.detailCollapsed === 'boolean' ? value.detailCollapsed : DEFAULTS.session.detailCollapsed
   return {
     openRepos,
     activeRepo,
-    detailCollapsed:
-      typeof value.detailCollapsed === 'boolean' ? value.detailCollapsed : DEFAULTS.session.detailCollapsed,
+    detailCollapsed: effectiveDetailCollapsed(workspaceLayout, detailCollapsed),
+    workspaceLayout,
   }
 }
 
@@ -214,6 +231,14 @@ export function getShortcutsDisabled(): boolean {
 
 export function getGlobalShortcut(): string {
   return cache?.globalShortcut ?? DEFAULTS.globalShortcut
+}
+
+export function getLangPref(): LangPref {
+  return cache?.lang ?? DEFAULTS.lang
+}
+
+export function getSession(): SessionState {
+  return cache?.session ?? DEFAULTS.session
 }
 
 export function getTerminalApp(): TerminalPref {

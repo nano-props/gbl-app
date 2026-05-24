@@ -26,8 +26,7 @@ const INTERACTIVE_SHORTCUT_TARGET_SELECTOR =
 
 interface Options {
   onShowHelp: () => void
-  /** Returns true when a Settings or Help modal is currently mounted.
-   *  Commit-detail overlay is checked from the active repo state. */
+  /** Returns true when a Settings or Help modal is currently mounted. Commit detail is tab content. */
   isOverlayOpen: () => boolean
 }
 
@@ -106,8 +105,11 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
       const state = useReposStore.getState()
       const repoId = state.activeId
       const repo = repoId ? state.repos[repoId] : null
-      const overlayOpen = isOverlayOpenRef.current() || isShortcutBlockingLayerOpen() || !!repo?.ui.openCommit
-      const commitListActive = !!repo && repo.ui.detailTab === 'commits' && !state.detailCollapsed
+      const overlayOpen = isOverlayOpenRef.current() || isShortcutBlockingLayerOpen()
+      // Commit detail is commits-tab content, not a global overlay.
+      const commitPaneActive = !!repo && repo.ui.detailTab === 'commits' && !state.detailCollapsed
+      const commitDetailActive = commitPaneActive && repo.ui.commitDetail.phase !== 'idle'
+      const commitListActive = commitPaneActive && !commitDetailActive
       const interactiveTarget = isInteractiveTarget(e.target)
 
       if (e.key === 'Escape') {
@@ -121,8 +123,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
 
       if (interactiveTarget) return
 
-      // `?` honours the overlay gate so it doesn't stack a second modal
-      // on top of Settings/Help/commit-detail. Modal owns Esc.
+      // `?` honours the overlay gate so it doesn't stack a second modal on top of Settings/Help. Modal owns Esc.
       if (e.key === '?') {
         if (overlayOpen) return
         e.preventDefault()
@@ -141,13 +142,13 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
       switch (e.key) {
         case 'j':
         case 'ArrowDown': {
-          if (overlayOpen || !repo) break
+          if (overlayOpen || !repo || commitDetailActive) break
           if (moveSelection(state, repo, commitListActive, 1)) e.preventDefault()
           break
         }
         case 'k':
         case 'ArrowUp': {
-          if (overlayOpen || !repo) break
+          if (overlayOpen || !repo || commitDetailActive) break
           if (moveSelection(state, repo, commitListActive, -1)) e.preventDefault()
           break
         }
@@ -159,7 +160,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
           break
         }
         case 'Enter': {
-          if (overlayOpen || !repo) break
+          if (overlayOpen || !repo || commitDetailActive) break
           if (commitListActive) {
             e.preventDefault()
             void state.openSelectedCommit()

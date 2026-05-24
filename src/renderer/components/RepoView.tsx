@@ -5,12 +5,12 @@ import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { BranchList } from '#/renderer/components/BranchList.tsx'
 import { BranchDetail } from '#/renderer/components/BranchDetail.tsx'
-import { CommitDetail } from '#/renderer/components/CommitDetail.tsx'
 import { RepoToolbar } from '#/renderer/components/repo-toolbar/RepoToolbar.tsx'
 import { RepoWorkspaceSkeleton } from '#/renderer/components/Skeleton.tsx'
 import { RepoWorkspace, RepoWorkspacePane } from '#/renderer/components/Layout.tsx'
 import { useRepoToasts } from '#/renderer/hooks/useRepoToasts.tsx'
 import { operationBusy } from '#/renderer/stores/repos/operations.ts'
+import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
 
 interface Props {
   repoId: string
@@ -23,37 +23,42 @@ export function RepoView({ repoId }: Props) {
       const repo = s.repos[repoId]
       return {
         exists: !!repo,
-        initialLoading:
-          !!repo && operationBusy(repo.ops.snapshot, { includeSilent: true }) && repo.data.branches.length === 0,
-        openCommit: repo?.ui.openCommit ?? null,
+        initialLoading: !!repo && operationBusy(repo.ops.snapshot) && repo.data.branches.length === 0,
         detailCollapsed: s.detailCollapsed,
+        workspaceLayout: s.workspaceLayout,
       }
     },
     (a, b) =>
       a.exists === b.exists &&
       a.initialLoading === b.initialLoading &&
-      a.openCommit === b.openCommit &&
-      a.detailCollapsed === b.detailCollapsed,
+      a.detailCollapsed === b.detailCollapsed &&
+      a.workspaceLayout === b.workspaceLayout,
   )
   useRepoToasts(repoId)
 
+  const behavior = repoWorkspaceBehavior(view.workspaceLayout, view.detailCollapsed)
+
   if (!view.exists) return <div />
-  if (view.initialLoading) return <RepoWorkspaceSkeleton showRepoToolbar detailCollapsed={view.detailCollapsed} />
+  if (view.initialLoading) {
+    return (
+      <RepoWorkspaceSkeleton
+        showRepoToolbar
+        layout={view.workspaceLayout}
+        detailCollapsed={behavior.detailCollapsed}
+      />
+    )
+  }
 
   return (
     <section className="flex min-w-0 flex-1 flex-col">
       <RepoToolbar repoId={repoId} />
 
-      <RepoWorkspace detailCollapsed={view.detailCollapsed && !view.openCommit}>
-        <RepoWorkspacePane border>
-          <BranchList repoId={repoId} />
+      <RepoWorkspace layout={view.workspaceLayout} detailCollapsed={behavior.detailCollapsed}>
+        <RepoWorkspacePane layout={view.workspaceLayout} border>
+          <BranchList repoId={repoId} showActions={behavior.branchListActionsVisible} />
         </RepoWorkspacePane>
-        <RepoWorkspacePane>
-          {view.openCommit ? (
-            <CommitDetail repoId={repoId} detail={view.openCommit} />
-          ) : (
-            <BranchDetail repoId={repoId} collapsed={view.detailCollapsed} />
-          )}
+        <RepoWorkspacePane layout={view.workspaceLayout}>
+          <BranchDetail repoId={repoId} layout={view.workspaceLayout} collapsed={behavior.detailCollapsed} />
         </RepoWorkspacePane>
       </RepoWorkspace>
     </section>

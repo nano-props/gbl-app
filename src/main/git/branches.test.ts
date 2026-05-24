@@ -1,6 +1,12 @@
-import { describe, expect, test } from 'vitest'
-import { markDefaultBranch, markMergedToDefault, prioritizeDefaultBranch } from '#/main/git/branches.ts'
+import { afterEach, describe, expect, test } from 'vitest'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { getLog, markDefaultBranch, markMergedToDefault, prioritizeDefaultBranch } from '#/main/git/branches.ts'
 import type { BranchInfo } from '#/shared/git-types.ts'
+
+let tmp: string | null = null
 
 function branch(name: string): BranchInfo {
   return {
@@ -14,6 +20,26 @@ function branch(name: string): BranchInfo {
     lastCommitAuthor: '',
   }
 }
+
+function runGit(cwd: string, args: string[], seconds = 0): void {
+  const env = {
+    ...process.env,
+    GIT_AUTHOR_DATE: `2026-01-01T00:00:${String(seconds).padStart(2, '0')}+00:00`,
+    GIT_COMMITTER_DATE: `2026-01-01T00:00:${String(seconds).padStart(2, '0')}+00:00`,
+  }
+  execFileSync('git', args, { cwd, env, stdio: 'ignore' })
+}
+
+function commitFile(cwd: string, file: string, value: string, message: string, seconds: number): void {
+  writeFileSync(path.join(cwd, file), value)
+  runGit(cwd, ['add', file], seconds)
+  runGit(cwd, ['commit', '-q', '-m', message], seconds)
+}
+
+afterEach(() => {
+  if (tmp) rmSync(tmp, { recursive: true, force: true })
+  tmp = null
+})
 
 describe('prioritizeDefaultBranch', () => {
   test('moves the default branch to the top', () => {
@@ -71,5 +97,29 @@ describe('markMergedToDefault', () => {
   test('preserves branches when no default branch is known', () => {
     const branches = [branch('feature/a')]
     expect(markMergedToDefault(branches, '', new Set(['feature/a']))).toBe(branches)
+  })
+})
+
+describe('getLog', () => {
+  test('paginates with the same ordering as the full branch log across merges', async () => {
+    tmp = mkdtempSync(path.join(os.tmpdir(), 'gbl-branches-test-'))
+    runGit(tmp, ['init', '-q', '--initial-branch=main'])
+    runGit(tmp, ['config', 'user.email', 'a@example.com'])
+    runGit(tmp, ['config', 'user.name', 'A'])
+    commitFile(tmp, 'main.txt', '1', 'main 1', 1)
+    commitFile(tmp, 'main.txt', '2', 'main 2', 2)
+    runGit(tmp, ['checkout', '-q', '-b', 'feature'])
+    commitFile(tmp, 'feature.txt', '1', 'feature 1', 3)
+    commitFile(tmp, 'feature.txt', '2', 'feature 2', 4)
+    runGit(tmp, ['checkout', '-q', 'main'])
+    commitFile(tmp, 'main.txt', '3', 'main 3', 5)
+    runGit(tmp, ['merge', '-q', '--no-ff', 'feature', '-m', 'merge feature'], 6)
+
+    const full = await getLog(tmp, 'main', 10)
+    const firstPage = await getLog(tmp, 'main', 3)
+    const secondPage = await getLog(tmp, 'main', 10, 3)
+
+    expect(firstPage.map((entry) => entry.hash)).toEqual(full.slice(0, 3).map((entry) => entry.hash))
+    expect(secondPage.map((entry) => entry.hash)).toEqual(full.slice(3).map((entry) => entry.hash))
   })
 })

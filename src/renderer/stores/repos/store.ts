@@ -15,7 +15,7 @@
 //     data, and against late commit-detail / log responses landing in
 //     the wrong repo.
 //   - selection guards: branch log state is keyed by branch; same idea
-//     for `openCommit`.
+//     for commit detail state.
 //   - `inFlightFetchById`: `backgroundFetch` won't double-fire for the
 //     same repo, no matter how often `App.tsx`'s effect re-runs.
 
@@ -27,6 +27,7 @@ import { createLifecycleActions } from '#/renderer/stores/repos/lifecycle.ts'
 import { createRefreshActions } from '#/renderer/stores/repos/refresh.ts'
 import { createSelectionActions } from '#/renderer/stores/repos/selection.ts'
 import { normalizeRepoCache } from '#/renderer/stores/repos/persistence.ts'
+import { DEFAULT_DETAIL_COLLAPSED, DEFAULT_WORKSPACE_LAYOUT } from '#/shared/workspace-layout.ts'
 import type { CachedRepoState, ReposStore } from '#/renderer/stores/repos/types.ts'
 
 interface PersistedReposStore {
@@ -102,7 +103,8 @@ export const useReposStore = create<ReposStore>()(
       activeId: null,
       sessionReady: false,
       missingFromSession: [],
-      detailCollapsed: true,
+      detailCollapsed: DEFAULT_DETAIL_COLLAPSED,
+      workspaceLayout: DEFAULT_WORKSPACE_LAYOUT,
 
       ...createLifecycleActions(set, get),
       ...createSelectionActions(set, get),

@@ -30,7 +30,7 @@ import { createWorktree, getWorktrees, removeWorktree } from '#/main/git/worktre
 import { cloneRepository } from '#/main/git/clone.ts'
 import { getBranchPullRequest, getBranchPullRequests } from '#/main/git/pull-requests.ts'
 import { getCommitFileStats, getCommitMeta } from '#/main/git/log.ts'
-import { PROTECTED_BRANCHES, type ExecResult, type PullRequestFetchMode } from '#/shared/git-types.ts'
+import { GIT_HASH_RE, PROTECTED_BRANCHES, type ExecResult, type PullRequestFetchMode } from '#/shared/git-types.ts'
 import { isReservedGlobalShortcut, parseGlobalShortcut } from '#/shared/accelerator.ts'
 import { checkGitAvailable } from '#/main/git/helper.ts'
 import { isValidAbsolutePath, isValidBranch, isValidCwd, isValidOptionalBranch } from '#/main/ipc/validation.ts'
@@ -44,7 +44,6 @@ import {
   onSettingsWriteError,
   setFetchInterval,
   setGlobalShortcut,
-  setLangPref,
   setSession,
   setShortcutsDisabled,
   setTerminalApp,
@@ -52,15 +51,15 @@ import {
   setEditorApp,
   getEditorApp,
 } from '#/main/settings.ts'
+import { effectiveDetailCollapsed, normalizeWorkspaceLayout } from '#/shared/workspace-layout.ts'
 import { isGlobalShortcutRegistered, replaceGlobalShortcut, syncGlobalShortcuts } from '#/main/shortcuts.ts'
-import { buildAppMenu } from '#/main/menu.ts'
-import { getCurrentLang, getDictionary, resolveLang, setCurrentLang } from '#/main/i18n/index.ts'
+import { buildAppMenu, setMenuWorkspaceLayout } from '#/main/menu.ts'
+import { applyLangPref, getCurrentLang, getDictionary } from '#/main/i18n/index.ts'
 import { isTerminalAvailable, openInPreferredTerminal } from '#/main/system/terminals.ts'
 import { isEditorAvailable, openInPreferredEditor } from '#/main/system/editors.ts'
 import { broadcastRpcEvent } from '#/main/events.ts'
 
 const PROJECT_GITHUB_URL = 'https://github.com/nano-props/goblin'
-const GIT_HASH_RE = /^[0-9a-fA-F]{7,64}$/
 const PATCH_TIMEOUT_MS = 90_000
 const MAX_CLONE_URL_LENGTH = 4096
 const MAX_CLONE_DIR_NAME_LENGTH = 255
@@ -110,6 +109,7 @@ export function wireRpcIpc(): void {
   })
 
   subscribeTheme((state) => {
+    buildAppMenu()
     broadcastRpcEvent({ type: 'theme-changed', state })
   })
 
@@ -207,11 +207,13 @@ function createRpcHandlers(): AppRpcHandlers {
         if (!prs) return null
         return Array.from(prs, ([branch, pullRequest]) => ({ branch, pullRequest }))
       },
-      log: async ({ cwd, branch, count }) => {
+      log: async ({ cwd, branch, count, skip }) => {
         if (!isValidCwd(cwd) || !isValidBranch(branch)) return []
         const n = typeof count === 'number' && Number.isFinite(count) ? Math.floor(count) : 100
         const safeCount = Math.max(1, Math.min(1000, n))
-        return getLog(cwd, branch, safeCount)
+        const offset = typeof skip === 'number' && Number.isFinite(skip) ? Math.floor(skip) : 0
+        const safeSkip = Math.max(0, offset)
+        return getLog(cwd, branch, safeCount, safeSkip)
       },
       status: async ({ cwd }) => {
         if (!isValidCwd(cwd)) return []
@@ -375,11 +377,9 @@ function createRpcHandlers(): AppRpcHandlers {
       },
       setPref: async ({ pref }) => {
         if (pref !== 'auto' && pref !== 'en' && pref !== 'zh' && pref !== 'ko' && pref !== 'ja') return null
-        await setLangPref(pref)
-        const lang = resolveLang(pref)
-        setCurrentLang(lang)
+        const payload = await applyLangPref(pref)
+        if (!payload) return null
         buildAppMenu()
-        const payload = { lang, pref, dict: getDictionary() }
         broadcastRpcEvent({ type: 'i18n-changed', payload })
         return payload
       },
@@ -455,6 +455,8 @@ async function removeRepoWorktree({
   const target = resolved.target
 
   if (target.isLocked === true) return { ok: false, message: 'error.cannot-remove-locked-worktree' }
+  // `isDirty` is undefined when the status probe failed; only an explicit
+  // false is safe enough to remove a worktree.
   if (target.isDirty !== false) return { ok: false, message: 'error.cannot-remove-dirty-worktree' }
 
   const shouldForceDeleteBranch = forceDeleteBranch === true
@@ -495,6 +497,8 @@ async function createPatch({ cwd, worktreePath }: { cwd: string; worktreePath: s
     if (ctrl.signal.aborted) return { ok: false, message: 'cancelled' }
     return { ok: true, message: patch }
   } catch (err: unknown) {
+    // Timeout aborts surface as thrown git errors, so check the timeout
+    // flag before the generic aborted/error paths.
     if (timedOut) return { ok: false, message: `git timed out after ${PATCH_TIMEOUT_MS / 1000}s` }
     if (ctrl.signal.aborted) return { ok: false, message: 'cancelled' }
     const e = err as { stderr?: string; message?: string }
@@ -663,16 +667,23 @@ async function openHttpsExternal(url: string): Promise<boolean> {
   }
 }
 
-function saveSession(session: SessionState): Promise<void> {
-  if (!session || !Array.isArray(session.openRepos)) return Promise.resolve()
+async function saveSession(session: SessionState): Promise<void> {
+  if (!session || !Array.isArray(session.openRepos)) return
   const openRepos = session.openRepos.map(toSafeSessionPath).filter((p): p is string => p !== null)
   const activeRepo = toSafeSessionPath(session.activeRepo)
-  return setSession({
+  const workspaceLayout = normalizeWorkspaceLayout(session.workspaceLayout)
+  const detailCollapsed =
+    typeof session.detailCollapsed === 'boolean' ? session.detailCollapsed : DEFAULT_SESSION_DETAIL_COLLAPSED
+  await setSession({
     openRepos,
     activeRepo: activeRepo && openRepos.includes(activeRepo) ? activeRepo : null,
-    detailCollapsed:
-      typeof session.detailCollapsed === 'boolean' ? session.detailCollapsed : DEFAULT_SESSION_DETAIL_COLLAPSED,
+    detailCollapsed: effectiveDetailCollapsed(workspaceLayout, detailCollapsed),
+    workspaceLayout,
   })
+  // Persist first so a crash still leaves the next boot with the correct
+  // layout; the live native menu snapshot is only an optimization for
+  // immediate radio/check enabled state.
+  setMenuWorkspaceLayout(workspaceLayout)
 }
 
 function toSafeSessionPath(p: unknown): string | null {

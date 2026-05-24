@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
-import { useThemeStore } from '#/renderer/stores/theme.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import { onRpcEventType, rpc } from '#/renderer/rpc.ts'
 
@@ -17,8 +16,9 @@ export function useMenuActions({ openSettings, openCloneRepo, showHelp, isOverla
   const cycleActive = useReposStore((s) => s.cycleActive)
   const setDetailTab = useReposStore((s) => s.setDetailTab)
   const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
+  const setWorkspaceLayout = useReposStore((s) => s.setWorkspaceLayout)
   const toggleDetailCollapsed = useReposStore((s) => s.toggleDetailCollapsed)
-  const cycleTheme = useThemeStore((s) => s.setPref)
+  const resetLayout = useReposStore((s) => s.resetLayout)
   const isOverlayOpenRef = useRef(isOverlayOpen)
   isOverlayOpenRef.current = isOverlayOpen
 
@@ -26,12 +26,30 @@ export function useMenuActions({ openSettings, openCloneRepo, showHelp, isOverla
     const off = onRpcEventType('menu-action', async (event) => {
       try {
         const { action } = event
-        if (isOverlayOpenRef.current() || isShortcutBlockingLayerOpen()) return
-        const state = useReposStore.getState()
         if (typeof action === 'object') {
-          if (action.type === 'open-recent-repo') await state.openRepo(action.path)
+          if (action.type === 'set-workspace-layout') {
+            // Workspace layout is an app-level view preference, not an
+            // in-modal action. Keep native menu layout changes available
+            // even when a settings/help/dialog layer is open.
+            setWorkspaceLayout(action.layout)
+            return
+          }
+          if (isOverlayOpenRef.current() || isShortcutBlockingLayerOpen()) return
+          const state = useReposStore.getState()
+          switch (action.type) {
+            case 'open-recent-repo':
+              await state.openRepo(action.path)
+              break
+          }
           return
         }
+        if (action === 'reset-layout') {
+          // Same app-level view preference as set-workspace-layout above.
+          resetLayout()
+          return
+        }
+        if (isOverlayOpenRef.current() || isShortcutBlockingLayerOpen()) return
+        const state = useReposStore.getState()
         switch (action) {
           case 'open-repo': {
             const path = await rpc.repo.openDialog.query()
@@ -76,17 +94,8 @@ export function useMenuActions({ openSettings, openCloneRepo, showHelp, isOverla
             }
             break
           case 'toggle-detail':
-            if (state.activeId && !state.repos[state.activeId]?.ui.openCommit) toggleDetailCollapsed()
+            if (state.activeId) toggleDetailCollapsed()
             break
-          case 'toggle-theme': {
-            // Read pref from store, not closure: the menu effect runs once
-            // (deps: []) so a captured themePref would go stale after the
-            // user changes the theme via the Settings panel.
-            const current = useThemeStore.getState().pref
-            const next = current === 'auto' ? 'light' : current === 'light' ? 'dark' : 'auto'
-            await cycleTheme(next)
-            break
-          }
           case 'open-settings':
             openSettings()
             break
@@ -102,11 +111,12 @@ export function useMenuActions({ openSettings, openCloneRepo, showHelp, isOverla
   }, [
     closeRepo,
     cycleActive,
-    cycleTheme,
     openCloneRepo,
     openSettings,
+    resetLayout,
     setDetailCollapsed,
     setDetailTab,
+    setWorkspaceLayout,
     showHelp,
     syncAndRefresh,
     toggleDetailCollapsed,

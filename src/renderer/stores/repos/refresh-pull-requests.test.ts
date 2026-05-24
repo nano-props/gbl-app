@@ -99,29 +99,6 @@ describe('refreshPullRequests', () => {
     expect(useReposStore.getState().repos[REPO_ID]?.data.branches[1]?.pullRequest).toEqual(existing)
   })
 
-  test('silent lookup during a visible lookup does not clear the visible loading state', async () => {
-    let resolveVisible!: (value: { branch: string; pullRequest: PullRequestInfo }[]) => void
-    const token = seedRepo([branch('feature/a'), branch('feature/b')])
-    let callCount = 0
-    rpcHandlers['repo.pullRequests'] = () => {
-      callCount += 1
-      return new Promise<{ branch: string; pullRequest: PullRequestInfo }[]>((resolve) => {
-        resolveVisible = resolve
-      })
-    }
-
-    const visible = useReposStore.getState().refreshPullRequests(REPO_ID, ['feature/a'], { token })
-    await useReposStore.getState().refreshPullRequests(REPO_ID, ['feature/b'], { token, mode: 'full', silent: true })
-
-    expect(callCount).toBe(1)
-    expect(useReposStore.getState().repos[REPO_ID]?.ops.pullRequests.phase).not.toBe('idle')
-
-    resolveVisible([])
-    await visible
-
-    expect(useReposStore.getState().repos[REPO_ID]?.ops.pullRequests.phase).toBe('idle')
-  })
-
   test('does not let stale responses write into a reopened repo instance', async () => {
     let resolve!: (value: { branch: string; pullRequest: PullRequestInfo }[]) => void
     const token = seedRepo([branch('feature/a')], 1)
@@ -186,7 +163,7 @@ describe('refreshPullRequests', () => {
     ])
   })
 
-  test('snapshot refresh performs summary lookup, selected full lookup, then silent full backfill', async () => {
+  test('snapshot refresh performs summary lookup, selected full lookup, then full backfill', async () => {
     const token = seedRepo([branch('feature/a')])
     const calls: Array<{ branches?: string[]; mode?: string; loadingAtStart?: boolean }> = []
     rpcHandlers['repo.snapshot'] = async () => ({

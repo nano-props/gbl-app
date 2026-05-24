@@ -49,7 +49,7 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
 
   // Reset on the rising edge of `open` only. Listing repo.data.branches /
   // repo.data.currentBranch in the deps would re-fire on every snapshot
-  // refresh (incl. silent background fetch) and wipe user input.
+  // refresh (incl. background refreshes) and wipe user input.
   // Snapshot the initial base via a ref so the open-edge handler
   // reads the current value without taking a dep on it.
   const initialBaseRef = useRef('')

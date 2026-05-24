@@ -5,7 +5,10 @@
 // area without committing to an exact count.
 
 import { cn } from '#/renderer/lib/cn.ts'
-import { Toolbar } from '#/renderer/components/Layout.tsx'
+import { RepoWorkspace, RepoWorkspacePane, Toolbar } from '#/renderer/components/Layout.tsx'
+import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
+import { DEFAULT_WORKSPACE_LAYOUT } from '#/shared/workspace-layout.ts'
+import type { RepoWorkspaceLayout } from '#/renderer/stores/repos/types.ts'
 
 interface Props {
   rows?: number
@@ -18,6 +21,7 @@ interface Props {
 
 interface WorkspaceSkeletonProps {
   showRepoToolbar?: boolean
+  layout?: RepoWorkspaceLayout
   detailCollapsed?: boolean
 }
 
@@ -51,7 +55,13 @@ export function ListSkeleton({ rows = 6, variant = 'branch' }: Props) {
   )
 }
 
-export function RepoWorkspaceSkeleton({ showRepoToolbar = false, detailCollapsed = false }: WorkspaceSkeletonProps) {
+export function RepoWorkspaceSkeleton({
+  showRepoToolbar = false,
+  layout = DEFAULT_WORKSPACE_LAYOUT,
+  detailCollapsed = false,
+}: WorkspaceSkeletonProps) {
+  const collapsed = repoWorkspaceBehavior(layout, detailCollapsed).detailCollapsed
+
   return (
     <section className="flex min-w-0 flex-1 flex-col">
       {showRepoToolbar && (
@@ -67,19 +77,14 @@ export function RepoWorkspaceSkeleton({ showRepoToolbar = false, detailCollapsed
           </div>
         </Toolbar>
       )}
-      <div
-        className={cn(
-          'grid min-h-0 flex-1',
-          detailCollapsed ? 'grid-rows-[minmax(0,1fr)_2.25rem]' : 'grid-rows-[minmax(0,1fr)_minmax(0,1fr)]',
-        )}
-      >
-        <div className="flex min-h-0 flex-col overflow-hidden border-b border-separator">
+      <RepoWorkspace layout={layout} detailCollapsed={collapsed}>
+        <RepoWorkspacePane layout={layout} border>
           <ListSkeleton variant="branch" />
-        </div>
-        <div className="flex min-h-0 flex-col overflow-hidden">
-          <BranchDetailSkeleton collapsed={detailCollapsed} />
-        </div>
-      </div>
+        </RepoWorkspacePane>
+        <RepoWorkspacePane layout={layout}>
+          <BranchDetailSkeleton collapsed={collapsed} />
+        </RepoWorkspacePane>
+      </RepoWorkspace>
     </section>
   )
 }

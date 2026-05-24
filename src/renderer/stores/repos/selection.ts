@@ -2,7 +2,19 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { branchForVisibleLog, selectedBranchForViewMode } from '#/renderer/stores/repos/branch-view-mode.ts'
 import { replaceRepo } from '#/renderer/stores/repos/helpers.ts'
 import { persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
-import type { BranchViewMode, DetailTab, ReposGet, ReposSet } from '#/renderer/stores/repos/types.ts'
+import {
+  DEFAULT_DETAIL_COLLAPSED,
+  DEFAULT_WORKSPACE_LAYOUT,
+  effectiveDetailCollapsed,
+  workspaceLayoutAllowsDetailCollapse,
+} from '#/shared/workspace-layout.ts'
+import type {
+  BranchViewMode,
+  DetailTab,
+  RepoWorkspaceLayout,
+  ReposGet,
+  ReposSet,
+} from '#/renderer/stores/repos/types.ts'
 
 export function createSelectionActions(set: ReposSet, get: ReposGet) {
   return {
@@ -30,11 +42,33 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
     },
 
     setDetailCollapsed(collapsed: boolean) {
-      set((s) => (s.detailCollapsed === collapsed ? s : { detailCollapsed: collapsed }))
+      set((s) => {
+        const next = effectiveDetailCollapsed(s.workspaceLayout, collapsed)
+        return s.detailCollapsed === next ? s : { detailCollapsed: next }
+      })
     },
 
     toggleDetailCollapsed() {
-      set((s) => ({ detailCollapsed: !s.detailCollapsed }))
+      set((s) => {
+        if (!workspaceLayoutAllowsDetailCollapse(s.workspaceLayout)) return s
+        return { detailCollapsed: !s.detailCollapsed }
+      })
+    },
+
+    setWorkspaceLayout(layout: RepoWorkspaceLayout) {
+      set((s) => {
+        const detailCollapsed = effectiveDetailCollapsed(layout, s.detailCollapsed)
+        if (s.workspaceLayout === layout && s.detailCollapsed === detailCollapsed) return s
+        return { workspaceLayout: layout, detailCollapsed }
+      })
+    },
+
+    resetLayout() {
+      set((s) => {
+        const detailCollapsed = effectiveDetailCollapsed(DEFAULT_WORKSPACE_LAYOUT, DEFAULT_DETAIL_COLLAPSED)
+        if (s.workspaceLayout === DEFAULT_WORKSPACE_LAYOUT && s.detailCollapsed === detailCollapsed) return s
+        return { workspaceLayout: DEFAULT_WORKSPACE_LAYOUT, detailCollapsed }
+      })
     },
 
     setBranchViewMode(id: string, viewMode: BranchViewMode) {
@@ -60,8 +94,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
               r.ui.branchViewMode = viewMode
               r.ui.selectedBranch = selectedBranch
               if (selectionChanged) {
-                r.ui.openCommit = null
-                r.ui.openingCommitHash = null
+                r.ui.commitDetail = { phase: 'idle' }
               }
             }),
           },
@@ -73,7 +106,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         void get().refreshBranchLog(id, selectedForLog, { token })
       }
       if (selectedForPullRequest && token !== undefined) {
-        void get().refreshPullRequests(id, [selectedForPullRequest], { token, mode: 'full', silent: true })
+        void get().refreshPullRequests(id, [selectedForPullRequest], { token, mode: 'full' })
       }
     },
 
@@ -83,7 +116,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
       set((s) => {
         const repo = s.repos[id]
         if (!repo) return s
-        if (repo.ui.detailTab === tab && repo.ui.openCommit === null && repo.ui.openingCommitHash === null) return s
+        if (repo.ui.detailTab === tab && repo.ui.commitDetail.phase === 'idle') return s
         changed = true
         token = repo.instanceToken
         return {
@@ -91,8 +124,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
             ...s.repos,
             [id]: replaceRepo(repo, (r) => {
               r.ui.detailTab = tab
-              r.ui.openCommit = null
-              r.ui.openingCommitHash = null
+              r.ui.commitDetail = { phase: 'idle' }
             }),
           },
         }
@@ -103,7 +135,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
       if (changed && token !== undefined && tab === 'changes') void get().refreshStatus(id, { token })
       if (changed && token !== undefined && tab === 'status') {
         if (repo?.ui.selectedBranch) {
-          void get().refreshPullRequests(id, [repo.ui.selectedBranch], { token, mode: 'full', silent: true })
+          void get().refreshPullRequests(id, [repo.ui.selectedBranch], { token, mode: 'full' })
         }
       }
     },
@@ -115,8 +147,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         const repo = s.repos[id]
         if (!repo) return s
         if (!repo.data.branches.some((b) => b.name === branch)) return s
-        if (repo.ui.selectedBranch === branch && repo.ui.openCommit === null && repo.ui.openingCommitHash === null)
-          return s
+        if (repo.ui.selectedBranch === branch && repo.ui.commitDetail.phase === 'idle') return s
         changed = true
         token = repo.instanceToken
         return {
@@ -124,8 +155,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
             ...s.repos,
             [id]: replaceRepo(repo, (r) => {
               r.ui.selectedBranch = branch
-              r.ui.openCommit = null
-              r.ui.openingCommitHash = null
+              r.ui.commitDetail = { phase: 'idle' }
             }),
           },
         }
@@ -136,7 +166,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         void get().refreshBranchLog(id, branch, { token })
       }
       if (changed && token !== undefined) {
-        void get().refreshPullRequests(id, [branch], { token, mode: 'full', silent: true })
+        void get().refreshPullRequests(id, [branch], { token, mode: 'full' })
       }
     },
 
@@ -144,7 +174,8 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
       set((s) => {
         const repo = s.repos[id]
         if (!repo) return s
-        const prev = repo.data.logsByBranch[branch] ?? { entries: [], selectedHash: null, loading: false }
+        const prev = repo.data.logsByBranch[branch]
+        if (!prev) return s
         if (!prev.entries.some((entry) => entry.hash === hash) || prev.selectedHash === hash) return s
         return {
           repos: {

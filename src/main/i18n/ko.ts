@@ -44,12 +44,15 @@ export const ko: Record<DictKey, string> = {
   'menu.view.changes': '변경 사항',
   'menu.view.log': '커밋 로그',
   'menu.view.toggle-detail': '세부 패널 접기/펼치기',
+  'menu.view.workspace-layout': '작업 영역 레이아웃',
+  'menu.view.layout-top-bottom': '상하 레이아웃',
+  'menu.view.layout-left-right': '좌우 레이아웃',
   'menu.view.refresh': '새로 고침',
-  'menu.view.toggle-theme': '테마 전환',
   'menu.view.toggle-dev-tools': '개발자 도구',
 
   'menu.window.next-repo': '다음 리포지토리',
   'menu.window.prev-repo': '이전 리포지토리',
+  'menu.window.reset-layout': '레이아웃 재설정',
 
   'menu.help.shortcuts': '키보드 단축키',
 
@@ -163,6 +166,9 @@ export const ko: Record<DictKey, string> = {
   'branches.filter-tooltip.all': '모든 브랜치 보기',
   'branches.filter-tooltip.worktrees': '워크트리가 있는 브랜치만 보기',
   'branches.filter-tooltip.no-worktree': '워크트리가 없는 브랜치만 보기',
+  'workspace.layout-label': '작업 영역 레이아웃',
+  'workspace.layout-tooltip.top-bottom': '상하 레이아웃 사용',
+  'workspace.layout-tooltip.left-right': '좌우 레이아웃 사용',
   'branches.gone': '원격 사라짐',
   'branches.dirty': '변경',
   'branches.worktree': '워크트리',
@@ -211,6 +217,8 @@ export const ko: Record<DictKey, string> = {
   'log.showing-branch': '커밋',
   'log.empty': '표시할 커밋이 없습니다.',
   'log.empty-for-branch': '{branch} 에 표시할 커밋이 없습니다.',
+  'log.load-more': '더 보기',
+  'log.loading-more': '불러오는 중…',
 
   // ---- Status ------------------------------------------------------------
   'status.clean-title': '워킹 트리가 깨끗합니다',

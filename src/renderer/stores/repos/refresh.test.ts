@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, test } from 'vitest'
 import { replaceRepo } from '#/renderer/stores/repos/helpers.ts'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { runningOperation } from '#/renderer/stores/repos/operations.ts'
+import { INITIAL_LOG_COUNT, LOG_PAGE_SIZE } from '#/renderer/stores/repos/refresh.ts'
 import { branch, REPO_ID, resetRefreshTest, rpcHandlers, seedRepo } from '#/renderer/stores/repos/refresh-test-utils.ts'
 import { canStartRemoteFetch } from '#/renderer/stores/repos/sync-state.ts'
-import type { WorktreeStatus } from '#/renderer/types.ts'
+import type { LogEntry, WorktreeStatus } from '#/renderer/types.ts'
 
 beforeEach(resetRefreshTest)
 
@@ -16,6 +17,17 @@ function updateRepoForTest(mutator: (repo: TestRepo) => void) {
     if (!repo) return s
     return { repos: { ...s.repos, [REPO_ID]: replaceRepo(repo, mutator) } }
   })
+}
+
+function logEntry(index: number): LogEntry {
+  const hash = `hash-${index}`
+  return {
+    hash,
+    shortHash: hash,
+    message: `commit ${index}`,
+    author: 'Alice',
+    date: '2026-01-01T00:00:00+08:00',
+  }
 }
 
 describe('remote fetch timestamps', () => {
@@ -468,8 +480,8 @@ describe('core refresh request ordering', () => {
     const token = seedRepo([branch('stale'), branch('fresh')])
     updateRepoForTest((repo) => {
       repo.data.logsByBranch = {
-        stale: { entries: [], selectedHash: null, loading: false },
-        fresh: { entries: [], selectedHash: null, loading: false },
+        stale: { entries: [], selectedHash: null, loading: false, hasMore: false },
+        fresh: { entries: [], selectedHash: null, loading: false, hasMore: false },
       }
       repo.ops.logsByBranch = {
         stale: runningOperation({ reason: 'log' }),
@@ -501,6 +513,50 @@ describe('core refresh request ordering', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(logCalls).toEqual(['main'])
+  })
+
+  test('branch log refresh loads the initial page and tracks whether more commits exist', async () => {
+    const token = seedRepo([branch('main')])
+    let input: { count?: number; skip?: number } | undefined
+    rpcHandlers['repo.log'] = async (args: { count?: number; skip?: number }) => {
+      input = args
+      return Array.from({ length: INITIAL_LOG_COUNT + 1 }, (_, i) => logEntry(i))
+    }
+
+    await useReposStore.getState().refreshBranchLog(REPO_ID, 'main', { token })
+
+    const log = useReposStore.getState().repos[REPO_ID]?.data.logsByBranch.main
+    expect(input).toMatchObject({ count: INITIAL_LOG_COUNT + 1, skip: 0 })
+    expect(log?.entries).toHaveLength(INITIAL_LOG_COUNT)
+    expect(log?.selectedHash).toBe('hash-0')
+    expect(log?.hasMore).toBe(true)
+    expect(log?.loading).toBe(false)
+  })
+
+  test('loadMoreBranchLog appends the next page', async () => {
+    const token = seedRepo([branch('main')])
+    updateRepoForTest((repo) => {
+      repo.data.logsByBranch.main = {
+        entries: Array.from({ length: INITIAL_LOG_COUNT }, (_, i) => logEntry(i)),
+        selectedHash: 'hash-0',
+        loading: false,
+        hasMore: true,
+      }
+    })
+    let input: { count?: number; skip?: number } | undefined
+    rpcHandlers['repo.log'] = async (args: { count?: number; skip?: number }) => {
+      input = args
+      return Array.from({ length: LOG_PAGE_SIZE + 1 }, (_, i) => logEntry(INITIAL_LOG_COUNT + i))
+    }
+
+    await useReposStore.getState().loadMoreBranchLog(REPO_ID, 'main', { token })
+
+    const log = useReposStore.getState().repos[REPO_ID]?.data.logsByBranch.main
+    expect(input).toMatchObject({ count: LOG_PAGE_SIZE + 1, skip: INITIAL_LOG_COUNT })
+    expect(log?.entries).toHaveLength(INITIAL_LOG_COUNT + LOG_PAGE_SIZE)
+    expect(log?.entries.at(-1)?.hash).toBe(`hash-${INITIAL_LOG_COUNT + LOG_PAGE_SIZE - 1}`)
+    expect(log?.selectedHash).toBe('hash-0')
+    expect(log?.hasMore).toBe(true)
   })
 
   test('branch log refresh returns before scheduling work for unknown branches', async () => {

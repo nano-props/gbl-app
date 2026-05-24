@@ -49,13 +49,16 @@ export const ja: Record<DictKey, string> = {
   'menu.view.changes': '変更',
   'menu.view.log': 'ログ',
   'menu.view.toggle-detail': '詳細パネルを折りたたむ/展開',
+  'menu.view.workspace-layout': 'ワークスペースレイアウト',
+  'menu.view.layout-top-bottom': '上下レイアウト',
+  'menu.view.layout-left-right': '左右レイアウト',
   'menu.view.refresh': '更新',
-  'menu.view.toggle-theme': 'テーマを切替',
   'menu.view.toggle-dev-tools': '開発者ツールを切替',
 
   // ---- Menu — Window (gbl-specific) --------------------------------------
   'menu.window.next-repo': '次のリポジトリ',
   'menu.window.prev-repo': '前のリポジトリ',
+  'menu.window.reset-layout': 'レイアウトをリセット',
 
   // ---- Menu — Help -------------------------------------------------------
   'menu.help.shortcuts': 'キーボードショートカット',
@@ -170,6 +173,9 @@ export const ja: Record<DictKey, string> = {
   'branches.filter-tooltip.all': 'すべてのブランチを表示',
   'branches.filter-tooltip.worktrees': 'ワークツリーがあるブランチのみ表示',
   'branches.filter-tooltip.no-worktree': 'ワークツリーがないブランチのみ表示',
+  'workspace.layout-label': 'ワークスペースレイアウト',
+  'workspace.layout-tooltip.top-bottom': '上下レイアウトを使用',
+  'workspace.layout-tooltip.left-right': '左右レイアウトを使用',
   'branches.gone': '消失',
   'branches.dirty': '変更あり',
   'branches.worktree': 'ワークツリー',
@@ -218,6 +224,8 @@ export const ja: Record<DictKey, string> = {
   'log.showing-branch': 'コミット',
   'log.empty': '表示できるコミットがありません。',
   'log.empty-for-branch': '{branch} に表示できるコミットがありません。',
+  'log.load-more': 'さらに読み込む',
+  'log.loading-more': '読み込み中…',
 
   // ---- Status ------------------------------------------------------------
   'status.clean-title': '作業ツリーはクリーンです',

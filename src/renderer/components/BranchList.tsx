@@ -18,9 +18,10 @@ import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 
 interface Props {
   repoId: string
+  showActions?: boolean
 }
 
-export function BranchList({ repoId }: Props) {
+export function BranchList({ repoId, showActions = true }: Props) {
   const t = useT()
   const lang = useI18nStore((s) => s.lang)
   const selectBranch = useReposStore((s) => s.selectBranch)
@@ -93,6 +94,7 @@ export function BranchList({ repoId }: Props) {
               onSelectBranch={handleSelectBranch}
               onOpenBranchStatus={handleOpenBranchStatus}
               selectedRef={selectedRef}
+              showActions={showActions}
             />
           )
         })}

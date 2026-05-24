@@ -105,7 +105,7 @@ export function createBranchActions(set: ReposSet, get: ReposGet) {
       if (!repoBefore) return null
       const token = options?.token ?? repoBefore.instanceToken
       if (repoBefore.instanceToken !== token) return null
-      if (operationBusy(repoBefore.ops.branchAction, { includeSilent: true })) {
+      if (operationBusy(repoBefore.ops.branchAction)) {
         return { ok: false, message: 'cancelled' }
       }
       const network = isNetworkBranchAction(action)

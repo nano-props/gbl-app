@@ -8,6 +8,10 @@ import type {
   PullRequestInfo,
   WorktreeStatus,
 } from '#/shared/git-types.ts'
+import { WORKSPACE_LAYOUTS } from '#/shared/workspace-layout.ts'
+import type { WorkspaceLayout } from '#/shared/workspace-layout.ts'
+
+export type { WorkspaceLayout } from '#/shared/workspace-layout.ts'
 
 export type ThemePref = 'auto' | 'light' | 'dark'
 export type ResolvedTheme = 'light' | 'dark'
@@ -16,7 +20,6 @@ export type Lang = 'en' | 'zh' | 'ko' | 'ja'
 export type TerminalPref = 'auto' | 'ghostty' | 'terminal'
 export type EditorPref = 'auto' | 'vscode' | 'cursor' | 'windsurf'
 export type NetworkOpKind = 'user' | 'background'
-
 export interface ThemeState {
   pref: ThemePref
   resolved: ResolvedTheme
@@ -26,6 +29,7 @@ export interface SessionState {
   openRepos: string[]
   activeRepo: string | null
   detailCollapsed: boolean
+  workspaceLayout: WorkspaceLayout
 }
 
 export interface SettingsSnapshot {
@@ -109,7 +113,6 @@ export interface PullRequestEntry {
 
 export interface PullRequestFetchOptions {
   mode?: PullRequestFetchMode
-  silent?: boolean
   clearMissing?: boolean
 }
 
@@ -133,10 +136,11 @@ export type MenuAction =
   | 'tab-changes'
   | 'tab-log'
   | 'toggle-detail'
-  | 'toggle-theme'
+  | 'reset-layout'
   | 'open-settings'
   | 'show-help'
   | { type: 'open-recent-repo'; path: string }
+  | { type: 'set-workspace-layout'; layout: WorkspaceLayout }
 
 export type RpcEvent =
   | { type: 'theme-changed'; state: ThemeState }
@@ -170,7 +174,7 @@ export interface AppRpcHandlers {
       branches?: string[]
       options?: PullRequestFetchOptions
     }) => Promise<PullRequestEntry[] | null>
-    log: (input: { cwd: string; branch: string; count?: number }) => Promise<LogEntry[]>
+    log: (input: { cwd: string; branch: string; count?: number; skip?: number }) => Promise<LogEntry[]>
     status: (input: { cwd: string }) => Promise<WorktreeStatus[]>
     patch: (input: { cwd: string; worktreePath: string }) => Promise<ExecResult>
     commit: (input: { cwd: string; hash: string }) => Promise<CommitDetail | null>
@@ -254,7 +258,6 @@ export function createAppRouter(handlers: AppRpcHandlers) {
             options: v.optional(
               v.object({
                 mode: v.optional(v.picklist(['summary', 'full'])),
-                silent: v.optional(v.boolean()),
                 clearMissing: v.optional(v.boolean()),
               }),
             ),
@@ -262,7 +265,14 @@ export function createAppRouter(handlers: AppRpcHandlers) {
         )
         .query(({ input }) => handlers.repo.pullRequests(input)),
       log: p
-        .input(v.object({ cwd: v.string(), branch: v.string(), count: v.optional(FiniteNumber) }))
+        .input(
+          v.object({
+            cwd: v.string(),
+            branch: v.string(),
+            count: v.optional(FiniteNumber),
+            skip: v.optional(FiniteNumber),
+          }),
+        )
         .query(({ input }) => handlers.repo.log(input)),
       status: p.input(CwdInput).query(({ input }) => handlers.repo.status(input)),
       patch: p
@@ -334,6 +344,7 @@ export function createAppRouter(handlers: AppRpcHandlers) {
               openRepos: v.array(v.string()),
               activeRepo: v.nullable(v.string()),
               detailCollapsed: v.boolean(),
+              workspaceLayout: v.picklist(WORKSPACE_LAYOUTS),
             }),
           }),
         )

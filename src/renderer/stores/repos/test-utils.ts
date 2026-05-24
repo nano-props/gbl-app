@@ -5,6 +5,7 @@ import { disposeAllRepoRuntimes } from '#/renderer/stores/repos/runtime.ts'
 import type { BranchInfo, PullRequestInfo, WorktreeStatus } from '#/renderer/types.ts'
 import type { DetailTab, RepoState } from '#/renderer/stores/repos/types.ts'
 import type { CommitDetail } from '#/renderer/types-bridge.ts'
+import { DEFAULT_DETAIL_COLLAPSED, DEFAULT_WORKSPACE_LAYOUT } from '#/shared/workspace-layout.ts'
 
 export type RpcTestHandler = (input: any) => unknown
 
@@ -57,7 +58,8 @@ export function resetReposStore(): void {
     activeId: null,
     sessionReady: false,
     missingFromSession: [],
-    detailCollapsed: true,
+    detailCollapsed: DEFAULT_DETAIL_COLLAPSED,
+    workspaceLayout: DEFAULT_WORKSPACE_LAYOUT,
   })
 }
 
@@ -107,8 +109,7 @@ export function seedRepoState(options: {
       ...base.ui,
       selectedBranch: options.selectedBranch ?? base.ui.selectedBranch,
       detailTab: options.detailTab ?? base.ui.detailTab,
-      openCommit: options.openCommit ?? base.ui.openCommit,
-      openingCommitHash: options.openCommit ? options.openCommit.meta.hash : base.ui.openingCommitHash,
+      commitDetail: options.openCommit ? { phase: 'open', detail: options.openCommit } : base.ui.commitDetail,
     },
     ops: { ...idleRepoOperations(), ...options.ops },
   }
@@ -119,7 +120,8 @@ export function seedRepoState(options: {
     activeId: options.id,
     sessionReady: true,
     missingFromSession: [],
-    detailCollapsed: true,
+    detailCollapsed: DEFAULT_DETAIL_COLLAPSED,
+    workspaceLayout: DEFAULT_WORKSPACE_LAYOUT,
   })
   return repo
 }

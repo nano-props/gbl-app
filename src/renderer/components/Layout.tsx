@@ -1,12 +1,15 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 import { cn } from '#/renderer/lib/cn.ts'
+import { DEFAULT_WORKSPACE_LAYOUT, workspaceLayoutAxis } from '#/shared/workspace-layout.ts'
+import type { RepoWorkspaceLayout } from '#/renderer/stores/repos/types.ts'
 
 interface ShellProps {
   children: ReactNode
 }
 
 interface RepoWorkspaceProps extends ShellProps {
+  layout?: RepoWorkspaceLayout
   detailCollapsed?: boolean
 }
 
@@ -19,6 +22,7 @@ interface ToolbarProps extends HTMLAttributes<HTMLDivElement> {
 interface PaneProps {
   children: ReactNode
   border?: boolean
+  layout?: RepoWorkspaceLayout
 }
 
 interface ToolbarTitleProps {
@@ -62,12 +66,22 @@ export function ToolbarTitle({ title, description, after }: ToolbarTitleProps) {
   )
 }
 
-export function RepoWorkspace({ children, detailCollapsed = false }: RepoWorkspaceProps) {
+export function RepoWorkspace({
+  children,
+  layout = DEFAULT_WORKSPACE_LAYOUT,
+  detailCollapsed = false,
+}: RepoWorkspaceProps) {
+  const axis = workspaceLayoutAxis(layout)
   return (
     <div
       className={cn(
         'grid min-h-0 flex-1',
-        detailCollapsed ? 'grid-rows-[minmax(0,1fr)_2.25rem]' : 'grid-rows-[minmax(0,1fr)_minmax(0,1fr)]',
+        axis === 'columns'
+          ? 'grid-cols-[minmax(0,2fr)_minmax(0,3fr)]'
+          : detailCollapsed
+            // Matches the detail toolbar's `h-9`; border is included by global border-box sizing.
+            ? 'grid-rows-[minmax(0,1fr)_2.25rem]'
+            : 'grid-rows-[minmax(0,1fr)_minmax(0,1fr)]',
       )}
     >
       {children}
@@ -75,14 +89,26 @@ export function RepoWorkspace({ children, detailCollapsed = false }: RepoWorkspa
   )
 }
 
-export function RepoWorkspacePane({ children, border = false }: PaneProps) {
+export function RepoWorkspacePane({ children, border = false, layout = DEFAULT_WORKSPACE_LAYOUT }: PaneProps) {
+  const axis = workspaceLayoutAxis(layout)
   return (
-    <div className={cn('flex min-h-0 flex-col overflow-hidden', border && 'border-b border-separator')}>{children}</div>
+    <div
+      className={cn(
+        'flex min-h-0 flex-col overflow-hidden',
+        border && (axis === 'columns' ? 'border-r border-separator' : 'border-b border-separator'),
+      )}
+    >
+      {children}
+    </div>
   )
 }
 
 export function ScrollPane({ children }: ShellProps) {
-  return <ScrollArea className="min-h-0 flex-1">{children}</ScrollArea>
+  return (
+    <ScrollArea className="min-h-0 flex-1" viewportClassName="[&>div]:!block [&>div]:!min-w-0 [&>div]:!w-full">
+      {children}
+    </ScrollArea>
+  )
 }
 
 export function EmptyState({ icon, title, body, tone = 'neutral' }: EmptyStateProps) {

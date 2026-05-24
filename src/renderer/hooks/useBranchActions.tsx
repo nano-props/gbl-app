@@ -33,7 +33,7 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
   const t = useT()
   const setLastResult = useReposStore((s) => s.setLastResult)
   const runBranchAction = useReposStore((s) => s.runBranchAction)
-  const branchActionBusy = operationBusy(repo.ops.branchAction, { includeSilent: true })
+  const branchActionBusy = operationBusy(repo.ops.branchAction)
   const branchActionBusyKind = branchActionBusy ? repoBranchActionKindFromReason(repo.ops.branchAction.reason) : null
   const localUiBusyRef = useRef<BranchUiAction | null>(null)
   const [localUiBusy, setLocalUiBusy] = useState<BranchUiAction | null>(null)

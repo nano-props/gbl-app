@@ -9,6 +9,7 @@ export type {
   Lang,
   TerminalPref,
   EditorPref,
+  WorkspaceLayout,
   I18nPayload,
   SessionState,
   SettingsSnapshot,

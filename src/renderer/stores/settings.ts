@@ -9,6 +9,7 @@
 import { create } from 'zustand'
 import type { EditorPref, GlobalShortcutState, SessionState, TerminalPref } from '#/renderer/types-bridge.ts'
 import { DEFAULT_GLOBAL_SHORTCUT } from '#/shared/accelerator.ts'
+import { DEFAULT_WORKSPACE_LAYOUT } from '#/shared/workspace-layout.ts'
 import { onRpcEventType, rpc } from '#/renderer/rpc.ts'
 
 interface SettingsStore {
@@ -53,7 +54,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   terminalAvailable: true,
   editorApp: 'auto',
   editorAvailable: false,
-  savedSession: { openRepos: [], activeRepo: null, detailCollapsed: true },
+  savedSession: { openRepos: [], activeRepo: null, detailCollapsed: true, workspaceLayout: DEFAULT_WORKSPACE_LAYOUT },
 
   async hydrate() {
     const version = ++hydrateVersion

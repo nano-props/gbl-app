@@ -18,6 +18,7 @@ import type { PullRequestInfo } from '#/shared/git-types.ts'
 import type { Lang } from '#/renderer/types-bridge.ts'
 
 type TFn = (key: string, params?: Record<string, string | number>) => string
+type TooltipSide = 'top' | 'right' | 'bottom' | 'left'
 
 function prChecksSignal(pr: PullRequestInfo, t: TFn): PrHealthSignal | null {
   if (!pr.checks) return null
@@ -94,6 +95,7 @@ function PullRequestValue({
   url,
   copyLabel,
   copiedLabel,
+  tooltipSide,
 }: {
   tone: Tone
   label: string
@@ -101,6 +103,7 @@ function PullRequestValue({
   url: string
   copyLabel: string
   copiedLabel: string
+  tooltipSide: TooltipSide
 }) {
   return (
     <div className={STATUS_INLINE_GROUP_CLASS}>
@@ -117,7 +120,7 @@ function PullRequestValue({
             </div>
           </div>
         }
-        side="right"
+        side={tooltipSide}
         align="end"
         collisionPadding={16}
       >
@@ -130,7 +133,13 @@ function PullRequestValue({
   )
 }
 
-export function PullRequestStatusRow({ pullRequest }: { pullRequest: PullRequestInfo | undefined }) {
+export function PullRequestStatusRow({
+  pullRequest,
+  tooltipSide = 'right',
+}: {
+  pullRequest: PullRequestInfo | undefined
+  tooltipSide?: TooltipSide
+}) {
   const t = useT()
   const lang = useI18nStore((s) => s.lang)
   if (!pullRequest) return null
@@ -152,6 +161,7 @@ export function PullRequestStatusRow({ pullRequest }: { pullRequest: PullRequest
           url={pullRequest.url}
           copyLabel={t('branch-status.pr.copy-link')}
           copiedLabel={t('branch-status.copied')}
+          tooltipSide={tooltipSide}
         />
       }
       valueLayout="inline"

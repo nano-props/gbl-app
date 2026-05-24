@@ -17,7 +17,6 @@ export type RepoOperationSelector = (repo: RepoDraft) => RepoOperationState
 export interface RepoOperationTarget {
   select: RepoOperationSelector
   reason: RepoOperationReason
-  silent?: boolean
 }
 
 interface RepoOperationContext {
@@ -64,7 +63,7 @@ function operationCurrent(get: ReposGet, id: string, token: number, requestId: n
 }
 
 function anyTargetBusy(repo: RepoState, targets: RepoOperationTarget[]) {
-  return targets.some((target) => operationBusy(selectFromState(repo, target.select), { includeSilent: true }))
+  return targets.some((target) => operationBusy(selectFromState(repo, target.select)))
 }
 
 function markTargets(
@@ -87,9 +86,9 @@ function markTargets(
     for (const target of targets) {
       const operation = target.select(repo)
       if (phase === 'running') {
-        startOperation(operation, requestId, { reason: target.reason, silent: target.silent })
+        startOperation(operation, requestId, { reason: target.reason })
       } else {
-        queueOperation(operation, requestId, { reason: target.reason, silent: target.silent })
+        queueOperation(operation, requestId, { reason: target.reason })
       }
     }
   })

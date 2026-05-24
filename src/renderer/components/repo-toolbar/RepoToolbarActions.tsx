@@ -66,7 +66,7 @@ export function RepoToolbarActions({ repo }: Props) {
   async function handleCreateWorktree(request: CreateWorktreeRequest) {
     const targetRepoId = repo.id
     const token = repo.instanceToken
-    if (creatingRef.current[targetRepoId] || operationBusy(repo.ops.branchAction, { includeSilent: true })) return
+    if (creatingRef.current[targetRepoId] || operationBusy(repo.ops.branchAction)) return
     creatingRef.current[targetRepoId] = true
     setCreatingByRepo((s) => ({ ...s, [targetRepoId]: request.newBranch }))
     showCreateTip(targetRepoId)
@@ -94,7 +94,7 @@ export function RepoToolbarActions({ repo }: Props) {
 
   const creatingBranch = creatingByRepo[repo.id]
   const createBusy = !!creatingBranch
-  const branchActionBusy = operationBusy(repo.ops.branchAction, { includeSilent: true })
+  const branchActionBusy = operationBusy(repo.ops.branchAction)
   const createTip = createBusy
     ? t('action.create-worktree-creating-title', { branch: creatingBranch })
     : t('action.create-worktree-title')

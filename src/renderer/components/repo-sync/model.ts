@@ -19,6 +19,10 @@ const STAGE_LABEL_KEYS: Record<RepoSyncStage, string> = {
   remote: 'tab.refreshing-remote',
 }
 
+const STAGE_ACTIVITIES = Object.fromEntries(
+  Object.entries(STAGE_LABEL_KEYS).map(([stage, labelKey]) => [stage, { stage, labelKey }]),
+) as Record<RepoSyncStage, RepoSyncActivity>
+
 export function getRepoSyncActivity(repo: RepoState): RepoSyncActivity | null {
   const branchForLog = branchForVisibleLog(repo)
   const logLoading = branchForLog
@@ -31,7 +35,7 @@ export function getRepoSyncActivity(repo: RepoState): RepoSyncActivity | null {
   const pullRequestsLoading = operationBusy(repo.ops.pullRequests)
   const remoteLoading = operationBusy(repo.ops.fetch)
   const stage =
-    repo.cache.source === 'cache' && operationBusy(repo.ops.snapshot)
+    repo.cache.source === 'cache' && snapshotLoading
       ? 'cache'
       : snapshotLoading || branchActionLoading
         ? 'branches'
@@ -45,7 +49,7 @@ export function getRepoSyncActivity(repo: RepoState): RepoSyncActivity | null {
                 ? 'remote'
                 : null
 
-  return stage ? { stage, labelKey: STAGE_LABEL_KEYS[stage] } : null
+  return stage ? STAGE_ACTIVITIES[stage] : null
 }
 
 export function isRepoSyncBlocked(repo: RepoState): boolean {

@@ -27,8 +27,7 @@ export function emptyRepo(id: string, name: string): RepoState {
       selectedBranch: null,
       branchViewMode: 'all',
       detailTab: 'status',
-      openCommit: null,
-      openingCommitHash: null,
+      commitDetail: { phase: 'idle' },
     },
     ops: emptyRepoOperations(),
     cache: {

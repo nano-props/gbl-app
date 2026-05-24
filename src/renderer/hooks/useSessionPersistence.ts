@@ -6,14 +6,15 @@ export function useSessionPersistence() {
   const activeId = useReposStore((s) => s.activeId)
   const order = useReposStore((s) => s.order)
   const detailCollapsed = useReposStore((s) => s.detailCollapsed)
+  const workspaceLayout = useReposStore((s) => s.workspaceLayout)
   const sessionReady = useReposStore((s) => s.sessionReady)
 
   useEffect(() => {
     if (!sessionReady) return
     void rpc.settings.saveSession
-      .mutate({ session: { openRepos: order, activeRepo: activeId, detailCollapsed } })
+      .mutate({ session: { openRepos: order, activeRepo: activeId, detailCollapsed, workspaceLayout } })
       .catch((err) => {
         console.warn('[session] save failed', err)
       })
-  }, [sessionReady, order, activeId, detailCollapsed])
+  }, [sessionReady, order, activeId, detailCollapsed, workspaceLayout])
 }

@@ -37,16 +37,19 @@ import { useBackgroundFetch } from '#/renderer/hooks/useBackgroundFetch.ts'
 import { useMenuActions } from '#/renderer/hooks/useMenuActions.ts'
 import { useSessionPersistence } from '#/renderer/hooks/useSessionPersistence.ts'
 import { useSettingsWriteErrorToast } from '#/renderer/hooks/useSettingsWriteErrorToast.ts'
+import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
 
 export function App() {
   const activeId = useReposStore((s) => s.activeId)
   const sessionReady = useReposStore((s) => s.sessionReady)
   const detailCollapsed = useReposStore((s) => s.detailCollapsed)
+  const workspaceLayout = useReposStore((s) => s.workspaceLayout)
   const shortcutsDisabled = useSettingsStore((s) => s.shortcutsDisabled)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [cloneOpen, setCloneOpen] = useState(false)
+  const workspaceBehavior = repoWorkspaceBehavior(workspaceLayout, detailCollapsed)
   const openSettings = useCallback(() => setSettingsOpen(true), [])
   const openCloneRepo = useCallback(() => setCloneOpen(true), [])
   const showHelp = useCallback(() => {
@@ -98,7 +101,11 @@ export function App() {
             {activeId ? (
               <RepoView repoId={activeId} />
             ) : !sessionReady ? (
-              <RepoWorkspaceSkeleton showRepoToolbar detailCollapsed={detailCollapsed} />
+              <RepoWorkspaceSkeleton
+                showRepoToolbar
+                layout={workspaceLayout}
+                detailCollapsed={workspaceBehavior.detailCollapsed}
+              />
             ) : (
               <EmptyState />
             )}

@@ -10,9 +10,16 @@ import { en, type DictKey } from '#/main/i18n/en.ts'
 import { ko } from '#/main/i18n/ko.ts'
 import { zh } from '#/main/i18n/zh.ts'
 import { ja } from '#/main/i18n/ja.ts'
+import { loadSettings, setLangPref as persistLangPref } from '#/main/settings.ts'
 
 export type Lang = 'en' | 'zh' | 'ko' | 'ja'
 export type LangPref = Lang | 'auto'
+
+export interface I18nPayload {
+  lang: Lang
+  pref: LangPref
+  dict: Record<DictKey, string>
+}
 
 const DICTS: Record<Lang, Record<DictKey, string>> = { en, zh, ko, ja }
 
@@ -79,4 +86,13 @@ export function t(key: DictKey, params?: Record<string, string | number>): strin
 
 export function getDictionary(): Record<DictKey, string> {
   return DICTS[currentLang]
+}
+
+export async function applyLangPref(pref: LangPref): Promise<I18nPayload | null> {
+  const settings = await loadSettings()
+  const lang = resolveLang(pref)
+  const changed = settings.lang !== pref || currentLang !== lang
+  await persistLangPref(pref)
+  setCurrentLang(lang)
+  return changed ? { lang, pref, dict: getDictionary() } : null
 }

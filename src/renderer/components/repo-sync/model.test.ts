@@ -40,6 +40,7 @@ function repo(overrides: RepoOverrides = {}): RepoState {
         ? runningOperation({ reason: 'pullRequests' })
         : idleRepoOperations().pullRequests,
       fetch: overrides.fetchBusy ? runningOperation({ reason: 'fetch' }) : idleRepoOperations().fetch,
+      logsByBranch: {},
     },
     cache: {
       ...base.cache,
@@ -65,7 +66,7 @@ describe('getRepoSyncActivity', () => {
       getRepoSyncActivity(
         repo({
           currentBranch: 'main',
-          logsByBranch: { main: { entries: [], selectedHash: null, loading: true } },
+          logsByBranch: { main: { entries: [], selectedHash: null, loading: true, hasMore: false } },
           fetchBusy: true,
         }),
       )?.stage,
@@ -93,7 +94,7 @@ describe('isRepoSyncBlocked', () => {
       isRepoSyncBlocked(
         repo({
           selectedBranch: 'feature',
-          logsByBranch: { feature: { entries: [], selectedHash: null, loading: true } },
+          logsByBranch: { feature: { entries: [], selectedHash: null, loading: true, hasMore: false } },
         }),
       ),
     ).toBe(false)

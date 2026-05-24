@@ -49,13 +49,16 @@ export const en = {
   'menu.view.changes': 'Changes',
   'menu.view.log': 'Log',
   'menu.view.toggle-detail': 'Toggle Detail Panel',
+  'menu.view.workspace-layout': 'Workspace Layout',
+  'menu.view.layout-top-bottom': 'Top/Bottom Layout',
+  'menu.view.layout-left-right': 'Left/Right Layout',
   'menu.view.refresh': 'Refresh',
-  'menu.view.toggle-theme': 'Toggle Theme',
   'menu.view.toggle-dev-tools': 'Toggle Developer Tools',
 
   // ---- Menu — Window (gbl-specific) ---------------------------------------
   'menu.window.next-repo': 'Next Repository',
   'menu.window.prev-repo': 'Previous Repository',
+  'menu.window.reset-layout': 'Reset Layout',
 
   // ---- Menu — Help --------------------------------------------------------
   'menu.help.shortcuts': 'Keyboard Shortcuts',
@@ -172,6 +175,9 @@ export const en = {
   'branches.filter-tooltip.all': 'Show all branches',
   'branches.filter-tooltip.worktrees': 'Show branches with worktrees',
   'branches.filter-tooltip.no-worktree': 'Show branches without worktrees',
+  'workspace.layout-label': 'Workspace layout',
+  'workspace.layout-tooltip.top-bottom': 'Use top/bottom layout',
+  'workspace.layout-tooltip.left-right': 'Use left/right layout',
   'branches.gone': 'gone',
   'branches.dirty': 'dirty',
   'branches.worktree': 'worktree',
@@ -220,6 +226,8 @@ export const en = {
   'log.showing-branch': 'Commits',
   'log.empty': 'No commits to show.',
   'log.empty-for-branch': 'No commits to show for {branch}.',
+  'log.load-more': 'Load more',
+  'log.loading-more': 'Loading…',
 
   // ---- Status -------------------------------------------------------------
   'status.clean-title': 'Working tree is clean',

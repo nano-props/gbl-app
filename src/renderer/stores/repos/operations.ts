@@ -28,7 +28,6 @@ export interface RepoOperationState {
   requestId: number
   phase: RepoOperationPhase
   reason: RepoOperationReason | null
-  silent: boolean
   startedAt: number | null
   settledAt: number | null
   error: string | null
@@ -48,7 +47,6 @@ export function idleOperation(): RepoOperationState {
     requestId: 0,
     phase: 'idle',
     reason: null,
-    silent: false,
     startedAt: null,
     settledAt: null,
     error: null,
@@ -58,10 +56,9 @@ export function idleOperation(): RepoOperationState {
 export function runningOperation(options?: {
   requestId?: number
   reason?: RepoOperationReason
-  silent?: boolean
 }): RepoOperationState {
   const operation = idleOperation()
-  startOperation(operation, options?.requestId ?? 0, { reason: options?.reason, silent: options?.silent })
+  startOperation(operation, options?.requestId ?? 0, { reason: options?.reason })
   return operation
 }
 
@@ -90,12 +87,11 @@ export function idleRepoOperations(): RepoOperationsState {
 export function startOperation(
   operation: RepoOperationState,
   requestId: number,
-  options?: { reason?: RepoOperationReason; silent?: boolean },
+  options?: { reason?: RepoOperationReason },
 ): void {
   operation.requestId = requestId
   operation.phase = 'running'
   operation.reason = options?.reason ?? null
-  operation.silent = options?.silent === true
   operation.startedAt = Date.now()
   operation.settledAt = null
   operation.error = null
@@ -104,12 +100,11 @@ export function startOperation(
 export function queueOperation(
   operation: RepoOperationState,
   requestId: number,
-  options?: { reason?: RepoOperationReason; silent?: boolean },
+  options?: { reason?: RepoOperationReason },
 ): void {
   operation.requestId = requestId
   operation.phase = 'queued'
   operation.reason = options?.reason ?? null
-  operation.silent = options?.silent === true
   operation.startedAt = null
   operation.settledAt = null
   operation.error = null
@@ -127,9 +122,8 @@ export function settleOperation(
   return true
 }
 
-export function operationBusy(operation: RepoOperationState, options?: { includeSilent?: boolean }): boolean {
-  if (operation.phase === 'idle') return false
-  return options?.includeSilent === true || !operation.silent
+export function operationBusy(operation: RepoOperationState): boolean {
+  return operation.phase !== 'idle'
 }
 
 export function repoOperation(repo: RepoState, kind: RepoOperationKind): RepoOperationState {

@@ -120,11 +120,12 @@ export async function getBranches(cwd: string, worktrees?: WorktreeInfo[]): Prom
   }
 }
 
-export async function getLog(cwd: string, branch: string, count = 100): Promise<LogEntry[]> {
+export async function getLog(cwd: string, branch: string, count = 100, skip = 0): Promise<LogEntry[]> {
   if (!isSafeBranchName(branch)) return []
   try {
     const format = ['%H', '%h', '%s', '%an', '%aI'].join(FIELD_SEP)
-    const output = await git(cwd, ['log', `--format=${format}`, '-n', String(count), branch])
+    const args = ['log', `--format=${format}`, '-n', String(count), '--skip', String(skip), branch]
+    const output = await git(cwd, args)
     return parseLog(output)
   } catch {
     return []

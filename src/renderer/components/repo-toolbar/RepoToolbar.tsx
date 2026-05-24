@@ -1,6 +1,7 @@
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { BranchViewModeControl } from '#/renderer/components/repo-toolbar/BranchViewModeControl.tsx'
 import { RepoToolbarActions } from '#/renderer/components/repo-toolbar/RepoToolbarActions.tsx'
+import { WorkspaceLayoutControl } from '#/renderer/components/repo-toolbar/WorkspaceLayoutControl.tsx'
 import { Toolbar } from '#/renderer/components/Layout.tsx'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
@@ -10,6 +11,9 @@ interface Props {
   repoId: string
 }
 
+// Keep this equality in sync with fields read by RepoToolbar children.
+// Operation settle updates can change only ops.* references; omitting one
+// can leave busy indicators stale even though the store updated.
 function repoToolbarEqual(a: RepoState | undefined, b: RepoState | undefined): boolean {
   return (
     a === b ||
@@ -26,6 +30,7 @@ function repoToolbarEqual(a: RepoState | undefined, b: RepoState | undefined): b
       a.ops.snapshot === b.ops.snapshot &&
       a.ops.status === b.ops.status &&
       a.ops.fetch === b.ops.fetch &&
+      a.ops.logsByBranch === b.ops.logsByBranch &&
       a.ops.pullRequests === b.ops.pullRequests &&
       a.ops.branchAction === b.ops.branchAction &&
       a.cache.source === b.cache.source &&
@@ -36,8 +41,13 @@ function repoToolbarEqual(a: RepoState | undefined, b: RepoState | undefined): b
 }
 
 export function RepoToolbar({ repoId }: Props) {
-  const repo = useStoreWithEqualityFn(useReposStore, (s) => s.repos[repoId], repoToolbarEqual)
+  const { repo, workspaceLayout } = useStoreWithEqualityFn(
+    useReposStore,
+    (s) => ({ repo: s.repos[repoId], workspaceLayout: s.workspaceLayout }),
+    (a, b) => repoToolbarEqual(a.repo, b.repo) && a.workspaceLayout === b.workspaceLayout,
+  )
   const setBranchViewMode = useReposStore((s) => s.setBranchViewMode)
+  const setWorkspaceLayout = useReposStore((s) => s.setWorkspaceLayout)
   if (!repo) return null
 
   return (
@@ -57,6 +67,7 @@ export function RepoToolbar({ repoId }: Props) {
           disabled={repo.data.branches.length === 0}
           onChange={(viewMode) => setBranchViewMode(repo.id, viewMode)}
         />
+        <WorkspaceLayoutControl value={workspaceLayout} onChange={setWorkspaceLayout} />
       </div>
     </Toolbar>
   )

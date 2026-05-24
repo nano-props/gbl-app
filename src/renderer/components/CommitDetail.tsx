@@ -1,4 +1,4 @@
-// Commit detail overlay — shown over the Log list when the user picks
+// Commit detail pane — shown in the detail section when the user picks
 // a commit. Header (subject + body + author + date + parents) on top,
 // numstat-derived file list below. Press Esc or click the back chevron
 // to dismiss.

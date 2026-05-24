@@ -43,12 +43,15 @@ export const zh: Record<DictKey, string> = {
   'menu.view.changes': '变更',
   'menu.view.log': '提交历史',
   'menu.view.toggle-detail': '展开/收起详情面板',
+  'menu.view.workspace-layout': '工作区布局',
+  'menu.view.layout-top-bottom': '上下布局',
+  'menu.view.layout-left-right': '左右布局',
   'menu.view.refresh': '刷新',
-  'menu.view.toggle-theme': '切换主题',
   'menu.view.toggle-dev-tools': '切换开发者工具',
 
   'menu.window.next-repo': '下一个仓库',
   'menu.window.prev-repo': '上一个仓库',
+  'menu.window.reset-layout': '重置布局',
 
   'menu.help.shortcuts': '键盘快捷键',
 
@@ -160,6 +163,9 @@ export const zh: Record<DictKey, string> = {
   'branches.filter-tooltip.all': '显示全部分支',
   'branches.filter-tooltip.worktrees': '仅显示有工作树的分支',
   'branches.filter-tooltip.no-worktree': '仅显示无工作树的分支',
+  'workspace.layout-label': '工作区布局',
+  'workspace.layout-tooltip.top-bottom': '使用上下布局',
+  'workspace.layout-tooltip.left-right': '使用左右布局',
   'branches.gone': '已失联',
   'branches.dirty': '有改动',
   'branches.worktree': '工作树',
@@ -208,6 +214,8 @@ export const zh: Record<DictKey, string> = {
   'log.showing-branch': '提交',
   'log.empty': '暂无提交可显示。',
   'log.empty-for-branch': '{branch} 暂无提交可显示。',
+  'log.load-more': '加载更多',
+  'log.loading-more': '正在加载…',
 
   // ---- Status ------------------------------------------------------------
   'status.clean-title': '工作区已清空',
