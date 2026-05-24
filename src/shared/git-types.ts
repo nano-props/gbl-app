@@ -46,6 +46,19 @@ export interface PullRequestInfo {
   mergeable?: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
 }
 
+export function branchPullRequestBelongsToBranch(
+  branch: Pick<BranchInfo, 'name' | 'isDefault'>,
+  pullRequest: PullRequestInfo,
+): boolean {
+  if (branch.isDefault === true) {
+    return pullRequest.headRefName === branch.name && pullRequest.baseRefName === branch.name
+  }
+  // PR rows are keyed by head branch. Tolerate missing headRefName for
+  // legacy cached PRs, but never attach an explicit head mismatch.
+  if (pullRequest.headRefName && pullRequest.headRefName !== branch.name) return false
+  return true
+}
+
 export type PullRequestFetchMode = 'summary' | 'full'
 
 export interface WorktreeInfo {

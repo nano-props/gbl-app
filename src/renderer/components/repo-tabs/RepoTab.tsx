@@ -46,13 +46,12 @@ export function RepoTab({
       className={cn(
         'group relative flex h-8 min-w-36 max-w-56 shrink-0 touch-none select-none items-center gap-1.5 rounded-md border px-2 text-xs transition-colors duration-100 [&:has(:focus-visible)]:outline-2 [&:has(:focus-visible)]:-outline-offset-2 [&:has(:focus-visible)]:outline-ring',
         isActive
-          ? 'border-transparent bg-background text-foreground shadow-sm'
-          : 'border-transparent text-muted-foreground hover:bg-accent/70 hover:text-foreground',
-        isDragging && 'z-10 cursor-grabbing bg-background shadow-sm ring-1 ring-border',
+          ? 'border-input bg-card text-foreground'
+          : 'border-transparent text-foreground/65 hover:bg-accent/70 hover:text-foreground',
+        isDragging && 'z-10 cursor-grabbing bg-card text-foreground',
       )}
       title={repo.name}
     >
-      {isActive && <span className="absolute inset-x-2 -bottom-px h-px rounded-full bg-brand" />}
       {showSeparator && (
         <span className="pointer-events-none absolute right-0 top-1/2 h-4 -translate-y-1/2 border-r border-separator" />
       )}
@@ -85,7 +84,7 @@ export function RepoTab({
         className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-sm border-0 bg-transparent p-0 text-left text-inherit outline-none"
         title={repo.name}
       >
-        <FolderGit2 size={13} className={cn('shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground')} />
+        <FolderGit2 size={13} className={cn('shrink-0', isActive ? 'text-foreground' : 'text-foreground/55')} />
         <span className="truncate font-medium">{repo.name}</span>
       </button>
       <button

@@ -46,6 +46,29 @@ describe('refreshPullRequests', () => {
     expect(mode).toBe('full')
   })
 
+  test('does not attach reverse pull requests to the default branch', async () => {
+    const reverse = pullRequest(1, { baseRefName: 'feature/a', headRefName: 'master' })
+    const token = seedRepo([branch('master', reverse, { isDefault: true })])
+    rpcHandlers['repo.pullRequests'] = async () => [{ branch: 'master', pullRequest: reverse }]
+
+    await useReposStore.getState().refreshPullRequests(REPO_ID, ['master'], { token })
+
+    expect(useReposStore.getState().repos[REPO_ID]?.data.branches[0]?.pullRequest).toBeUndefined()
+  })
+
+  test('clears returned pull requests that do not belong even when missing entries are preserved', async () => {
+    const existing = pullRequest(1, { headRefName: 'master', baseRefName: 'master' })
+    const reverse = pullRequest(2, { headRefName: 'master', baseRefName: 'feature/a' })
+    const token = seedRepo([branch('master', existing, { isDefault: true })])
+    rpcHandlers['repo.pullRequests'] = async () => [{ branch: 'master', pullRequest: reverse }]
+
+    await useReposStore
+      .getState()
+      .refreshPullRequests(REPO_ID, ['master'], { token, mode: 'full', clearMissing: false })
+
+    expect(useReposStore.getState().repos[REPO_ID]?.data.branches[0]?.pullRequest).toBeUndefined()
+  })
+
   test('keeps existing pull requests when summary lookup omits a requested branch', async () => {
     const existing = pullRequest(1)
     const token = seedRepo([branch('feature/a', existing)])
@@ -148,6 +171,24 @@ describe('refreshPullRequests', () => {
 
     resolvePullRequests(null)
     await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  test('clears preserved pull requests when snapshot recheck omits them', async () => {
+    const staleSelected = pullRequest(1, { headRefName: 'feature/a', baseRefName: 'main' })
+    const staleOther = pullRequest(2, { headRefName: 'feature/b', baseRefName: 'main' })
+    const token = seedRepo([branch('feature/a', staleSelected), branch('feature/b', staleOther)])
+    rpcHandlers['repo.snapshot'] = async () => ({
+      branches: [branch('feature/a'), branch('feature/b')],
+      current: 'feature/a',
+    })
+    rpcHandlers['repo.pullRequests'] = async () => []
+
+    await useReposStore.getState().refreshSnapshot(REPO_ID, { token })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const branches = useReposStore.getState().repos[REPO_ID]?.data.branches
+    expect(branches?.find((b) => b.name === 'feature/a')?.pullRequest).toBeUndefined()
+    expect(branches?.find((b) => b.name === 'feature/b')?.pullRequest).toBeUndefined()
   })
 
   test('records pull request refresh failures as repo events', async () => {

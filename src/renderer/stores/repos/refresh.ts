@@ -8,6 +8,7 @@ import {
 import { persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
 import { canStartRemoteFetch } from '#/renderer/stores/repos/sync-state.ts'
 import { idleOperation, operationBusy } from '#/renderer/stores/repos/operations.ts'
+import { branchPullRequestBelongsToBranch } from '#/shared/git-types.ts'
 import type { RepoOperationReason, RepoPullRequestReason } from '#/renderer/stores/repos/operations.ts'
 import type { BranchLogState, ReposGet, ReposSet } from '#/renderer/stores/repos/types.ts'
 import type { ExecResult, LogEntry, PullRequestFetchMode, PullRequestInfo } from '#/renderer/types.ts'
@@ -92,7 +93,6 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
     await get().refreshPullRequests(id, branchNames, {
       token,
       mode: 'full',
-      clearMissing: false,
     })
   }
 
@@ -225,7 +225,9 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
             // metadata instead of making the row flicker to "no PR".
             const branches = snap.branches.map((branch) => {
               const pullRequest = branch.pullRequest ?? pullRequestsByBranch.get(branch.name)
-              return pullRequest ? { ...branch, pullRequest } : branch
+              return pullRequest && branchPullRequestBelongsToBranch(branch, pullRequest)
+                ? { ...branch, pullRequest }
+                : branch
             })
             r.data.branches = branches
             r.data.currentBranch = snap.current
@@ -314,7 +316,9 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
             for (const branch of r.data.branches) {
               const pullRequest = byBranch.get(branch.name)
               if (pullRequest) {
-                branch.pullRequest = mergePullRequest(branch, pullRequest, mode)
+                if (branchPullRequestBelongsToBranch(branch, pullRequest)) {
+                  branch.pullRequest = mergePullRequest(branch, pullRequest, mode)
+                } else branch.pullRequest = undefined
                 continue
               }
               if (clearMissing && requested.has(branch.name) && branch.pullRequest) {
@@ -456,8 +460,9 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
           await get().refreshSnapshot(id, { token })
           await get().refreshStatus(id, { token })
         } catch (err) {
-          console.warn('[backgroundFetch] threw:', err)
           const message = err instanceof Error ? err.message : String(err)
+          if (message === 'Request aborted' || message === 'cancelled') return
+          console.warn('[backgroundFetch] threw:', err)
           updateIfFresh(set, id, token, (r) => {
             r.remote.fetchFailed = true
             r.remote.fetchError = message

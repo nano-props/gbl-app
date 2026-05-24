@@ -11,15 +11,7 @@ import { ko } from '#/main/i18n/ko.ts'
 import { zh } from '#/main/i18n/zh.ts'
 import { ja } from '#/main/i18n/ja.ts'
 import { loadSettings, setLangPref as persistLangPref } from '#/main/settings.ts'
-
-export type Lang = 'en' | 'zh' | 'ko' | 'ja'
-export type LangPref = Lang | 'auto'
-
-export interface I18nPayload {
-  lang: Lang
-  pref: LangPref
-  dict: Record<DictKey, string>
-}
+import type { I18nPayload, Lang, LangPref } from '#/shared/rpc.ts'
 
 const DICTS: Record<Lang, Record<DictKey, string>> = { en, zh, ko, ja }
 

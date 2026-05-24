@@ -1,7 +1,6 @@
-import { ChevronDown, Loader2 } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
-import { idleOperation, operationBusy } from '#/renderer/stores/repos/operations.ts'
 import type { RepoState, DetailTab, RepoWorkspaceLayout } from '#/renderer/stores/repos/types.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
@@ -13,7 +12,6 @@ import { DETAIL_TABS } from '#/renderer/lib/detail-tabs.ts'
 import { cn } from '#/renderer/lib/cn.ts'
 import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
 import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
-import { useLoadingVisibility } from '#/renderer/hooks/useLoadingVisibility.ts'
 
 interface Props {
   repo: RepoState
@@ -30,15 +28,6 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
   const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
   const toggleDetailCollapsed = useReposStore((s) => s.toggleDetailCollapsed)
   const shortcutsDisabled = useSettingsStore((s) => s.shortcutsDisabled)
-  const rawLogLoading =
-    repo.ui.commitDetail.phase === 'opening' ||
-    detail.branchLog?.loading ||
-    operationBusy(repo.ops.logsByBranch[detail.branch?.name ?? ''] ?? idleOperation())
-  const rawStatusLoading = operationBusy(repo.ops.status)
-  const rawPullRequestsLoading = operationBusy(repo.ops.pullRequests)
-  const logLoading = useLoadingVisibility(rawLogLoading)
-  const statusLoading = useLoadingVisibility(rawStatusLoading)
-  const pullRequestsLoading = useLoadingVisibility(rawPullRequestsLoading)
   const behavior = repoWorkspaceBehavior(layout, collapsed)
 
   if (!detail.branch) return null
@@ -100,13 +89,6 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
               type="button"
               role="tab"
               aria-selected={selected}
-              // Keep tabs switchable while the commits list loads; aria-busy only announces the panel's pending work.
-              aria-busy={
-                (tab.id === 'commits' && logLoading) ||
-                (tab.id === 'changes' && statusLoading) ||
-                (tab.id === 'status' && pullRequestsLoading) ||
-                undefined
-              }
               aria-controls={collapsed ? undefined : `${detailId}-${tab.id}-panel`}
               tabIndex={selected ? 0 : -1}
               onClick={() => {
@@ -115,7 +97,7 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
               }}
               onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
               className={cn(
-                'h-9 px-3 text-sm border-b-2 -mb-px cursor-pointer transition-colors duration-100',
+                'inline-flex h-9 items-center gap-1.5 px-3 text-sm border-b-2 -mb-px cursor-pointer transition-colors duration-100',
                 visuallySelected
                   ? 'border-brand text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -123,18 +105,9 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
             >
               {t(tab.labelKey)}
               {tab.id === 'changes' && detail.statusCount > 0 && (
-                <Badge variant="attention" className="ml-1.5 font-mono tabular-nums">
+                <Badge variant="attention" className="font-mono tabular-nums">
                   {detail.statusCount}
                 </Badge>
-              )}
-              {tab.id === 'commits' && logLoading && (
-                <Loader2 size={11} className="ml-1.5 inline animate-spin text-muted-foreground" />
-              )}
-              {tab.id === 'changes' && statusLoading && (
-                <Loader2 size={11} className="ml-1.5 inline animate-spin text-muted-foreground" />
-              )}
-              {tab.id === 'status' && pullRequestsLoading && (
-                <Loader2 size={11} className="ml-1.5 inline animate-spin text-muted-foreground" />
               )}
             </button>
           )

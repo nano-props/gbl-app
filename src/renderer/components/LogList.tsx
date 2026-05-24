@@ -44,6 +44,8 @@ export function LogList({ repoId, log, branch, selectedHash, hasMore = false, lo
       <ul className="min-w-0 w-full divide-y divide-separator">
         {log.map((entry) => {
           const isSelected = entry.hash === selectedHash
+          const commitMeta = `${entry.author} · ${formatRelativeTime(entry.date, lang)}`
+          const message = entry.message || '—'
           return (
             <li
               key={entry.hash}
@@ -54,16 +56,18 @@ export function LogList({ repoId, log, branch, selectedHash, hasMore = false, lo
                 void openCommit(repoId, entry.hash)
               }}
               className={cn(
-                'min-w-0 px-4 py-2.5 cursor-pointer transition-colors duration-100',
+                'min-w-0 px-4 py-2 cursor-pointer transition-colors duration-100',
                 isSelected ? 'bg-selected text-selected-foreground hover:bg-selected' : 'hover:bg-muted',
               )}
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span className="font-mono text-xs text-brand-text shrink-0">{entry.shortHash}</span>
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{entry.message}</span>
-              </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {entry.author} · {formatRelativeTime(entry.date, lang)}
+                <span className="min-w-0 truncate text-sm text-foreground" title={message}>
+                  {message}
+                </span>
+                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground" title={commitMeta}>
+                  {commitMeta}
+                </span>
               </div>
             </li>
           )

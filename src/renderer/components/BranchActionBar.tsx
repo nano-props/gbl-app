@@ -185,7 +185,7 @@ function BranchActionButton({
       aria-busy={busy === item.id ? true : undefined}
       className={item.destructive ? 'text-danger hover:bg-danger-surface hover:text-danger' : undefined}
     >
-      {busy === item.id ? <Loader2 className="animate-spin" /> : item.icon}
+      {busy === item.id ? <Loader2 size={16} className="animate-spin" /> : item.icon}
       {item.label}
     </Button>
   )

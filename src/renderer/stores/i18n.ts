@@ -7,7 +7,7 @@
 import i18next from 'i18next'
 import { initReactI18next, useTranslation } from 'react-i18next'
 import { create, type StoreApi } from 'zustand'
-import type { Lang, LangPref } from '#/renderer/types-bridge.ts'
+import type { I18nPayload, Lang, LangPref } from '#/shared/rpc.ts'
 import { onRpcEventType, rpc } from '#/renderer/rpc.ts'
 
 export type { Lang, LangPref }
@@ -37,7 +37,6 @@ interface I18nState {
   setPref: (pref: LangPref) => Promise<void>
 }
 
-type I18nPayload = { lang: Lang; pref: LangPref; dict: Dict }
 type I18nSet = StoreApi<I18nState>['setState']
 
 let unsubscribe: (() => void) | null = null

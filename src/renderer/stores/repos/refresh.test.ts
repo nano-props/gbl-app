@@ -47,6 +47,10 @@ describe('remote fetch timestamps', () => {
       new Promise<{ ok: true; message: string }>((resolve) => {
         resolveFetch = resolve
       })
+    rpcHandlers['repo.snapshot'] = async () => ({
+      branches: [branch('feature/reopened')],
+      current: 'feature/reopened',
+    })
 
     const work = useReposStore.getState().syncAndRefresh(REPO_ID, { token })
     seedRepo([branch('feature/a')], 2)
@@ -68,6 +72,28 @@ describe('remote fetch timestamps', () => {
     const repo = useReposStore.getState().repos[REPO_ID]
     expect(repo?.instanceToken).toBe(token)
     expect(repo?.ops.fetch.settledAt).toBeGreaterThanOrEqual(before)
+  })
+
+  test('background fetch result from a closed repo does not pollute a reopened repo', async () => {
+    let resolveFetch!: (value: { ok: true; message: string }) => void
+    seedRepo([branch('feature/a')], 1)
+    rpcHandlers['repo.fetch'] = () =>
+      new Promise<{ ok: true; message: string }>((resolve) => {
+        resolveFetch = resolve
+      })
+
+    const oldFetch = useReposStore.getState().backgroundFetch(REPO_ID)
+    useReposStore.getState().closeRepo(REPO_ID)
+    const newToken = seedRepo([branch('feature/reopened')], 2)
+
+    resolveFetch({ ok: true, message: 'ok' })
+    await oldFetch
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.instanceToken).toBe(newToken)
+    expect(repo?.data.branches.map((b) => b.name)).toEqual(['feature/reopened'])
+    expect(repo?.remote).toEqual({ fetchFailed: false, fetchError: null })
+    expect(repo?.ops.fetch.settledAt).toBeNull()
   })
 
   test('background fetch records and clears fetch failures', async () => {
@@ -143,6 +169,42 @@ describe('remote fetch timestamps', () => {
 
     resolveFetch({ ok: true, message: 'ok' })
     await Promise.all([first, second])
+  })
+
+  test('allows a reopened repo to start a new background fetch while the old one is still settling', async () => {
+    seedRepo([branch('feature/a')], 1)
+    let callCount = 0
+    const resolvers: Array<(value: { ok: true; message: string }) => void> = []
+    rpcHandlers['repo.fetch'] = () => {
+      callCount += 1
+      return new Promise<{ ok: true; message: string }>((resolve) => {
+        resolvers.push(resolve)
+      })
+    }
+    rpcHandlers['repo.snapshot'] = async () => ({
+      branches: [branch('feature/reopened')],
+      current: 'feature/reopened',
+    })
+
+    const oldFetch = useReposStore.getState().backgroundFetch(REPO_ID)
+    useReposStore.getState().closeRepo(REPO_ID)
+    const newToken = seedRepo([branch('feature/reopened')], 2)
+    const newFetch = useReposStore.getState().backgroundFetch(REPO_ID)
+
+    expect(callCount).toBe(2)
+
+    await oldFetch
+    const coalescedFetch = useReposStore.getState().backgroundFetch(REPO_ID)
+
+    for (const resolve of resolvers.slice(1)) resolve({ ok: true, message: 'ok' })
+    await Promise.allSettled([newFetch, coalescedFetch])
+
+    expect(callCount).toBe(2)
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.instanceToken).toBe(newToken)
+    expect(repo?.data.branches.map((b) => b.name)).toEqual(['feature/reopened'])
+    expect(repo?.ops.fetch.settledAt).not.toBeNull()
   })
 
   test('network operations expose repo-level fetch busy state', async () => {
@@ -346,6 +408,98 @@ describe('remote fetch timestamps', () => {
 })
 
 describe('core refresh request ordering', () => {
+  test('refreshAll refreshes snapshot and status, then visible commits log', async () => {
+    const token = seedRepo([branch('old')])
+    const calls: string[] = []
+    updateRepoForTest((repo) => {
+      repo.ui.detailTab = 'commits'
+      repo.ui.selectedBranch = 'old'
+    })
+    rpcHandlers['repo.snapshot'] = async () => {
+      calls.push('snapshot')
+      return { branches: [branch('main')], current: 'main' }
+    }
+    rpcHandlers['repo.status'] = async () => {
+      calls.push('status')
+      return []
+    }
+    rpcHandlers['repo.log'] = async ({ branch: branchName }: { branch: string }) => {
+      calls.push(`log:${branchName}`)
+      return []
+    }
+
+    await useReposStore.getState().refreshAll(REPO_ID, { token })
+
+    expect(calls).toEqual(['snapshot', 'status', 'log:main'])
+  })
+
+  test('refreshAll skips log refresh when commits are not visible', async () => {
+    const token = seedRepo([branch('main')])
+    let logCalls = 0
+    updateRepoForTest((repo) => {
+      repo.ui.detailTab = 'status'
+    })
+    rpcHandlers['repo.snapshot'] = async () => ({ branches: [branch('main')], current: 'main' })
+    rpcHandlers['repo.log'] = async () => {
+      logCalls += 1
+      return []
+    }
+
+    await useReposStore.getState().refreshAll(REPO_ID, { token })
+
+    expect(logCalls).toBe(0)
+  })
+
+  test('refreshAll stops after snapshot when the repo is reopened', async () => {
+    const token = seedRepo([branch('old')], 1)
+    let statusCalls = 0
+    let logCalls = 0
+    rpcHandlers['repo.snapshot'] = async () => {
+      seedRepo([branch('reopened')], 2)
+      return { branches: [branch('stale')], current: 'stale' }
+    }
+    rpcHandlers['repo.status'] = async () => {
+      statusCalls += 1
+      return []
+    }
+    rpcHandlers['repo.log'] = async () => {
+      logCalls += 1
+      return []
+    }
+
+    await useReposStore.getState().refreshAll(REPO_ID, { token })
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.instanceToken).toBe(2)
+    expect(repo?.data.branches.map((b) => b.name)).toEqual(['reopened'])
+    expect(statusCalls).toBe(0)
+    expect(logCalls).toBe(0)
+  })
+
+  test('refreshAll stops before log when the repo is reopened after status', async () => {
+    const token = seedRepo([branch('main')], 1)
+    let logCalls = 0
+    updateRepoForTest((repo) => {
+      repo.ui.detailTab = 'commits'
+    })
+    rpcHandlers['repo.snapshot'] = async () => ({ branches: [branch('main')], current: 'main' })
+    rpcHandlers['repo.status'] = async () => {
+      seedRepo([branch('reopened')], 2)
+      return []
+    }
+    rpcHandlers['repo.log'] = async () => {
+      logCalls += 1
+      return []
+    }
+
+    await useReposStore.getState().refreshAll(REPO_ID, { token })
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.instanceToken).toBe(2)
+    expect(repo?.data.branches.map((b) => b.name)).toEqual(['reopened'])
+    expect(logCalls).toBe(0)
+  })
+
   test('ignores stale status refreshes for the same repo instance', async () => {
     const token = seedRepo([branch('feature/a')])
     let callCount = 0

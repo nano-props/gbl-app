@@ -5,10 +5,10 @@
 // Adding a new terminal:
 // 1. Create src/main/system/<name>.ts implementing TerminalBackend
 // 2. Register it in the `backends` map below
-// 3. Add the new id to TerminalPref in main/settings.ts and shared/rpc.ts
+// 3. Add the new id to TerminalPref in shared/rpc.ts
 // 4. Add i18n keys for the settings picker
 
-import type { TerminalPref } from '#/main/settings.ts'
+import type { ResolvedTerminalApp, TerminalPref } from '#/shared/rpc.ts'
 import { isGhosttyInstalled, openInGhostty } from '#/main/system/ghostty.ts'
 import { openInAppleTerminal } from '#/main/system/apple-terminal.ts'
 
@@ -23,35 +23,34 @@ export interface TerminalBackend {
 }
 
 /** Concrete terminal pref values (excludes 'auto'). */
-type ConcreteTerminalId = Exclude<TerminalPref, 'auto'>
-
-const backends: Record<ConcreteTerminalId, TerminalBackend> = {
+const backends: Record<ResolvedTerminalApp, TerminalBackend> = {
   ghostty: { isInstalled: isGhosttyInstalled, open: openInGhostty },
   terminal: { isInstalled: () => true, open: openInAppleTerminal },
 }
 
 /** Auto-detection priority — first installed backend wins. */
-const AUTO_PRIORITY: ConcreteTerminalId[] = ['ghostty', 'terminal']
+const AUTO_PRIORITY: ResolvedTerminalApp[] = ['ghostty', 'terminal']
 
-function resolveBackend(pref: TerminalPref): TerminalBackend | null {
+function resolveTerminalApp(pref: TerminalPref): ResolvedTerminalApp | null {
   if (pref !== 'auto') {
     const backend = backends[pref]
-    return backend.isInstalled() ? backend : null
+    return backend.isInstalled() ? pref : null
   }
   for (const id of AUTO_PRIORITY) {
     const backend = backends[id]
-    if (backend.isInstalled()) return backend
+    if (backend.isInstalled()) return id
   }
   // Unreachable on macOS (Terminal.app is always available), but
   // a safe fallback.
-  return backends.terminal
+  return 'terminal'
 }
 
 /** Open `path` in the terminal selected by `pref`. */
 export function openInPreferredTerminal(path: string, pref: TerminalPref): Promise<{ ok: boolean; message: string }> {
-  return resolveBackend(pref)?.open(path) ?? Promise.resolve({ ok: false, message: 'error.terminal-not-installed' })
+  const resolved = resolveTerminalApp(pref)
+  return resolved ? backends[resolved].open(path) : Promise.resolve({ ok: false, message: 'error.terminal-not-installed' })
 }
 
-export function isTerminalAvailable(pref: TerminalPref): boolean {
-  return resolveBackend(pref) !== null
+export function getResolvedTerminalApp(pref: TerminalPref): ResolvedTerminalApp | null {
+  return resolveTerminalApp(pref)
 }

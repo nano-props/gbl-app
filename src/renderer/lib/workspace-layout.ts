@@ -1,5 +1,5 @@
 import { effectiveDetailCollapsed, workspaceLayoutAllowsDetailCollapse } from '#/shared/workspace-layout.ts'
-import type { WorkspaceLayout } from '#/renderer/types-bridge.ts'
+import type { WorkspaceLayout } from '#/shared/workspace-layout.ts'
 
 export interface RepoWorkspaceBehavior {
   detailCollapsed: boolean

@@ -7,7 +7,14 @@
 // eventually open stays in sync.
 
 import { create } from 'zustand'
-import type { EditorPref, GlobalShortcutState, SessionState, TerminalPref } from '#/renderer/types-bridge.ts'
+import type {
+  EditorPref,
+  GlobalShortcutState,
+  ResolvedEditorApp,
+  ResolvedTerminalApp,
+  SessionState,
+  TerminalPref,
+} from '#/shared/rpc.ts'
 import { DEFAULT_GLOBAL_SHORTCUT } from '#/shared/accelerator.ts'
 import { DEFAULT_WORKSPACE_LAYOUT } from '#/shared/workspace-layout.ts'
 import { onRpcEventType, rpc } from '#/renderer/rpc.ts'
@@ -18,8 +25,10 @@ interface SettingsStore {
   globalShortcut: string
   globalShortcutRegistered: boolean
   terminalApp: TerminalPref
+  resolvedTerminalApp: ResolvedTerminalApp | null
   terminalAvailable: boolean
   editorApp: EditorPref
+  resolvedEditorApp: ResolvedEditorApp | null
   editorAvailable: boolean
   /** Saved session from previous run — consumed once by App.tsx during
    *  hydration, then irrelevant. We keep it in state for diagnostics. */
@@ -51,8 +60,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
   globalShortcutRegistered: false,
   terminalApp: 'auto',
+  resolvedTerminalApp: null,
   terminalAvailable: true,
   editorApp: 'auto',
+  resolvedEditorApp: null,
   editorAvailable: false,
   savedSession: { openRepos: [], activeRepo: null, detailCollapsed: true, workspaceLayout: DEFAULT_WORKSPACE_LAYOUT },
 
@@ -66,8 +77,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       globalShortcut: snap.globalShortcut,
       globalShortcutRegistered: snap.globalShortcutRegistered,
       terminalApp: snap.terminalApp,
+      resolvedTerminalApp: snap.resolvedTerminalApp,
       terminalAvailable: snap.terminalAvailable,
       editorApp: snap.editorApp,
+      resolvedEditorApp: snap.resolvedEditorApp,
       editorAvailable: snap.editorAvailable,
       savedSession: snap.session,
     })
@@ -90,16 +103,18 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
         }),
         onRpcEventType('terminal-app-changed', (event) => {
           set((s) =>
-            s.terminalApp === event.pref && s.terminalAvailable === event.available
+            s.terminalApp === event.pref &&
+            s.resolvedTerminalApp === event.resolved &&
+            s.terminalAvailable === event.available
               ? s
-              : { terminalApp: event.pref, terminalAvailable: event.available },
+              : { terminalApp: event.pref, resolvedTerminalApp: event.resolved, terminalAvailable: event.available },
           )
         }),
         onRpcEventType('editor-app-changed', (event) => {
           set((s) =>
-            s.editorApp === event.pref && s.editorAvailable === event.available
+            s.editorApp === event.pref && s.resolvedEditorApp === event.resolved && s.editorAvailable === event.available
               ? s
-              : { editorApp: event.pref, editorAvailable: event.available },
+              : { editorApp: event.pref, resolvedEditorApp: event.resolved, editorAvailable: event.available },
           )
         }),
       )
@@ -140,18 +155,20 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   async setTerminalApp(pref) {
     const state = await rpc.settings.setTerminalApp.mutate({ pref })
     set((s) =>
-      s.terminalApp === state.pref && s.terminalAvailable === state.available
+      s.terminalApp === state.pref &&
+      s.resolvedTerminalApp === state.resolved &&
+      s.terminalAvailable === state.available
         ? s
-        : { terminalApp: state.pref, terminalAvailable: state.available },
+        : { terminalApp: state.pref, resolvedTerminalApp: state.resolved, terminalAvailable: state.available },
     )
   },
 
   async setEditorApp(pref) {
     const state = await rpc.settings.setEditorApp.mutate({ pref })
     set((s) =>
-      s.editorApp === state.pref && s.editorAvailable === state.available
+      s.editorApp === state.pref && s.resolvedEditorApp === state.resolved && s.editorAvailable === state.available
         ? s
-        : { editorApp: state.pref, editorAvailable: state.available },
+        : { editorApp: state.pref, resolvedEditorApp: state.resolved, editorAvailable: state.available },
     )
   },
 }))

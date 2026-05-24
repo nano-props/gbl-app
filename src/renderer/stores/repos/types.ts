@@ -1,6 +1,7 @@
 import type { StoreApi } from 'zustand'
 import type { BranchInfo, ExecResult, LogEntry, PullRequestFetchMode, WorktreeStatus } from '#/renderer/types.ts'
-import type { CommitDetail, WorkspaceLayout } from '#/renderer/types-bridge.ts'
+import type { CommitDetail } from '#/shared/rpc.ts'
+import type { WorkspaceLayout } from '#/shared/workspace-layout.ts'
 import type { RepoBranchAction, RunBranchActionOptions } from '#/renderer/stores/repos/branch-action-types.ts'
 import type { RepoOperationsState } from '#/renderer/stores/repos/operations.ts'
 

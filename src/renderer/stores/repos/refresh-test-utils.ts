@@ -12,8 +12,8 @@ export const REPO_ID = '/tmp/gbl-test-repo'
 export const rpcHandlers: Record<string, RpcTestHandler> = {}
 export const pullRequest = createPullRequest
 
-export function branch(name: string, pullRequest?: PullRequestInfo): BranchInfo {
-  return createBranch(name, pullRequest ? { pullRequest } : {})
+export function branch(name: string, pullRequest?: PullRequestInfo, options: Partial<BranchInfo> = {}): BranchInfo {
+  return createBranch(name, { ...options, ...(pullRequest ? { pullRequest } : {}) })
 }
 
 export function pullRequestWithHealth(number: number): PullRequestInfo {
@@ -32,6 +32,7 @@ export function resetRefreshTest(): void {
   for (const key of Object.keys(rpcHandlers)) delete rpcHandlers[key]
   resetReposStore()
   installGoblinTestBridge(rpcHandlers)
+  rpcHandlers['repo.abort'] = async () => false
   rpcHandlers['repo.fetch'] = async () => ({ ok: true, message: 'ok' })
   rpcHandlers['repo.snapshot'] = async () => ({ branches: [], current: '' })
   rpcHandlers['repo.pullRequests'] = async () => []

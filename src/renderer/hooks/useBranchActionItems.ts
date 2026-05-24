@@ -6,6 +6,7 @@ import { useT } from '#/renderer/stores/i18n.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { EditorAppIcon, TerminalAppIcon } from '#/renderer/components/ExternalAppIcon/index.tsx'
 import { useBranchActions, type BranchUiAction } from '#/renderer/hooks/useBranchActions.tsx'
+import { branchPullRequestBelongsToBranch } from '#/shared/git-types.ts'
 import type { BranchInfo } from '#/renderer/types.ts'
 
 export interface BranchActionItem {
@@ -32,11 +33,15 @@ export interface BranchActionItemGroups {
 export function useBranchActionItems(repo: RepoState, branch: BranchInfo): BranchActionItemGroups {
   const t = useT()
   const terminalApp = useSettingsStore((s) => s.terminalApp)
+  const resolvedTerminalApp = useSettingsStore((s) => s.resolvedTerminalApp)
   const terminalAvailable = useSettingsStore((s) => s.terminalAvailable)
   const editorApp = useSettingsStore((s) => s.editorApp)
+  const resolvedEditorApp = useSettingsStore((s) => s.resolvedEditorApp)
   const editorAvailable = useSettingsStore((s) => s.editorAvailable)
   const { busy, capabilities, actions, dialogs } = useBranchActions(repo, branch)
-  const githubIcon = branch.pullRequest ? GitPullRequest : GitHubOutlineIcon
+  const pullRequest =
+    branch.pullRequest && branchPullRequestBelongsToBranch(branch, branch.pullRequest) ? branch.pullRequest : undefined
+  const githubIcon = pullRequest ? GitPullRequest : GitHubOutlineIcon
 
   const patchItems: BranchActionItem[] = capabilities.canCopyPatch
     ? [
@@ -89,7 +94,7 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
             disabled: !!busy,
             visible: true,
             shortcut: 'G',
-            icon: createElement(TerminalAppIcon, { pref: terminalApp }),
+            icon: createElement(TerminalAppIcon, { pref: resolvedTerminalApp ?? terminalApp }),
             onSelect: actions.openTerminal,
           },
         ]
@@ -102,14 +107,14 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
             disabled: !!busy,
             visible: true,
             shortcut: 'V',
-            icon: createElement(EditorAppIcon, { pref: editorApp }),
+            icon: createElement(EditorAppIcon, { pref: resolvedEditorApp ?? editorApp }),
             onSelect: actions.openEditor,
           },
         ]
       : []),
     {
       id: 'github',
-      label: branch.pullRequest ? t('action.github-pr', { n: branch.pullRequest.number }) : t('action.github'),
+      label: pullRequest ? t('action.github-pr', { n: pullRequest.number }) : t('action.github'),
       disabled: !!busy,
       visible: true,
       shortcut: '⇧G',

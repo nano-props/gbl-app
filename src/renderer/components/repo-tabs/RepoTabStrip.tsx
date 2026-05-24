@@ -107,77 +107,83 @@ export function RepoTabStrip({
   const ids = repos.map((repo) => repo.id)
 
   return (
-    <nav
-      className="flex h-10 shrink-0 items-center gap-2 border-b border-separator bg-muted/60 px-2"
-      aria-label={labels.repositories}
-    >
-      <ScrollArea orientation="horizontal" className="h-full min-w-0 flex-1" viewportClassName="[&>div]:h-full">
-        <div className="flex h-10 w-max min-w-full items-center gap-1" role="tablist">
-          {repos.length === 0 ? (
-            <div className="flex h-8 items-center px-2 text-xs text-muted-foreground">
-              {labels.emptyBefore}
-              <span className="text-foreground">{labels.emptyOpenLabel}</span>
-              {labels.emptyAfter}
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              modifiers={[restrictToHorizontalTabs]}
-              onDragEnd={handleDragEnd}
+    <nav className="relative h-10 shrink-0 bg-muted/60" aria-label={labels.repositories}>
+      <div className="absolute inset-x-0 top-0 bottom-px flex items-center gap-2 px-2">
+        <ScrollArea orientation="horizontal" className="h-full min-w-0 flex-1" viewportClassName="[&>div]:h-full">
+          <div className="flex h-full w-max min-w-full items-center gap-1" role="tablist">
+            {repos.length === 0 ? (
+              <div className="flex h-8 items-center px-2 text-xs text-muted-foreground">
+                {labels.emptyBefore}
+                <span className="text-foreground">{labels.emptyOpenLabel}</span>
+                {labels.emptyAfter}
+              </div>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                modifiers={[restrictToHorizontalTabs]}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
+                  {repos.map((repo, index) => {
+                    const next = repos[index + 1]
+                    return (
+                      <RepoTab
+                        key={repo.id}
+                        repo={repo}
+                        isActive={repo.id === activeId}
+                        showSeparator={shouldShowInactiveSeparator({
+                          leftId: repo.id,
+                          rightId: next?.id,
+                          activeId,
+                          hoveredId,
+                        })}
+                        onHoverChange={setHoveredId}
+                        onActivate={onActivate}
+                        onClose={onClose}
+                        onKeyboardNavigate={handleKeyboardNavigate}
+                        closeLabel={labels.close}
+                      />
+                    )
+                  })}
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
+        </ScrollArea>
+        <MissingReposPopover
+          missing={missing}
+          title={labels.missingTitle}
+          dismissLabel={labels.missingDismiss}
+          onDismiss={onDismissMissing}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0"
+              aria-label={labels.open}
+              title={labels.open}
             >
-              <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
-                {repos.map((repo, index) => {
-                  const next = repos[index + 1]
-                  return (
-                    <RepoTab
-                      key={repo.id}
-                      repo={repo}
-                      isActive={repo.id === activeId}
-                      showSeparator={shouldShowInactiveSeparator({
-                        leftId: repo.id,
-                        rightId: next?.id,
-                        activeId,
-                        hoveredId,
-                      })}
-                      onHoverChange={setHoveredId}
-                      onActivate={onActivate}
-                      onClose={onClose}
-                      onKeyboardNavigate={handleKeyboardNavigate}
-                      closeLabel={labels.close}
-                    />
-                  )
-                })}
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
-      </ScrollArea>
-      <MissingReposPopover
-        missing={missing}
-        title={labels.missingTitle}
-        dismissLabel={labels.missingDismiss}
-        onDismiss={onDismissMissing}
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-7 shrink-0" aria-label={labels.open} title={labels.open}>
-            <Plus />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-max">
-          <DropdownMenuItem className="whitespace-nowrap" onSelect={onOpenLocal}>
-            <FolderOpen />
-            {labels.openLocal}
-            {labels.openLocalShortcut && <DropdownMenuShortcut>{labels.openLocalShortcut}</DropdownMenuShortcut>}
-          </DropdownMenuItem>
-          <DropdownMenuItem className="whitespace-nowrap" onSelect={onClone}>
-            <Download />
-            {labels.clone}
-            {labels.cloneShortcut && <DropdownMenuShortcut>{labels.cloneShortcut}</DropdownMenuShortcut>}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+              <Plus />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-max">
+            <DropdownMenuItem className="whitespace-nowrap" onSelect={onOpenLocal}>
+              <FolderOpen />
+              {labels.openLocal}
+              {labels.openLocalShortcut && <DropdownMenuShortcut>{labels.openLocalShortcut}</DropdownMenuShortcut>}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="whitespace-nowrap" onSelect={onClone}>
+              <Download />
+              {labels.clone}
+              {labels.cloneShortcut && <DropdownMenuShortcut>{labels.cloneShortcut}</DropdownMenuShortcut>}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-separator" />
     </nav>
   )
 }

@@ -11,7 +11,7 @@ import { formatRelativeTime } from '#/renderer/lib/dates.ts'
 import { FilePathText } from '#/renderer/components/FilePathText.tsx'
 import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
-import type { CommitDetail as CommitDetailType } from '#/renderer/types-bridge.ts'
+import type { CommitDetail as CommitDetailType } from '#/shared/rpc.ts'
 
 interface Props {
   repoId: string

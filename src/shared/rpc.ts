@@ -19,6 +19,8 @@ export type LangPref = 'auto' | 'en' | 'zh' | 'ko' | 'ja'
 export type Lang = 'en' | 'zh' | 'ko' | 'ja'
 export type TerminalPref = 'auto' | 'ghostty' | 'terminal'
 export type EditorPref = 'auto' | 'vscode' | 'cursor' | 'windsurf'
+export type ResolvedTerminalApp = Exclude<TerminalPref, 'auto'>
+export type ResolvedEditorApp = Exclude<EditorPref, 'auto'>
 export type NetworkOpKind = 'user' | 'background'
 export interface ThemeState {
   pref: ThemePref
@@ -26,7 +28,9 @@ export interface ThemeState {
 }
 
 export interface SessionState {
+  /** Repo paths that were open, in tab order. */
   openRepos: string[]
+  /** The active tab — null when no repos were open. */
   activeRepo: string | null
   detailCollapsed: boolean
   workspaceLayout: WorkspaceLayout
@@ -39,8 +43,10 @@ export interface SettingsSnapshot {
   globalShortcut: string
   globalShortcutRegistered: boolean
   terminalApp: TerminalPref
+  resolvedTerminalApp: ResolvedTerminalApp | null
   terminalAvailable: boolean
   editorApp: EditorPref
+  resolvedEditorApp: ResolvedEditorApp | null
   editorAvailable: boolean
   session: SessionState
   recentRepos: string[]
@@ -53,11 +59,13 @@ export interface GlobalShortcutState {
 
 export interface TerminalAppState {
   pref: TerminalPref
+  resolved: ResolvedTerminalApp | null
   available: boolean
 }
 
 export interface EditorAppState {
   pref: EditorPref
+  resolved: ResolvedEditorApp | null
   available: boolean
 }
 
@@ -147,8 +155,8 @@ export type RpcEvent =
   | { type: 'fetch-interval-changed'; sec: number }
   | { type: 'shortcuts-disabled-changed'; disabled: boolean }
   | { type: 'global-shortcut-changed'; state: GlobalShortcutState }
-  | { type: 'terminal-app-changed'; pref: TerminalPref; available: boolean }
-  | { type: 'editor-app-changed'; pref: EditorPref; available: boolean }
+  | ({ type: 'terminal-app-changed' } & TerminalAppState)
+  | ({ type: 'editor-app-changed' } & EditorAppState)
   | { type: 'settings-write-error'; message: string }
   | { type: 'menu-action'; action: MenuAction }
   | { type: 'i18n-changed'; payload: I18nPayload }

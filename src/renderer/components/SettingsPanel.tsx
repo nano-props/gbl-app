@@ -9,7 +9,7 @@ import { ShortcutSettings } from '#/renderer/components/settings/ShortcutSetting
 import { useThemeStore } from '#/renderer/stores/theme.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
-import type { EditorPref, LangPref, TerminalPref, ThemePref } from '#/renderer/types-bridge.ts'
+import type { EditorPref, LangPref, TerminalPref, ThemePref } from '#/shared/rpc.ts'
 import { rpc } from '#/renderer/rpc.ts'
 
 interface Props {

@@ -9,12 +9,18 @@ import {
   type RpcRequest,
   type RpcResponse,
   type SessionState,
+  type SettingsSnapshot,
+  type TerminalAppState,
+  type EditorAppState,
+  type EditorPref,
+  type TerminalPref,
 } from '#/shared/rpc.ts'
 import {
   checkoutBranch,
   deleteBranch,
   getBranches,
   getCurrentBranch,
+  getDefaultBranch,
   getLog,
   getRepoName,
   getRepoRoot,
@@ -30,7 +36,13 @@ import { createWorktree, getWorktrees, removeWorktree } from '#/main/git/worktre
 import { cloneRepository } from '#/main/git/clone.ts'
 import { getBranchPullRequest, getBranchPullRequests } from '#/main/git/pull-requests.ts'
 import { getCommitFileStats, getCommitMeta } from '#/main/git/log.ts'
-import { GIT_HASH_RE, PROTECTED_BRANCHES, type ExecResult, type PullRequestFetchMode } from '#/shared/git-types.ts'
+import {
+  GIT_HASH_RE,
+  PROTECTED_BRANCHES,
+  branchPullRequestBelongsToBranch,
+  type ExecResult,
+  type PullRequestFetchMode,
+} from '#/shared/git-types.ts'
 import { isReservedGlobalShortcut, parseGlobalShortcut } from '#/shared/accelerator.ts'
 import { checkGitAvailable } from '#/main/git/helper.ts'
 import { isValidAbsolutePath, isValidBranch, isValidCwd, isValidOptionalBranch } from '#/main/ipc/validation.ts'
@@ -55,8 +67,8 @@ import { effectiveDetailCollapsed, normalizeWorkspaceLayout } from '#/shared/wor
 import { isGlobalShortcutRegistered, replaceGlobalShortcut, syncGlobalShortcuts } from '#/main/shortcuts.ts'
 import { buildAppMenu, setMenuWorkspaceLayout } from '#/main/menu.ts'
 import { applyLangPref, getCurrentLang, getDictionary } from '#/main/i18n/index.ts'
-import { isTerminalAvailable, openInPreferredTerminal } from '#/main/system/terminals.ts'
-import { isEditorAvailable, openInPreferredEditor } from '#/main/system/editors.ts'
+import { getResolvedTerminalApp, openInPreferredTerminal } from '#/main/system/terminals.ts'
+import { getResolvedEditorApp, openInPreferredEditor } from '#/main/system/editors.ts'
 import { broadcastRpcEvent } from '#/main/events.ts'
 
 const PROJECT_GITHUB_URL = 'https://github.com/nano-props/goblin'
@@ -85,6 +97,9 @@ const activeOpControllers = new Map<string, ActiveNetworkOp>()
 const activeCloneControllers = new Map<string, ActiveCloneOp>()
 
 let wired = false
+
+type TerminalAppSnapshot = Pick<SettingsSnapshot, 'terminalApp' | 'resolvedTerminalApp' | 'terminalAvailable'>
+type EditorAppSnapshot = Pick<SettingsSnapshot, 'editorApp' | 'resolvedEditorApp' | 'editorAvailable'>
 
 export function wireRpcIpc(): void {
   if (wired) return
@@ -141,6 +156,34 @@ function toRpcError(err: unknown): Extract<RpcResponse, { ok: false }>['error'] 
   if (err instanceof TRPCError) return { name: err.name, code: err.code, message: err.message }
   if (err instanceof Error) return { name: err.name, message: err.message }
   return { message: String(err) }
+}
+
+function terminalAppState(pref: TerminalPref): TerminalAppState {
+  const resolved = getResolvedTerminalApp(pref)
+  return { pref, resolved, available: resolved !== null }
+}
+
+function editorAppState(pref: EditorPref): EditorAppState {
+  const resolved = getResolvedEditorApp(pref)
+  return { pref, resolved, available: resolved !== null }
+}
+
+function terminalAppSnapshot(pref: TerminalPref): TerminalAppSnapshot {
+  const state = terminalAppState(pref)
+  return {
+    terminalApp: state.pref,
+    resolvedTerminalApp: state.resolved,
+    terminalAvailable: state.available,
+  }
+}
+
+function editorAppSnapshot(pref: EditorPref): EditorAppSnapshot {
+  const state = editorAppState(pref)
+  return {
+    editorApp: state.pref,
+    resolvedEditorApp: state.resolved,
+    editorAvailable: state.available,
+  }
 }
 
 function createRpcHandlers(): AppRpcHandlers {
@@ -308,10 +351,8 @@ function createRpcHandlers(): AppRpcHandlers {
           shortcutsDisabled: s.shortcutsDisabled,
           globalShortcut: s.globalShortcut,
           globalShortcutRegistered: isGlobalShortcutRegistered(),
-          terminalApp: s.terminalApp,
-          terminalAvailable: isTerminalAvailable(s.terminalApp),
-          editorApp: s.editorApp,
-          editorAvailable: isEditorAvailable(s.editorApp),
+          ...terminalAppSnapshot(s.terminalApp),
+          ...editorAppSnapshot(s.editorApp),
           session: s.session,
           recentRepos: s.recentRepos,
         }
@@ -344,13 +385,13 @@ function createRpcHandlers(): AppRpcHandlers {
       },
       setTerminalApp: async ({ pref }) => {
         const saved = await setTerminalApp(pref)
-        const payload = { pref: saved, available: isTerminalAvailable(saved) }
+        const payload = terminalAppState(saved)
         broadcastRpcEvent({ type: 'terminal-app-changed', ...payload })
         return payload
       },
       setEditorApp: async ({ pref }) => {
         const saved = await setEditorApp(pref)
-        const payload = { pref: saved, available: isEditorAvailable(saved) }
+        const payload = editorAppState(saved)
         broadcastRpcEvent({ type: 'editor-app-changed', ...payload })
         return payload
       },
@@ -511,11 +552,20 @@ async function createPatch({ cwd, worktreePath }: { cwd: string; worktreePath: s
 
 async function openRepoGitHub({ cwd, branch }: { cwd: string; branch?: string }): Promise<ExecResult> {
   if (!isValidCwd(cwd) || !isValidOptionalBranch(branch)) return { ok: false, message: 'error.invalid-arguments' }
+  // Only branch opens need the default branch: it tells us whether a PR is a
+  // reverse/default-branch PR that should not be opened from the default row.
+  const defaultBranch = branch ? await getDefaultBranch(cwd) : ''
+  const isDefaultBranch = !!defaultBranch && branch === defaultBranch
   if (branch) {
     const detectedPr = await getBranchPullRequest(cwd, branch)
-    if (detectedPr?.url && (await openHttpsExternal(detectedPr.url))) return { ok: true, message: detectedPr.url }
+    if (
+      detectedPr?.url &&
+      branchPullRequestBelongsToBranch({ name: branch, isDefault: isDefaultBranch }, detectedPr) &&
+      (await openHttpsExternal(detectedPr.url))
+    ) {
+      return { ok: true, message: detectedPr.url }
+    }
   }
-  const isDefaultBranch = branch === 'main' || branch === 'master' || branch === 'trunk'
   if (typeof branch === 'string' && branch && !isDefaultBranch) {
     const prUrl = await getPullRequestUrl(cwd, branch)
     if (prUrl && (await openHttpsExternal(prUrl))) return { ok: true, message: prUrl }

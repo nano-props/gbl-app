@@ -5,7 +5,7 @@
 // own — main is the single source of truth.
 
 import { create } from 'zustand'
-import type { ResolvedTheme, ThemePref, ThemeState } from '#/renderer/types-bridge.ts'
+import type { ResolvedTheme, ThemePref, ThemeState } from '#/shared/rpc.ts'
 import { onRpcEventType, rpc } from '#/renderer/rpc.ts'
 
 interface ThemeStore extends ThemeState {

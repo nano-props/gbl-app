@@ -5,10 +5,10 @@
 // Adding a new editor:
 // 1. Create src/main/system/<name>.ts implementing EditorBackend
 // 2. Register it in the `backends` map below
-// 3. Add the new id to EditorPref in main/settings.ts and shared/rpc.ts
+// 3. Add the new id to EditorPref in shared/rpc.ts
 // 4. Add i18n keys for the settings picker and dependencies overlay
 
-import type { EditorPref } from '#/main/settings.ts'
+import type { EditorPref, ResolvedEditorApp } from '#/shared/rpc.ts'
 import { isVSCodeInstalled, openInVSCode } from '#/main/system/vscode.ts'
 import { isCursorInstalled, openInCursor } from '#/main/system/cursor.ts'
 import { isWindsurfInstalled, openInWindsurf } from '#/main/system/windsurf.ts'
@@ -24,25 +24,23 @@ export interface EditorBackend {
 }
 
 /** Concrete editor pref values (excludes 'auto'). */
-type ConcreteEditorId = Exclude<EditorPref, 'auto'>
-
-const backends: Record<ConcreteEditorId, EditorBackend> = {
+const backends: Record<ResolvedEditorApp, EditorBackend> = {
   vscode: { isInstalled: isVSCodeInstalled, open: openInVSCode },
   cursor: { isInstalled: isCursorInstalled, open: openInCursor },
   windsurf: { isInstalled: isWindsurfInstalled, open: openInWindsurf },
 }
 
 /** Auto-detection priority — first installed editor wins. */
-const AUTO_PRIORITY: ConcreteEditorId[] = ['vscode', 'cursor', 'windsurf']
+const AUTO_PRIORITY: ResolvedEditorApp[] = ['vscode', 'cursor', 'windsurf']
 
-function resolveBackend(pref: EditorPref): EditorBackend | null {
+function resolveEditorApp(pref: EditorPref): ResolvedEditorApp | null {
   if (pref !== 'auto') {
     const backend = backends[pref]
-    return backend.isInstalled() ? backend : null
+    return backend.isInstalled() ? pref : null
   }
   for (const id of AUTO_PRIORITY) {
     const backend = backends[id]
-    if (backend.isInstalled()) return backend
+    if (backend.isInstalled()) return id
   }
   return null
 }
@@ -53,11 +51,10 @@ export function openInPreferredEditor(
   path: string,
   pref: EditorPref,
 ): Promise<{ ok: boolean; message: string }> | null {
-  const backend = resolveBackend(pref)
-  return backend ? backend.open(path) : null
+  const resolved = resolveEditorApp(pref)
+  return resolved ? backends[resolved].open(path) : null
 }
 
-/** Whether any editor is available for the given pref. */
-export function isEditorAvailable(pref: EditorPref): boolean {
-  return resolveBackend(pref) !== null
+export function getResolvedEditorApp(pref: EditorPref): ResolvedEditorApp | null {
+  return resolveEditorApp(pref)
 }

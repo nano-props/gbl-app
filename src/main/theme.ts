@@ -6,14 +6,7 @@
 
 import { nativeTheme } from 'electron'
 import { loadSettings, setThemePref as persistThemePref } from '#/main/settings.ts'
-import type { ThemePref } from '#/main/settings.ts'
-
-export type ResolvedTheme = 'light' | 'dark'
-
-export interface ThemeState {
-  pref: ThemePref
-  resolved: ResolvedTheme
-}
+import type { ResolvedTheme, ThemePref, ThemeState } from '#/shared/rpc.ts'
 
 type Listener = (state: ThemeState) => void
 

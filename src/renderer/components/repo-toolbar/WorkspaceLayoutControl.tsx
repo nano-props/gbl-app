@@ -3,7 +3,7 @@ import { ToggleGroup, ToggleGroupItem } from '#/renderer/components/ui/toggle-gr
 import { Tip } from '#/renderer/components/Tip.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
 import type { RepoWorkspaceLayout } from '#/renderer/stores/repos/types.ts'
-import { cn } from '#/renderer/lib/cn.ts'
+import { segmentedItemClass } from '#/renderer/components/repo-toolbar/segmented-control.ts'
 import { WORKSPACE_LAYOUTS } from '#/shared/workspace-layout.ts'
 
 interface Props {
@@ -37,7 +37,9 @@ export function WorkspaceLayoutControl({ value, onChange }: Props) {
         if (next) onChange(next as RepoWorkspaceLayout)
       }}
       aria-label={t('workspace.layout-label')}
-      className="shrink-0 rounded-md bg-muted/50 p-0.5"
+      variant="outline"
+      size="sm"
+      className="shrink-0"
     >
       {WORKSPACE_LAYOUT_OPTIONS.map((option) => {
         const Icon = WORKSPACE_LAYOUT_ICONS[option.id]
@@ -48,13 +50,7 @@ export function WorkspaceLayoutControl({ value, onChange }: Props) {
             <ToggleGroupItem
               value={option.id}
               aria-label={label}
-              className={cn(
-                'size-6 min-w-0 rounded-sm border p-0 shadow-none',
-                selected
-                  ? '!border-border !bg-background !text-foreground shadow-xs hover:!bg-background hover:!text-foreground data-[state=on]:!bg-background data-[state=on]:!text-foreground'
-                  : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
-                '[&_svg:not([class*=size-])]:size-3.5',
-              )}
+              className={segmentedItemClass(selected)}
             >
               <Icon />
             </ToggleGroupItem>

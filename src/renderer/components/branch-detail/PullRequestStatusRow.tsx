@@ -15,7 +15,7 @@ import {
   type Tone,
 } from '#/renderer/components/branch-detail/status-ui.tsx'
 import type { PullRequestInfo } from '#/shared/git-types.ts'
-import type { Lang } from '#/renderer/types-bridge.ts'
+import type { Lang } from '#/shared/rpc.ts'
 
 type TFn = (key: string, params?: Record<string, string | number>) => string
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left'
@@ -105,11 +105,16 @@ function PullRequestValue({
   copiedLabel: string
   tooltipSide: TooltipSide
 }) {
+  const tooltipAlign = tooltipSide === 'bottom' ? 'center' : 'end'
+  // Radix Tooltip exposes the available-width var; the fallback keeps the
+  // CSS valid if the implementation ever stops providing it.
+  const tooltipContentClass =
+    'max-w-[min(24rem,calc(100vw-2rem),var(--radix-tooltip-content-available-width,calc(100vw-2rem)))] space-y-1'
   return (
     <div className={STATUS_INLINE_GROUP_CLASS}>
       <Tip
         label={
-          <div className="max-w-[min(24rem,calc(100vw-2rem),var(--radix-tooltip-content-available-width))] space-y-1">
+          <div className={tooltipContentClass}>
             <div className="overflow-hidden break-words font-medium leading-snug [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
               {tooltip.title}
             </div>
@@ -121,7 +126,7 @@ function PullRequestValue({
           </div>
         }
         side={tooltipSide}
-        align="end"
+        align={tooltipAlign}
         collisionPadding={16}
       >
         <StatusChip tone={tone} className="min-w-0 shrink">

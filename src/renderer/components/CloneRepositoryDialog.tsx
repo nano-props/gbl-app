@@ -11,7 +11,7 @@ import { Button } from '#/renderer/components/ui/button.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { goblin, rpc } from '#/renderer/rpc.ts'
 import { joinPath, tildify, untildify } from '#/renderer/lib/paths.ts'
-import type { CloneRepoResult } from '#/renderer/types-bridge.ts'
+import type { CloneRepoResult } from '#/shared/rpc.ts'
 
 export interface CloneRepositoryRequest {
   operationId: string

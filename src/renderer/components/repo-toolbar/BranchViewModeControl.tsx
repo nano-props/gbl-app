@@ -4,7 +4,7 @@ import { Tip } from '#/renderer/components/Tip.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { BRANCH_VIEW_MODE_OPTIONS } from '#/renderer/components/repo-toolbar/branch-view-mode-options.ts'
 import type { BranchViewMode } from '#/renderer/stores/repos/types.ts'
-import { cn } from '#/renderer/lib/cn.ts'
+import { segmentedItemClass } from '#/renderer/components/repo-toolbar/segmented-control.ts'
 
 interface Props {
   value: BranchViewMode
@@ -30,7 +30,9 @@ export function BranchViewModeControl({ value, disabled = false, onChange }: Pro
       }}
       disabled={disabled}
       aria-label={t('branches.filter-label')}
-      className="shrink-0 rounded-md bg-muted/50 p-0.5"
+      variant="outline"
+      size="sm"
+      className="shrink-0"
     >
       {BRANCH_VIEW_MODE_OPTIONS.map((option) => {
         const Icon = BRANCH_VIEW_MODE_ICONS[option.id]
@@ -41,13 +43,7 @@ export function BranchViewModeControl({ value, disabled = false, onChange }: Pro
             <ToggleGroupItem
               value={option.id}
               aria-label={label}
-              className={cn(
-                'size-6 min-w-0 rounded-sm border p-0 shadow-none',
-                selected
-                  ? '!border-border !bg-background !text-foreground shadow-xs hover:!bg-background hover:!text-foreground data-[state=on]:!bg-background data-[state=on]:!text-foreground'
-                  : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
-                '[&_svg:not([class*=size-])]:size-3.5',
-              )}
+              className={segmentedItemClass(selected)}
             >
               <Icon />
             </ToggleGroupItem>

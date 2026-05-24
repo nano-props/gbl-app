@@ -17,7 +17,7 @@ import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { RepoTabStrip } from '#/renderer/components/repo-tabs/RepoTabStrip.tsx'
 import { CloneRepositoryDialog, type CloneRepositoryRequest } from '#/renderer/components/CloneRepositoryDialog.tsx'
 import type { RepoTabSummary } from '#/renderer/components/repo-tabs/types.ts'
-import type { CloneRepoResult } from '#/renderer/types-bridge.ts'
+import type { CloneRepoResult } from '#/shared/rpc.ts'
 import { rpc } from '#/renderer/rpc.ts'
 
 /** Equality fn for the summaries array. Zustand's `useShallow` does

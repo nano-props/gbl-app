@@ -61,7 +61,7 @@ export function BranchActionsDropdown({
           onClick={(e) => e.stopPropagation()}
           onDoubleClick={(e) => e.stopPropagation()}
         >
-          {busy ? <Loader2 className="animate-spin" /> : <ChevronDown />}
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown />}
           {t('action.menu')}
         </Button>
       </DropdownMenuTrigger>
@@ -98,7 +98,7 @@ function BranchActionMenuItem({ item, busy }: { item: BranchActionItem; busy: Br
       variant={item.destructive ? 'destructive' : 'default'}
       className={item.shortcut ? 'whitespace-nowrap' : undefined}
     >
-      {busy === item.id ? <Loader2 className="animate-spin" /> : item.icon}
+      {busy === item.id ? <Loader2 size={16} className="animate-spin" /> : item.icon}
       {item.label}
       {item.shortcut && <DropdownMenuShortcut>{item.shortcut}</DropdownMenuShortcut>}
     </DropdownMenuItem>

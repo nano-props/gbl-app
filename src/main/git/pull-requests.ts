@@ -175,11 +175,10 @@ function getCachedBranchPullRequest(
   cwd: string,
   branch: string,
   mode: PullRequestFetchMode,
-): { hit: boolean; pr: PullRequestInfo | null; unavailable?: boolean } {
+): { hit: boolean; pr: PullRequestInfo | null } {
   const cached = prCache.get(cwd)
   if (cached && cacheFresh(cached.expiresAt) && cacheSatisfiesMode(cached.mode, mode)) {
-    if (cached.prs === null) return { hit: true, pr: null, unavailable: true }
-    const pr = cached.prs.get(branch)
+    const pr = cached.prs?.get(branch)
     if (pr) return { hit: true, pr }
   }
 
@@ -432,7 +431,6 @@ export async function getBranchPullRequests(
     if (singleBranch) {
       const cached = getCachedBranchPullRequest(cwd, singleBranch, mode)
       if (cached.hit) {
-        if (cached.unavailable) return null
         return cached.pr ? new Map([[singleBranch, cached.pr]]) : new Map()
       }
 

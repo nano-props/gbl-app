@@ -20,26 +20,19 @@ import {
   normalizeWorkspaceLayout,
   type WorkspaceLayout,
 } from '#/shared/workspace-layout.ts'
-
-export type ThemePref = 'auto' | 'light' | 'dark'
-export type LangPref = 'auto' | 'en' | 'zh' | 'ko' | 'ja'
-export type TerminalPref = 'auto' | 'ghostty' | 'terminal'
-export type EditorPref = 'auto' | 'vscode' | 'cursor' | 'windsurf'
+import type {
+  EditorPref,
+  LangPref,
+  SessionState,
+  TerminalPref,
+  ThemePref,
+} from '#/shared/rpc.ts'
 
 export interface WindowBounds {
   x?: number
   y?: number
   width: number
   height: number
-}
-
-export interface SessionState {
-  /** Repo paths that were open, in tab order. */
-  openRepos: string[]
-  /** The active tab — null when no repos were open. */
-  activeRepo: string | null
-  detailCollapsed: boolean
-  workspaceLayout: WorkspaceLayout
 }
 
 /** Bump when a breaking schema change lands (renamed fields, removed

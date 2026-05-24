@@ -60,7 +60,7 @@ export function RepoToolbar({ repoId }: Props) {
           {tildify(repo.id)}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2.5">
         <RepoToolbarActions repo={repo} />
         <BranchViewModeControl
           value={repo.ui.branchViewMode}

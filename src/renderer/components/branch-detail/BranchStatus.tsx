@@ -11,7 +11,7 @@ import {
   type Tone,
 } from '#/renderer/components/branch-detail/status-ui.tsx'
 import { tildify } from '#/renderer/lib/paths.ts'
-import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
+import { PROTECTED_BRANCHES, branchPullRequestBelongsToBranch } from '#/shared/git-types.ts'
 import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
 import type { RepoWorkspaceLayout } from '#/renderer/stores/repos/types.ts'
 import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
@@ -73,6 +73,8 @@ export function BranchStatus({ detail, layout }: Props) {
   const protectedBranch = PROTECTED_BRANCHES.has(branch.name)
   const worktreePath = branch.worktreePath ? tildify(branch.worktreePath) : ''
   const worktreeChangeCount = statusCount > 0 ? statusCount : (branch.worktreeChangeCount ?? 0)
+  const pullRequest =
+    branch.pullRequest && branchPullRequestBelongsToBranch(branch, branch.pullRequest) ? branch.pullRequest : undefined
   const hasRole = branch.isCurrent || branch.isDefault || protectedBranch
   const hasWorktreeChanges = !!branch.worktreePath && (branch.worktreeDirty || worktreeChangeCount > 0)
   const mergeKnown = branch.isDefault || branch.mergedToDefault !== undefined
@@ -185,7 +187,7 @@ export function BranchStatus({ detail, layout }: Props) {
         />
       )}
       <PullRequestStatusRow
-        pullRequest={branch.pullRequest}
+        pullRequest={pullRequest}
         tooltipSide={behavior.prTooltipSide}
       />
     </StatusRows>
