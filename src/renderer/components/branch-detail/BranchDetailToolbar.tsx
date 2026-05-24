@@ -8,7 +8,7 @@ import { Badge } from '#/renderer/components/ui/badge.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import { BranchActionBar } from '#/renderer/components/BranchActionBar.tsx'
 import { Toolbar } from '#/renderer/components/Layout.tsx'
-import { DETAIL_TABS } from '#/renderer/lib/detail-tabs.ts'
+import { visibleDetailTabs } from '#/renderer/lib/detail-tabs.ts'
 import { cn } from '#/renderer/lib/cn.ts'
 import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
 import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
@@ -29,17 +29,18 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
   const toggleDetailCollapsed = useReposStore((s) => s.toggleDetailCollapsed)
   const shortcutsDisabled = useSettingsStore((s) => s.shortcutsDisabled)
   const behavior = repoWorkspaceBehavior(layout, collapsed)
+  const tabs = visibleDetailTabs(!!detail.branch?.worktreePath)
 
   if (!detail.branch) return null
 
   function handleTabKeyDown(e: KeyboardEvent<HTMLButtonElement>, tabId: DetailTab) {
-    const current = DETAIL_TABS.findIndex((tab) => tab.id === tabId)
-    const last = DETAIL_TABS.length - 1
+    const current = tabs.findIndex((tab) => tab.id === tabId)
+    const last = tabs.length - 1
     const next =
       e.key === 'ArrowRight'
-        ? (current + 1) % DETAIL_TABS.length
+        ? (current + 1) % tabs.length
         : e.key === 'ArrowLeft'
-          ? (current - 1 + DETAIL_TABS.length) % DETAIL_TABS.length
+          ? (current - 1 + tabs.length) % tabs.length
           : e.key === 'Home'
             ? 0
             : e.key === 'End'
@@ -47,7 +48,7 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
               : -1
     if (next === -1) return
     e.preventDefault()
-    const nextTab = DETAIL_TABS[next]
+    const nextTab = tabs[next]
     setDetailTab(repo.id, nextTab.id)
     setDetailCollapsed(false)
     // The tablist stays mounted even when the panel is collapsed; optional chaining guards transient unmounts.
@@ -79,7 +80,7 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
         </Button>
       )}
       <div className="flex shrink-0" role="tablist" aria-label={t('tab.branch-detail')}>
-        {DETAIL_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const selected = repo.ui.detailTab === tab.id
           const visuallySelected = !collapsed && selected
           return (

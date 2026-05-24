@@ -48,6 +48,7 @@ export const ja: Record<DictKey, string> = {
   'menu.view.status': 'ブランチステータス',
   'menu.view.changes': '変更',
   'menu.view.log': 'ログ',
+  'menu.view.terminal': 'ターミナル',
   'menu.view.toggle-detail': '詳細パネルを折りたたむ/展開',
   'menu.view.workspace-layout': 'ワークスペースレイアウト',
   'menu.view.layout-top-bottom': '上下レイアウト',
@@ -146,6 +147,7 @@ export const ja: Record<DictKey, string> = {
   'tab.status': 'ステータス',
   'tab.changes': '変更',
   'tab.log': 'ログ',
+  'tab.terminal': 'ターミナル',
   'tab.fetching': 'fetch 中',
   'tab.fetching-title': 'バックグラウンドの fetch 実行中',
   'tab.refreshing-remote': 'リモートを同期中',
@@ -238,6 +240,13 @@ export const ja: Record<DictKey, string> = {
   'status.copy-patch-title': 'このワークツリーの git apply --binary 用パッチをクリップボードにコピー',
   'status.copy-patch-ok': 'パッチをクリップボードにコピーしました',
   'status.copy-patch-empty': 'コピー対象なし — ワークツリーはクリーンです',
+
+  // ---- Terminal ----------------------------------------------------------
+  'terminal.opening': 'ターミナルを開いています…',
+  'terminal.restart': 'ターミナルを再起動',
+  'terminal.restart-shortcut': '↩',
+  'terminal.session-ended': 'セッションが終了しました',
+  'terminal.session-ended-code': 'セッションはコード {code} で終了しました',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.reveal-title': 'Finder で表示',
@@ -400,6 +409,7 @@ export const ja: Record<DictKey, string> = {
   'help.row.view-status': 'ブランチステータス',
   'help.row.view-changes': '変更',
   'help.row.view-log': 'ログ',
+  'help.row.view-terminal': 'ターミナル',
   'help.row.switch-detail-tab': '前 / 次の詳細タブ',
   'help.row.toggle-detail': '詳細パネルを折りたたむ/展開',
   'help.row.checkout': '選択を実行',

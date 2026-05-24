@@ -19,6 +19,15 @@ import type {
   ReposSet,
 } from '#/renderer/stores/repos/types.ts'
 import type { WorkspaceDetailPaneSizes } from '#/shared/workspace-layout.ts'
+import type { RepoState } from '#/renderer/stores/repos/types.ts'
+
+function branchHasWorktree(repo: RepoState, branchName: string | null): boolean {
+  return !!branchName && repo.data.branches.some((branch) => branch.name === branchName && !!branch.worktreePath)
+}
+
+function detailTabForSelection(repo: RepoState, tab: DetailTab, selectedBranch = repo.ui.selectedBranch): DetailTab {
+  return tab === 'terminal' && !branchHasWorktree(repo, selectedBranch) ? 'status' : tab
+}
 
 export function createSelectionActions(set: ReposSet, get: ReposGet) {
   return {
@@ -129,6 +138,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
             [id]: replaceRepo(repo, (r) => {
               r.ui.branchViewMode = viewMode
               r.ui.selectedBranch = selectedBranch
+              r.ui.detailTab = detailTabForSelection(repo, r.ui.detailTab, selectedBranch)
               if (selectionChanged) {
                 r.ui.commitDetail = { phase: 'idle' }
               }
@@ -152,14 +162,15 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
       set((s) => {
         const repo = s.repos[id]
         if (!repo) return s
-        if (repo.ui.detailTab === tab && repo.ui.commitDetail.phase === 'idle') return s
+        const nextTab = detailTabForSelection(repo, tab)
+        if (repo.ui.detailTab === nextTab && repo.ui.commitDetail.phase === 'idle') return s
         changed = true
         token = repo.instanceToken
         return {
           repos: {
             ...s.repos,
             [id]: replaceRepo(repo, (r) => {
-              r.ui.detailTab = tab
+              r.ui.detailTab = nextTab
               r.ui.commitDetail = { phase: 'idle' }
             }),
           },
@@ -167,9 +178,11 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
       })
       const repo = get().repos[id]
       if (changed && token !== undefined) persistRepoCache(set, repo, token)
-      if (changed && token !== undefined && tab === 'commits') void get().refreshBranchLog(id, undefined, { token })
-      if (changed && token !== undefined && tab === 'changes') void get().refreshStatus(id, { token })
-      if (changed && token !== undefined && tab === 'status') {
+      const activeTab = repo?.ui.detailTab
+      if (changed && token !== undefined && activeTab === 'commits')
+        void get().refreshBranchLog(id, undefined, { token })
+      if (changed && token !== undefined && activeTab === 'changes') void get().refreshStatus(id, { token })
+      if (changed && token !== undefined && activeTab === 'status') {
         if (repo?.ui.selectedBranch) {
           void get().refreshPullRequests(id, [repo.ui.selectedBranch], { token, mode: 'full' })
         }
@@ -191,6 +204,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
             ...s.repos,
             [id]: replaceRepo(repo, (r) => {
               r.ui.selectedBranch = branch
+              r.ui.detailTab = detailTabForSelection(repo, r.ui.detailTab, branch)
               r.ui.commitDetail = { phase: 'idle' }
             }),
           },

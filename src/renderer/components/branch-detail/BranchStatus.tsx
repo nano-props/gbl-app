@@ -186,10 +186,7 @@ export function BranchStatus({ detail, layout }: Props) {
           tone={mergeTone}
         />
       )}
-      <PullRequestStatusRow
-        pullRequest={pullRequest}
-        tooltipSide={behavior.prTooltipSide}
-      />
+      <PullRequestStatusRow pullRequest={pullRequest} tooltipSide={behavior.prTooltipSide} />
     </StatusRows>
   )
 }

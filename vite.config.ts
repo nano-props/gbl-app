@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => ({
     outDir: path.resolve(import.meta.dirname, 'dist/renderer'),
     emptyOutDir: true,
     sourcemap: mode === 'production' ? false : 'inline',
+    chunkSizeWarningLimit: 2048,
     rollupOptions: {
       input: {
         index: path.resolve(import.meta.dirname, 'src/renderer/index.html'),

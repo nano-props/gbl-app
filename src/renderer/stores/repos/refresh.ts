@@ -13,6 +13,7 @@ import type { RepoOperationReason, RepoPullRequestReason } from '#/renderer/stor
 import type { BranchLogState, ReposGet, ReposSet } from '#/renderer/stores/repos/types.ts'
 import type { ExecResult, LogEntry, PullRequestFetchMode, PullRequestInfo } from '#/renderer/types.ts'
 import { rpc } from '#/renderer/rpc.ts'
+import { terminalBridge } from '#/renderer/terminal.ts'
 
 export const INITIAL_LOG_COUNT = 30
 export const LOG_PAGE_SIZE = 30
@@ -236,6 +237,12 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
               Object.entries(r.ops.logsByBranch).filter(([branch]) => validBranches.has(branch)),
             )
             r.ui.selectedBranch = selected
+            if (
+              r.ui.detailTab === 'terminal' &&
+              !branches.some((branch) => branch.name === selected && branch.worktreePath)
+            ) {
+              r.ui.detailTab = 'status'
+            }
             r.cache.source = 'fresh'
             r.cache.savedAt = null
           })
@@ -243,6 +250,12 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
           if (!ctx.isCurrent()) return
           persistRepoCache(set, repoAfterSnapshot, token)
           const branchNames = snap.branches.map((branch) => branch.name)
+          const worktreePaths = snap.branches
+            .map((branch) => branch.worktreePath)
+            .filter((p): p is string => typeof p === 'string' && p.length > 0)
+          void terminalBridge.pruneRepo({ repoRoot: id, worktreePaths }).catch((err) => {
+            console.warn('[terminal] failed to prune repo sessions', err)
+          })
           const isSnapshotCurrent = ctx.isCurrent
           void (async () => {
             try {

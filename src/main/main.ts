@@ -5,6 +5,7 @@ import { loadSettings, flushSettings } from '#/main/settings.ts'
 import { buildAppMenu } from '#/main/menu.ts'
 import { assertDictionaryParity, resolveLang, setCurrentLang } from '#/main/i18n/index.ts'
 import { wireRpcIpc } from '#/main/rpc.ts'
+import { wireTerminalIpc } from '#/main/terminal.ts'
 import { syncGlobalShortcuts, unregisterAppShortcuts } from '#/main/shortcuts.ts'
 
 async function main(): Promise<void> {
@@ -65,6 +66,7 @@ async function main(): Promise<void> {
   setCurrentLang(resolveLang(settings.lang))
 
   wireRpcIpc()
+  wireTerminalIpc()
 
   buildAppMenu()
   syncGlobalShortcuts(settings.shortcutsDisabled, settings.globalShortcut)

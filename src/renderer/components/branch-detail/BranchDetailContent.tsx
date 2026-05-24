@@ -9,6 +9,7 @@ import { LogList } from '#/renderer/components/LogList.tsx'
 import { StatusList } from '#/renderer/components/StatusList.tsx'
 import { ListSkeleton } from '#/renderer/components/Skeleton.tsx'
 import { BranchStatus } from '#/renderer/components/branch-detail/BranchStatus.tsx'
+import { TerminalSlot } from '#/renderer/components/terminal/TerminalSlot.tsx'
 import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
 import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
@@ -32,7 +33,11 @@ type BranchDetailBranch = NonNullable<SelectedBranchDetail['branch']>
 
 export function BranchDetailContent({ repo, detail, detailId, contentId, layout }: Props) {
   const t = useT()
+  const setDetailTab = useReposStore((s) => s.setDetailTab)
   const { branch } = detail
+  useEffect(() => {
+    if (repo.ui.detailTab === 'terminal' && branch && !branch.worktreePath) setDetailTab(repo.id, 'status')
+  }, [branch, repo.id, repo.ui.detailTab, setDetailTab])
   if (!branch)
     return <EmptyState title={t(repo.data.branches.length === 0 ? 'branches.empty' : 'branches.filter-empty')} />
 
@@ -64,6 +69,9 @@ export function BranchDetailContent({ repo, detail, detailId, contentId, layout 
           commitDetail={repo.ui.commitDetail}
           busy={commitsBusy}
         />
+      )}
+      {repo.ui.detailTab === 'terminal' && branch.worktreePath && (
+        <BranchTerminalTab detailId={detailId} repoId={repo.id} branch={branch} />
       )}
     </div>
   )
@@ -182,6 +190,23 @@ function BranchCommitsTab({
       ) : (
         <LogList repoId={repoId} log={[]} branch={branch.name} selectedHash={null} />
       )}
+    </BranchTabPanel>
+  )
+}
+
+function BranchTerminalTab({
+  detailId,
+  repoId,
+  branch,
+}: {
+  detailId: string
+  repoId: string
+  branch: BranchDetailBranch
+}) {
+  if (!branch.worktreePath) return null
+  return (
+    <BranchTabPanel detailId={detailId} tabId="terminal">
+      <TerminalSlot repoRoot={repoId} branch={branch.name} worktreePath={branch.worktreePath} />
     </BranchTabPanel>
   )
 }

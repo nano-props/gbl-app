@@ -48,7 +48,9 @@ function resolveTerminalApp(pref: TerminalPref): ResolvedTerminalApp | null {
 /** Open `path` in the terminal selected by `pref`. */
 export function openInPreferredTerminal(path: string, pref: TerminalPref): Promise<{ ok: boolean; message: string }> {
   const resolved = resolveTerminalApp(pref)
-  return resolved ? backends[resolved].open(path) : Promise.resolve({ ok: false, message: 'error.terminal-not-installed' })
+  return resolved
+    ? backends[resolved].open(path)
+    : Promise.resolve({ ok: false, message: 'error.terminal-not-installed' })
 }
 
 export function getResolvedTerminalApp(pref: TerminalPref): ResolvedTerminalApp | null {

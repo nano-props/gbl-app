@@ -13,6 +13,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { getTheme } from '#/main/theme.ts'
 import { loadSettings, setWindowBounds, type WindowBounds } from '#/main/settings.ts'
+import { closeAllTerminalSessions } from '#/main/terminal.ts'
 
 const DEFAULT_BOUNDS: WindowBounds = { width: 1200, height: 760 }
 
@@ -123,6 +124,7 @@ export async function createMainWindow(): Promise<BrowserWindow> {
   win.on('move', persistBounds)
 
   win.on('closed', () => {
+    closeAllTerminalSessions()
     if (mainWindow === win) mainWindow = null
   })
 

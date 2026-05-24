@@ -78,7 +78,7 @@ const CachedRepoSchema = v.object({
   ui: v.object({
     selectedBranch: v.nullable(v.string()),
     branchViewMode: v.picklist(['all', 'worktrees', 'no-worktree']),
-    detailTab: v.picklist(['status', 'changes', 'commits']),
+    detailTab: v.picklist(['status', 'changes', 'commits', 'terminal']),
   }),
 })
 
@@ -104,7 +104,7 @@ export function hydrateCachedRepo(repo: RepoState, cached: CachedRepoState | und
       ...repo.ui,
       selectedBranch,
       branchViewMode: cached.ui.branchViewMode,
-      detailTab: cached.ui.detailTab,
+      detailTab: cached.ui.detailTab === 'terminal' ? 'status' : cached.ui.detailTab,
     },
     cache: {
       source: 'cache',
@@ -147,7 +147,7 @@ function repoCacheEntry(repo: RepoState): CachedRepoState | null {
     ui: {
       selectedBranch: repo.ui.selectedBranch,
       branchViewMode: repo.ui.branchViewMode,
-      detailTab: repo.ui.detailTab,
+      detailTab: repo.ui.detailTab === 'terminal' ? 'status' : repo.ui.detailTab,
     },
   }
 }

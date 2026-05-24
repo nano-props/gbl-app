@@ -17,6 +17,7 @@ import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import { adjacentDetailTab } from '#/renderer/lib/detail-tabs.ts'
 import { runBranchActionShortcut } from '#/renderer/keyboard/branch-action-shortcuts.ts'
+import { isTerminalFocused } from '#/renderer/terminal-focus.ts'
 import type { RepoState, ReposStore } from '#/renderer/stores/repos/types.ts'
 
 type BranchShortcutAction = 'pull' | 'push' | 'terminal' | 'editor' | 'github'
@@ -99,6 +100,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return
       if (useSettingsStore.getState().shortcutsDisabled) return
+      if (isTerminalFocused()) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (isTypingTarget(e.target)) return
 
@@ -156,7 +158,11 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
         case 'ArrowLeft': {
           if (overlayOpen || !repo || !repo.ui.selectedBranch || state.detailCollapsed) break
           e.preventDefault()
-          state.setDetailTab(repo.id, adjacentDetailTab(repo.ui.detailTab, e.key === 'ArrowRight' ? 1 : -1))
+          const selected = repo.data.branches.find((branch) => branch.name === repo.ui.selectedBranch)
+          state.setDetailTab(
+            repo.id,
+            adjacentDetailTab(repo.ui.detailTab, e.key === 'ArrowRight' ? 1 : -1, !!selected?.worktreePath),
+          )
           break
         }
         case 'Enter': {

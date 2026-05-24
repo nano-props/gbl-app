@@ -5,6 +5,11 @@ import { cn } from '#/renderer/lib/cn.ts'
 import { DEFAULT_DETAIL_PANE_SIZES, DEFAULT_WORKSPACE_LAYOUT, workspaceLayoutAxis } from '#/shared/workspace-layout.ts'
 import type { RepoWorkspaceLayout } from '#/renderer/stores/repos/types.ts'
 
+const LEFT_RIGHT_BRANCH_MIN_SIZE = '14rem'
+const LEFT_RIGHT_DETAIL_MIN_SIZE = '22rem'
+const TOP_BOTTOM_BRANCH_MIN_SIZE = '10rem'
+const TOP_BOTTOM_DETAIL_MIN_SIZE = '9rem'
+
 interface ShellProps {
   children: ReactNode
 }
@@ -88,8 +93,8 @@ export function RepoWorkspace({
         after={detailPane}
         afterSize={detailSize}
         onAfterSizeChange={onDetailSizeChange}
-        beforeMinSize={axis === 'columns' ? '14rem' : '10rem'}
-        afterMinSize={axis === 'columns' ? '18rem' : '9rem'}
+        beforeMinSize={axis === 'columns' ? LEFT_RIGHT_BRANCH_MIN_SIZE : TOP_BOTTOM_BRANCH_MIN_SIZE}
+        afterMinSize={axis === 'columns' ? LEFT_RIGHT_DETAIL_MIN_SIZE : TOP_BOTTOM_DETAIL_MIN_SIZE}
         afterMaxSize="90%"
         className="flex-1"
       />

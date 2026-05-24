@@ -53,10 +53,7 @@ export function idleOperation(): RepoOperationState {
   }
 }
 
-export function runningOperation(options?: {
-  requestId?: number
-  reason?: RepoOperationReason
-}): RepoOperationState {
+export function runningOperation(options?: { requestId?: number; reason?: RepoOperationReason }): RepoOperationState {
   const operation = idleOperation()
   startOperation(operation, options?.requestId ?? 0, { reason: options?.reason })
   return operation

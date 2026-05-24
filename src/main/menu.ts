@@ -125,7 +125,11 @@ function createFileMenu(state: AppMenuState): MenuItemConstructorOptions {
   return {
     label: t('menu.file'),
     submenu: [
-      { label: t('menu.file.open-repo'), accelerator: accelerator(state, 'CmdOrCtrl+O'), click: () => send('open-repo') },
+      {
+        label: t('menu.file.open-repo'),
+        accelerator: accelerator(state, 'CmdOrCtrl+O'),
+        click: () => send('open-repo'),
+      },
       {
         label: t('menu.file.clone-repo'),
         accelerator: accelerator(state, 'CmdOrCtrl+Shift+O'),
@@ -149,7 +153,11 @@ function createFileMenu(state: AppMenuState): MenuItemConstructorOptions {
         ? []
         : [
             separator(),
-            { label: t('menu.file.settings'), accelerator: accelerator(state, 'Ctrl+,'), click: () => send('open-settings') },
+            {
+              label: t('menu.file.settings'),
+              accelerator: accelerator(state, 'Ctrl+,'),
+              click: () => send('open-settings'),
+            },
             separator(),
             { role: 'quit' as const, label: t('menu.file.quit') },
           ]),
@@ -187,8 +195,17 @@ function createViewMenu(state: AppMenuState): MenuItemConstructorOptions {
     label: t('menu.view'),
     submenu: [
       { label: t('menu.view.status'), accelerator: accelerator(state, 'CmdOrCtrl+1'), click: () => send('tab-status') },
-      { label: t('menu.view.changes'), accelerator: accelerator(state, 'CmdOrCtrl+2'), click: () => send('tab-changes') },
+      {
+        label: t('menu.view.changes'),
+        accelerator: accelerator(state, 'CmdOrCtrl+2'),
+        click: () => send('tab-changes'),
+      },
       { label: t('menu.view.log'), accelerator: accelerator(state, 'CmdOrCtrl+3'), click: () => send('tab-log') },
+      {
+        label: t('menu.view.terminal'),
+        accelerator: accelerator(state, 'CmdOrCtrl+4'),
+        click: () => send('tab-terminal'),
+      },
       createWorkspaceLayoutMenu(state.workspaceLayout),
       {
         label: t('menu.view.toggle-detail'),
@@ -196,9 +213,7 @@ function createViewMenu(state: AppMenuState): MenuItemConstructorOptions {
         enabled: state.workspaceLayout === 'top-bottom',
         click: () => send('toggle-detail'),
       },
-      ...(state.isMac
-        ? []
-        : [separator(), createAppearanceMenu(state.themePref), createLanguageMenu(state.langPref)]),
+      ...(state.isMac ? [] : [separator(), createAppearanceMenu(state.themePref), createLanguageMenu(state.langPref)]),
       separator(),
       { label: t('menu.view.refresh'), accelerator: accelerator(state, 'CmdOrCtrl+R'), click: () => send('refresh') },
       separator(),
@@ -220,8 +235,16 @@ function createWindowMenu(state: AppMenuState): MenuItemConstructorOptions {
   return {
     label: t('menu.window'),
     submenu: [
-      { label: t('menu.window.next-repo'), accelerator: accelerator(state, 'CmdOrCtrl+]'), click: () => send('next-repo') },
-      { label: t('menu.window.prev-repo'), accelerator: accelerator(state, 'CmdOrCtrl+['), click: () => send('prev-repo') },
+      {
+        label: t('menu.window.next-repo'),
+        accelerator: accelerator(state, 'CmdOrCtrl+]'),
+        click: () => send('next-repo'),
+      },
+      {
+        label: t('menu.window.prev-repo'),
+        accelerator: accelerator(state, 'CmdOrCtrl+['),
+        click: () => send('prev-repo'),
+      },
       separator(),
       { label: t('menu.window.reset-layout'), click: () => send('reset-layout') },
       separator(),

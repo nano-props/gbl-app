@@ -48,6 +48,7 @@ export const en = {
   'menu.view.status': 'Branch Status',
   'menu.view.changes': 'Changes',
   'menu.view.log': 'Log',
+  'menu.view.terminal': 'Terminal',
   'menu.view.toggle-detail': 'Toggle Detail Panel',
   'menu.view.workspace-layout': 'Workspace Layout',
   'menu.view.layout-top-bottom': 'Top/Bottom Layout',
@@ -148,6 +149,7 @@ export const en = {
   'tab.status': 'Status',
   'tab.changes': 'Changes',
   'tab.log': 'Log',
+  'tab.terminal': 'Terminal',
   'tab.fetching': 'fetch',
   'tab.fetching-title': 'Background fetch in progress',
   'tab.refreshing-remote': 'Fetching remote',
@@ -240,6 +242,13 @@ export const en = {
   'status.copy-patch-title': 'Copy a git apply --binary patch of this worktree to the clipboard',
   'status.copy-patch-ok': 'Patch copied to clipboard',
   'status.copy-patch-empty': 'Nothing to copy — worktree is clean',
+
+  // ---- Terminal -----------------------------------------------------------
+  'terminal.opening': 'Opening terminal…',
+  'terminal.restart': 'Restart terminal',
+  'terminal.restart-shortcut': '↩',
+  'terminal.session-ended': 'Session ended',
+  'terminal.session-ended-code': 'Session ended with code {code}',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) ---
   'worktrees.reveal-title': 'Reveal in Finder',
@@ -400,6 +409,7 @@ export const en = {
   'help.row.view-status': 'Branch status',
   'help.row.view-changes': 'Changes',
   'help.row.view-log': 'Log',
+  'help.row.view-terminal': 'Terminal',
   'help.row.switch-detail-tab': 'Previous / next detail tab',
   'help.row.toggle-detail': 'Collapse / expand detail panel',
   'help.row.checkout': 'Activate selection',

@@ -5,7 +5,7 @@ import type { WorkspaceDetailPaneSizes, WorkspaceLayout } from '#/shared/workspa
 import type { RepoBranchAction, RunBranchActionOptions } from '#/renderer/stores/repos/branch-action-types.ts'
 import type { RepoOperationsState } from '#/renderer/stores/repos/operations.ts'
 
-export type DetailTab = 'status' | 'changes' | 'commits'
+export type DetailTab = 'status' | 'changes' | 'commits' | 'terminal'
 export type BranchViewMode = 'all' | 'worktrees' | 'no-worktree'
 export type RepoWorkspaceLayout = WorkspaceLayout
 export type RepoDataSource = 'cache' | 'fresh'

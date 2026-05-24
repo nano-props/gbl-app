@@ -43,6 +43,7 @@ export const ko: Record<DictKey, string> = {
   'menu.view.status': '브랜치 상태',
   'menu.view.changes': '변경 사항',
   'menu.view.log': '커밋 로그',
+  'menu.view.terminal': '터미널',
   'menu.view.toggle-detail': '세부 패널 접기/펼치기',
   'menu.view.workspace-layout': '작업 영역 레이아웃',
   'menu.view.layout-top-bottom': '상하 레이아웃',
@@ -139,6 +140,7 @@ export const ko: Record<DictKey, string> = {
   'tab.status': '상태',
   'tab.changes': '변경',
   'tab.log': '로그',
+  'tab.terminal': '터미널',
   'tab.fetching': '동기화',
   'tab.fetching-title': '백그라운드에서 fetch 진행 중',
   'tab.refreshing-remote': '원격 동기화 중',
@@ -231,6 +233,13 @@ export const ko: Record<DictKey, string> = {
   'status.copy-patch-title': '이 워크트리의 git apply --binary 패치를 클립보드에 복사',
   'status.copy-patch-ok': '패치를 클립보드에 복사했습니다',
   'status.copy-patch-empty': '복사할 내용 없음 — 워크트리가 깨끗합니다',
+
+  // ---- Terminal ----------------------------------------------------------
+  'terminal.opening': '터미널 여는 중…',
+  'terminal.restart': '터미널 다시 시작',
+  'terminal.restart-shortcut': '↩',
+  'terminal.session-ended': '세션이 종료됨',
+  'terminal.session-ended-code': '세션이 코드 {code}로 종료됨',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.reveal-title': 'Finder 에서 보기',
@@ -393,6 +402,7 @@ export const ko: Record<DictKey, string> = {
   'help.row.view-status': '브랜치 상태',
   'help.row.view-changes': '변경 사항',
   'help.row.view-log': '커밋 로그',
+  'help.row.view-terminal': '터미널',
   'help.row.switch-detail-tab': '이전 / 다음 상세 탭',
   'help.row.toggle-detail': '세부 패널 접기/펼치기',
   'help.row.checkout': '선택 실행',

@@ -174,6 +174,21 @@ describe('setBranchViewMode', () => {
 
     expect(calls).toEqual([{ branches: ['main'], mode: 'full' }])
   })
+
+  test('falls back from terminal when the new view selection has no worktree', () => {
+    seedRepo({
+      selectedBranch: 'main',
+      detailTab: 'terminal',
+      branches: [branch('main', { worktreePath: '/repo' }), branch('feature/plain')],
+    })
+
+    useReposStore.getState().setBranchViewMode(REPO_ID, 'no-worktree')
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.ui.selectedBranch).toBe('feature/plain')
+    expect(repo?.ui.detailTab).toBe('status')
+    expect(useReposStore.getState().repoCache[REPO_ID]?.ui.detailTab).toBe('status')
+  })
 })
 
 describe('selectBranch', () => {
@@ -258,6 +273,17 @@ describe('selectBranch', () => {
     const repo = useReposStore.getState().repos[REPO_ID]
     expect(repo?.ui.selectedBranch).toBe('main')
     expect(repo?.ui.commitDetail.phase).toBe('idle')
+  })
+
+  test('falls back from terminal when selecting a branch without a worktree', () => {
+    seedRepo({ selectedBranch: 'feature/worktree', detailTab: 'terminal' })
+
+    useReposStore.getState().selectBranch(REPO_ID, 'feature/plain')
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.ui.selectedBranch).toBe('feature/plain')
+    expect(repo?.ui.detailTab).toBe('status')
+    expect(useReposStore.getState().repoCache[REPO_ID]?.ui.detailTab).toBe('status')
   })
 })
 
@@ -346,6 +372,30 @@ describe('setDetailTab', () => {
     await flushAsyncWork()
 
     expect(calls).toBe(0)
+  })
+
+  test('opens terminal only for branches with a worktree', () => {
+    seedRepo({ selectedBranch: 'feature/worktree', detailTab: 'status' })
+
+    useReposStore.getState().setDetailTab(REPO_ID, 'terminal')
+
+    expect(useReposStore.getState().repos[REPO_ID]?.ui.detailTab).toBe('terminal')
+  })
+
+  test('falls back to status when terminal is selected without a worktree', () => {
+    seedRepo({ selectedBranch: 'feature/plain', detailTab: 'commits' })
+
+    useReposStore.getState().setDetailTab(REPO_ID, 'terminal')
+
+    expect(useReposStore.getState().repos[REPO_ID]?.ui.detailTab).toBe('status')
+  })
+
+  test('does not persist terminal as a cached detail tab', () => {
+    seedRepo({ selectedBranch: 'feature/worktree', detailTab: 'status' })
+
+    useReposStore.getState().setDetailTab(REPO_ID, 'terminal')
+
+    expect(useReposStore.getState().repoCache[REPO_ID]?.ui.detailTab).toBe('status')
   })
 })
 

@@ -81,6 +81,15 @@ export function installGoblinTestBridge(handlers: Record<string, RpcTestHandler>
         },
         onEvent: () => () => {},
         pathForFile: () => '',
+        terminal: {
+          open: () => Promise.resolve({ ok: false, message: 'unhandled terminal open' }),
+          write: () => Promise.resolve(true),
+          resize: () => Promise.resolve(true),
+          close: () => Promise.resolve(true),
+          pruneRepo: () => Promise.resolve(true),
+          onOutput: () => () => {},
+          onExit: () => () => {},
+        },
       },
     },
   })

@@ -25,10 +25,13 @@ export function useLoadingVisibility(loading: boolean, options?: LoadingVisibili
     } else {
       if (!visible) return
       const elapsed = shownAt === null ? minVisibleMs : Date.now() - shownAt
-      timer = window.setTimeout(() => {
-        setShownAt(null)
-        setVisible(false)
-      }, Math.max(0, minVisibleMs - elapsed))
+      timer = window.setTimeout(
+        () => {
+          setShownAt(null)
+          setVisible(false)
+        },
+        Math.max(0, minVisibleMs - elapsed),
+      )
     }
     return () => window.clearTimeout(timer)
   }, [delayMs, loading, minVisibleMs, shownAt, visible])

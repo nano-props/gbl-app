@@ -7,7 +7,7 @@
 //
 // Usage: ./scripts/build.ts [install|i]
 import { $ } from 'bun'
-import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
@@ -37,10 +37,31 @@ async function findBuiltApp(): Promise<string | null> {
 rmSync(path.join(repoRoot, 'release'), { recursive: true, force: true })
 
 await $`bun install`
+if (process.platform === 'darwin') {
+  const ptySpawnHelperArches = shouldInstall ? [process.arch] : ['arm64', 'x64']
+  const ptySpawnHelpers = ptySpawnHelperArches.map((arch) =>
+    path.join(repoRoot, 'node_modules/node-pty/prebuilds', `darwin-${arch}`, 'spawn-helper'),
+  )
+  const missingPtySpawnHelpers = ptySpawnHelpers.filter((helper) => !existsSync(helper))
+  if (missingPtySpawnHelpers.length > 0) {
+    console.error(`Error: missing node-pty darwin spawn-helper(s): ${missingPtySpawnHelpers.join(', ')}`)
+    process.exit(1)
+  }
+  for (const helper of ptySpawnHelpers) {
+    chmodSync(helper, 0o755)
+  }
+}
 await $`bun run typecheck`
 // Renderer bundle MUST exist before electron-builder packs it (the
 // `files` glob in electron-builder.ts expects `dist/renderer/`).
 await $`bun run build:renderer`
+const rendererDist = path.join(repoRoot, 'dist/renderer')
+for (const artifact of [path.join(rendererDist, 'index.html'), path.join(rendererDist, 'boot.js')]) {
+  if (!existsSync(artifact)) {
+    console.error(`Error: renderer build artifact missing: ${artifact}`)
+    process.exit(1)
+  }
+}
 // `dir` target skips dmg packaging — faster, and `install` only needs the .app.
 // In install mode we also pin to the host arch so we don't waste time
 // cross-building the other architecture's binaries when we're going to

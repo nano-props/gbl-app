@@ -1,0 +1,87 @@
+.goblin-terminal-slot {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-background);
+}
+
+.goblin-terminal-slot__host {
+  display: flex;
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.goblin-managed-terminal-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.goblin-managed-terminal-host {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.goblin-managed-terminal-host .xterm {
+  width: 100%;
+  height: 100%;
+  overflow-anchor: none;
+}
+
+.goblin-managed-terminal-host .xterm-viewport {
+  background: var(--goblin-terminal-background) !important;
+}
+
+.goblin-managed-terminal-host .xterm-screen {
+  width: max-content;
+}
+
+.goblin-terminal-slot__ended-overlay,
+.goblin-terminal-slot__status-overlay {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-popover) 95%, transparent);
+  padding: 6px 8px;
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.goblin-terminal-slot__shortcut {
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  padding: 1px 5px;
+  color: var(--color-muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.goblin-terminal-parking {
+  position: fixed;
+  left: -10000px;
+  top: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.goblin-terminal-parking__item {
+  overflow: hidden;
+}

@@ -144,6 +144,7 @@ export type MenuAction =
   | 'tab-status'
   | 'tab-changes'
   | 'tab-log'
+  | 'tab-terminal'
   | 'toggle-detail'
   | 'reset-layout'
   | 'open-settings'

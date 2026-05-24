@@ -74,6 +74,7 @@ import { applyLangPref, getCurrentLang, getDictionary } from '#/main/i18n/index.
 import { getResolvedTerminalApp, openInPreferredTerminal } from '#/main/system/terminals.ts'
 import { getResolvedEditorApp, openInPreferredEditor } from '#/main/system/editors.ts'
 import { broadcastRpcEvent } from '#/main/events.ts'
+import { closeWorktreeSession } from '#/main/terminal.ts'
 
 const PROJECT_GITHUB_URL = 'https://github.com/nano-props/goblin'
 const PATCH_TIMEOUT_MS = 90_000
@@ -514,6 +515,7 @@ async function removeRepoWorktree({
 
   const removeResult = await removeWorktree(cwd, target.path)
   if (!removeResult.ok) return removeResult
+  closeWorktreeSession(root, target.path)
   if (alsoDeleteBranch) {
     const delResult = await deleteBranch(cwd, branch, { force: shouldForceDeleteBranch })
     if (!delResult.ok) return delResult

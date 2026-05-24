@@ -42,6 +42,7 @@ export const zh: Record<DictKey, string> = {
   'menu.view.status': '分支状态',
   'menu.view.changes': '变更',
   'menu.view.log': '提交历史',
+  'menu.view.terminal': '终端',
   'menu.view.toggle-detail': '展开/收起详情面板',
   'menu.view.workspace-layout': '工作区布局',
   'menu.view.layout-top-bottom': '上下布局',
@@ -136,6 +137,7 @@ export const zh: Record<DictKey, string> = {
   'tab.status': '状态',
   'tab.changes': '变更',
   'tab.log': '提交',
+  'tab.terminal': '终端',
   'tab.fetching': '同步',
   'tab.fetching-title': '后台同步进行中',
   'tab.refreshing-remote': '同步远端',
@@ -228,6 +230,13 @@ export const zh: Record<DictKey, string> = {
   'status.copy-patch-title': '将该工作树的 git apply --binary 补丁复制到剪贴板',
   'status.copy-patch-ok': '补丁已复制到剪贴板',
   'status.copy-patch-empty': '无需复制 — 工作树是干净的',
+
+  // ---- Terminal ----------------------------------------------------------
+  'terminal.opening': '正在打开终端…',
+  'terminal.restart': '重启终端',
+  'terminal.restart-shortcut': '↩',
+  'terminal.session-ended': '会话已结束',
+  'terminal.session-ended-code': '会话已结束，退出码 {code}',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.reveal-title': '在访达中显示',
@@ -388,6 +397,7 @@ export const zh: Record<DictKey, string> = {
   'help.row.view-status': '分支状态',
   'help.row.view-changes': '变更',
   'help.row.view-log': '提交历史',
+  'help.row.view-terminal': '终端',
   'help.row.switch-detail-tab': '上一个 / 下一个详情标签',
   'help.row.toggle-detail': '展开/收起详情面板',
   'help.row.checkout': '执行当前选择',

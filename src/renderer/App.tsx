@@ -27,6 +27,7 @@ import { SettingsPanel } from '#/renderer/components/SettingsPanel.tsx'
 import { HelpOverlay } from '#/renderer/components/HelpOverlay.tsx'
 import { DependenciesOverlay } from '#/renderer/components/DependenciesOverlay.tsx'
 import { RepoDropOverlay } from '#/renderer/components/RepoDropOverlay.tsx'
+import { TerminalSessionProvider } from '#/renderer/components/terminal/TerminalSessionProvider.tsx'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
@@ -87,39 +88,41 @@ export function App() {
     // exists so a tab-specific crash doesn't take down the rest of the
     // app.
     <ErrorBoundary>
-      <div
-        className="relative flex h-full flex-col"
-        onDragEnter={repoDrop.onDragEnter}
-        onDragOver={repoDrop.onDragOver}
-        onDragLeave={repoDrop.onDragLeave}
-        onDrop={repoDrop.onDrop}
-      >
-        <Topbar onOpenSettings={openSettings} onShowDependencies={showDependencies} onShowHelp={showHelp} />
-        <RepoTabs cloneOpen={cloneOpen} onCloneOpenChange={setCloneOpen} />
-        <main className="flex flex-1 min-h-0 min-w-0">
-          <ErrorBoundary resetKey={activeId}>
-            {activeId ? (
-              <RepoView repoId={activeId} />
-            ) : !sessionReady ? (
-              <RepoWorkspaceSkeleton
-                showRepoToolbar
-                layout={workspaceLayout}
-                detailCollapsed={workspaceBehavior.detailCollapsed}
-              />
-            ) : (
-              <EmptyState />
-            )}
-          </ErrorBoundary>
-        </main>
-        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-        <DependenciesOverlay open={dependenciesOpen} onClose={() => setDependenciesOpen(false)} />
-        <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
-        {repoDrop.active && <RepoDropOverlay />}
-        {/* shadcn/ui Toaster wrapper — owns its own theme + style hooks.
-         * App-level only sets position + closeButton; the rest of the
-         * visual contract is in components/ui/sonner.tsx. */}
-        <Toaster position="bottom-right" closeButton />
-      </div>
+      <TerminalSessionProvider>
+        <div
+          className="relative flex h-full flex-col"
+          onDragEnter={repoDrop.onDragEnter}
+          onDragOver={repoDrop.onDragOver}
+          onDragLeave={repoDrop.onDragLeave}
+          onDrop={repoDrop.onDrop}
+        >
+          <Topbar onOpenSettings={openSettings} onShowDependencies={showDependencies} onShowHelp={showHelp} />
+          <RepoTabs cloneOpen={cloneOpen} onCloneOpenChange={setCloneOpen} />
+          <main className="flex flex-1 min-h-0 min-w-0">
+            <ErrorBoundary resetKey={activeId}>
+              {activeId ? (
+                <RepoView repoId={activeId} />
+              ) : !sessionReady ? (
+                <RepoWorkspaceSkeleton
+                  showRepoToolbar
+                  layout={workspaceLayout}
+                  detailCollapsed={workspaceBehavior.detailCollapsed}
+                />
+              ) : (
+                <EmptyState />
+              )}
+            </ErrorBoundary>
+          </main>
+          <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+          <DependenciesOverlay open={dependenciesOpen} onClose={() => setDependenciesOpen(false)} />
+          <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
+          {repoDrop.active && <RepoDropOverlay />}
+          {/* shadcn/ui Toaster wrapper — owns its own theme + style hooks.
+           * App-level only sets position + closeButton; the rest of the
+           * visual contract is in components/ui/sonner.tsx. */}
+          <Toaster position="bottom-right" closeButton />
+        </div>
+      </TerminalSessionProvider>
     </ErrorBoundary>
   )
 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { replaceRepo } from '#/renderer/stores/repos/helpers.ts'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { runningOperation } from '#/renderer/stores/repos/operations.ts'
@@ -6,6 +6,7 @@ import { INITIAL_LOG_COUNT, LOG_PAGE_SIZE } from '#/renderer/stores/repos/refres
 import { branch, REPO_ID, resetRefreshTest, rpcHandlers, seedRepo } from '#/renderer/stores/repos/refresh-test-utils.ts'
 import { canStartRemoteFetch } from '#/renderer/stores/repos/sync-state.ts'
 import type { LogEntry, WorktreeStatus } from '#/renderer/types.ts'
+import type { TerminalPruneRepoInput } from '#/shared/terminal.ts'
 
 beforeEach(resetRefreshTest)
 
@@ -17,6 +18,10 @@ function updateRepoForTest(mutator: (repo: TestRepo) => void) {
     if (!repo) return s
     return { repos: { ...s.repos, [REPO_ID]: replaceRepo(repo, mutator) } }
   })
+}
+
+function overrideTerminalBridge(overrides: Partial<Window['goblin']['terminal']>) {
+  Object.assign(window.goblin.terminal, overrides)
 }
 
 function logEntry(index: number): LogEntry {
@@ -405,6 +410,29 @@ describe('remote fetch timestamps', () => {
       fetchError: 'previous failure',
     })
   })
+
+  test('remove worktree delegates terminal cleanup to the main process action', async () => {
+    const token = seedRepo([branch('feature/a', undefined, { worktreePath: '/tmp/worktree-a' })])
+    const calls: string[] = []
+    rpcHandlers['repo.removeWorktree'] = async () => {
+      calls.push('removeWorktree')
+      return { ok: true, message: 'ok' }
+    }
+
+    await useReposStore.getState().runBranchAction(
+      REPO_ID,
+      {
+        kind: 'removeWorktree',
+        branch: 'feature/a',
+        worktreePath: '/tmp/worktree-a',
+        alsoDeleteBranch: false,
+        forceDeleteBranch: false,
+      },
+      { token },
+    )
+
+    expect(calls).toEqual(['removeWorktree'])
+  })
 })
 
 describe('core refresh request ordering', () => {
@@ -649,6 +677,64 @@ describe('core refresh request ordering', () => {
     const repo = useReposStore.getState().repos[REPO_ID]
     expect(Object.keys(repo?.data.logsByBranch ?? {})).toEqual(['fresh'])
     expect(Object.keys(repo?.ops.logsByBranch ?? {})).toEqual(['fresh'])
+  })
+
+  test('snapshot refresh falls back from terminal tab when selected branch loses its worktree', async () => {
+    const token = seedRepo([branch('main', undefined, { worktreePath: '/repo' }), branch('feature/a')])
+    updateRepoForTest((repo) => {
+      repo.ui.selectedBranch = 'feature/a'
+      repo.ui.detailTab = 'terminal'
+    })
+    rpcHandlers['repo.snapshot'] = async () => ({ branches: [branch('feature/a')], current: 'feature/a' })
+
+    await useReposStore.getState().refreshSnapshot(REPO_ID, { token })
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.ui.selectedBranch).toBe('feature/a')
+    expect(repo?.ui.detailTab).toBe('status')
+  })
+
+  test('snapshot refresh prunes terminal sessions to current worktree paths', async () => {
+    const token = seedRepo([branch('stale', undefined, { worktreePath: '/tmp/stale-worktree' })])
+    const calls: TerminalPruneRepoInput[] = []
+    overrideTerminalBridge({
+      pruneRepo: async (input) => {
+        calls.push(input)
+        return true
+      },
+    })
+    rpcHandlers['repo.snapshot'] = async () => ({
+      branches: [
+        branch('main', undefined, { worktreePath: '/repo' }),
+        branch('feature/a', undefined, { worktreePath: '/tmp/worktree-a' }),
+        branch('feature/plain'),
+      ],
+      current: 'main',
+    })
+
+    await useReposStore.getState().refreshSnapshot(REPO_ID, { token })
+
+    expect(calls).toEqual([{ repoRoot: REPO_ID, worktreePaths: ['/repo', '/tmp/worktree-a'] }])
+  })
+
+  test('snapshot refresh warns when pruning terminal sessions fails', async () => {
+    const token = seedRepo([branch('stale', undefined, { worktreePath: '/tmp/stale-worktree' })])
+    const err = new Error('prune failed')
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    overrideTerminalBridge({
+      pruneRepo: async () => {
+        throw err
+      },
+    })
+    rpcHandlers['repo.snapshot'] = async () => ({
+      branches: [branch('main', undefined, { worktreePath: '/repo' })],
+      current: 'main',
+    })
+
+    await useReposStore.getState().refreshSnapshot(REPO_ID, { token })
+    await Promise.resolve()
+
+    expect(warnSpy).toHaveBeenCalledWith('[terminal] failed to prune repo sessions', err)
   })
 
   test('snapshot refresh backfills the visible branch log when commits are open', async () => {

@@ -21,6 +21,7 @@ const config: Configuration = {
     '!src/**/*.test.ts',
     '!**/*.map',
   ],
+  asarUnpack: ['node_modules/node-pty/prebuilds/**/*'],
   mac: {
     category: 'public.app-category.developer-tools',
     // electron-builder organizes builds by arch, so any `dir` here would be

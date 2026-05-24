@@ -47,11 +47,7 @@ export function WorkspaceLayoutControl({ value, onChange }: Props) {
         const selected = option.id === value
         return (
           <Tip key={option.id} label={label}>
-            <ToggleGroupItem
-              value={option.id}
-              aria-label={label}
-              className={segmentedItemClass(selected)}
-            >
+            <ToggleGroupItem value={option.id} aria-label={label} className={segmentedItemClass(selected)}>
               <Icon />
             </ToggleGroupItem>
           </Tip>

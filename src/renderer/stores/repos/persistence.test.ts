@@ -50,6 +50,16 @@ describe('normalizeRepoCache', () => {
 
     expect(Object.keys(normalized)).toEqual(['fresh'])
   })
+
+  test('accepts old terminal cache entries so hydrate can normalize them to status', () => {
+    const now = Date.now()
+    const raw = cachedRepo(now)
+    raw.ui.detailTab = 'terminal'
+
+    const normalized = normalizeRepoCache({ repo: raw })
+
+    expect(normalized.repo?.ui.detailTab).toBe('terminal')
+  })
 })
 
 describe('persistRepoCache', () => {

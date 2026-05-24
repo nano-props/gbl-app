@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import { onRpcEventType, rpc } from '#/renderer/rpc.ts'
+import { isTerminalFocused } from '#/renderer/terminal-focus.ts'
 
 interface MenuActionHandlers {
   openSettings: () => void
@@ -70,6 +71,7 @@ export function useMenuActions({ openSettings, openCloneRepo, showHelp, isOverla
             cycleActive(-1)
             break
           case 'refresh':
+            if (isTerminalFocused()) break
             if (state.activeId) {
               const repo = state.repos[state.activeId]
               if (repo) await syncAndRefresh(repo.id, { token: repo.instanceToken })
@@ -93,7 +95,14 @@ export function useMenuActions({ openSettings, openCloneRepo, showHelp, isOverla
               setDetailCollapsed(false)
             }
             break
+          case 'tab-terminal':
+            if (state.activeId) {
+              setDetailTab(state.activeId, 'terminal')
+              setDetailCollapsed(false)
+            }
+            break
           case 'toggle-detail':
+            // Match VS Code: Cmd+J toggles the panel even while the integrated terminal owns focus.
             if (state.activeId) toggleDetailCollapsed()
             break
           case 'open-settings':

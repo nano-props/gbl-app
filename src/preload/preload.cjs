@@ -48,6 +48,24 @@ contextBridge.exposeInMainWorld('goblin', {
   homeDir,
   invokeRpc: ({ path, input }) => rpcCall(path, input),
   pathForFile: (file) => webUtils.getPathForFile(file),
+  terminal: {
+    open: (input) => safeInvoke('goblin:terminal-open', input),
+    restart: (input) => safeInvoke('goblin:terminal-restart', input),
+    write: (input) => safeInvoke('goblin:terminal-write', input),
+    resize: (input) => safeInvoke('goblin:terminal-resize', input),
+    close: (input) => safeInvoke('goblin:terminal-close', input),
+    pruneRepo: (input) => safeInvoke('goblin:terminal-prune-repo', input),
+    onOutput: (cb) => {
+      const listener = (_event, payload) => cb(payload)
+      ipcRenderer.on('goblin:terminal-output', listener)
+      return () => ipcRenderer.off('goblin:terminal-output', listener)
+    },
+    onExit: (cb) => {
+      const listener = (_event, payload) => cb(payload)
+      ipcRenderer.on('goblin:terminal-exit', listener)
+      return () => ipcRenderer.off('goblin:terminal-exit', listener)
+    },
+  },
   onEvent: (cb) => {
     const listener = (_event, payload) => cb(payload)
     ipcRenderer.on('goblin:event', listener)

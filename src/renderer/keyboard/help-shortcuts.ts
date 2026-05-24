@@ -39,6 +39,7 @@ export function helpShortcutSections(globalShortcut: string): HelpShortcutSectio
         { combos: [['⌘', '1']], labelKey: 'help.row.view-status' },
         { combos: [['⌘', '2']], labelKey: 'help.row.view-changes' },
         { combos: [['⌘', '3']], labelKey: 'help.row.view-log' },
+        { combos: [['⌘', '4']], labelKey: 'help.row.view-terminal' },
         { combos: [['⌘', 'J']], labelKey: 'help.row.toggle-detail' },
       ],
     },
