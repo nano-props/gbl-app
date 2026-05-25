@@ -23,6 +23,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#/renderer/components/ui/select.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
+import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { defaultWorktreePath, tildify, untildify } from '#/renderer/lib/paths.ts'
 import { validateBranchName } from '#/shared/refnames.ts'
@@ -37,7 +38,7 @@ interface Props {
   open: boolean
   repo: RepoState
   onClose: () => void
-  onCreate: (request: CreateWorktreeRequest) => void
+  onCreate: (request: CreateWorktreeRequest) => void | Promise<void>
 }
 
 export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
@@ -79,12 +80,13 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
   const effectivePath = pathTrimmed || defaultPath
   const displayDefaultPath = tildify(defaultPath)
   const displayEffectivePath = tildify(effectivePath)
+  const branchActionBusy = operationBusy(repo.ops.branchAction)
   const canSubmit = branchTrimmed.length > 0 && !branchError && effectivePath.length > 0 && base.length > 0
 
   function handleSubmit() {
-    if (!canSubmit) return
+    if (!canSubmit || branchActionBusy) return
+    void onCreate({ worktreePath: effectivePath, newBranch: branchTrimmed, baseBranch: base })
     onClose()
-    onCreate({ worktreePath: effectivePath, newBranch: branchTrimmed, baseBranch: base })
   }
 
   return (
@@ -184,7 +186,7 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
             <Button type="button" variant="ghost" onClick={onClose}>
               {t('dialog.cancel')}
             </Button>
-            <Button type="submit" disabled={!canSubmit}>
+            <Button type="submit" disabled={!canSubmit || branchActionBusy}>
               {t('action.create-worktree-confirm')}
             </Button>
           </DialogFooter>

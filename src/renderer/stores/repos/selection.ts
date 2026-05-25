@@ -1,6 +1,6 @@
 import { arrayMove } from '@dnd-kit/sortable'
 import { branchForVisibleLog, selectedBranchForViewMode } from '#/renderer/stores/repos/branch-view-mode.ts'
-import { replaceRepo } from '#/renderer/stores/repos/helpers.ts'
+import { replaceRepo, replaceRepoState } from '#/renderer/stores/repos/helpers.ts'
 import { persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
 import {
   DEFAULT_DETAIL_COLLAPSED,
@@ -21,6 +21,12 @@ import type {
 import type { WorkspaceDetailPaneSizes } from '#/shared/workspace-layout.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { detailTabForWorktree } from '#/renderer/lib/detail-tabs.ts'
+import {
+  runBranchViewModeChangedWorkflow,
+  runDetailTabChangedWorkflow,
+  runSelectedBranchChangedWorkflow,
+  runSelectedBranchStatusWorkflow,
+} from '#/renderer/stores/repos/refresh-workflows.ts'
 
 function branchHasWorktree(repo: RepoState, branchName: string | null): boolean {
   return !!branchName && repo.data.branches.some((branch) => branch.name === branchName && !!branch.worktreePath)
@@ -161,27 +167,25 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         selectedForLog = selectedBranch
         selectedForPullRequest = selectionChanged ? selectedBranch : null
         shouldRefreshLog = selectionChanged && selectedBranch !== null && repo.ui.detailTab === 'commits'
-        return {
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(repo, (r) => {
-              r.ui.branchViewMode = viewMode
-              r.ui.selectedBranch = selectedBranch
-              r.ui.detailTab = detailTabForSelection(repo, r.ui.detailTab, selectedBranch)
-              if (selectionChanged) {
-                r.ui.commitDetail = { phase: 'idle' }
-              }
-            }),
-          },
-        }
+        return replaceRepoState(s, repo, (r) => {
+          r.ui.branchViewMode = viewMode
+          r.ui.selectedBranch = selectedBranch
+          r.ui.detailTab = detailTabForSelection(repo, r.ui.detailTab, selectedBranch)
+          if (selectionChanged) {
+            r.ui.commitDetail = { phase: 'idle' }
+          }
+        })
       })
       const repo = get().repos[id]
-      if (changed && token !== undefined) persistRepoCache(set, repo, token)
-      if (shouldRefreshLog && selectedForLog && token !== undefined) {
-        void get().refreshBranchLog(id, selectedForLog, { token })
-      }
-      if (selectedForPullRequest && token !== undefined) {
-        void get().refreshPullRequests(id, [selectedForPullRequest], { token, mode: 'full' })
+      if (changed && token !== undefined && repo) persistRepoCache(set, repo, token)
+      if (changed && token !== undefined && repo) {
+        runBranchViewModeChangedWorkflow(get, {
+          id,
+          token,
+          selectedForLog,
+          selectedForPullRequest,
+          shouldRefreshLog,
+        })
       }
     },
 
@@ -195,26 +199,20 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         if (repo.ui.detailTab === nextTab && repo.ui.commitDetail.phase === 'idle') return s
         changed = true
         token = repo.instanceToken
-        return {
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(repo, (r) => {
-              r.ui.detailTab = nextTab
-              r.ui.commitDetail = { phase: 'idle' }
-            }),
-          },
-        }
+        return replaceRepoState(s, repo, (r) => {
+          r.ui.detailTab = nextTab
+          r.ui.commitDetail = { phase: 'idle' }
+        })
       })
       const repo = get().repos[id]
-      if (changed && token !== undefined) persistRepoCache(set, repo, token)
-      const activeTab = repo?.ui.detailTab
-      if (changed && token !== undefined && activeTab === 'commits')
-        void get().refreshBranchLog(id, undefined, { token })
-      if (changed && token !== undefined && activeTab === 'changes') void get().refreshStatus(id, { token })
-      if (changed && token !== undefined && activeTab === 'status') {
-        if (repo?.ui.selectedBranch) {
-          void get().refreshPullRequests(id, [repo.ui.selectedBranch], { token, mode: 'full' })
-        }
+      if (changed && token !== undefined && repo) persistRepoCache(set, repo, token)
+      if (changed && token !== undefined && repo) {
+        runDetailTabChangedWorkflow(get, {
+          id,
+          token,
+          tab: repo.ui.detailTab,
+          selectedBranch: repo.ui.selectedBranch,
+        })
       }
     },
 
@@ -228,22 +226,23 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         if (branch?.worktreePath !== worktreePath) return s
         changed = true
         token = repo.instanceToken
+        const nextRepo = replaceRepo(repo, (r) => {
+          r.ui.detailTab = 'status'
+          r.ui.commitDetail = { phase: 'idle' }
+        })
+        const detailCollapsed = s.activeId === id ? effectiveDetailCollapsed(s.workspaceLayout, true) : s.detailCollapsed
+        if (nextRepo === repo && detailCollapsed === s.detailCollapsed) return s
+        if (nextRepo === repo) return { detailCollapsed }
         return {
           // Terminal exits in background repos should not surprise the active workspace layout.
-          detailCollapsed: s.activeId === id ? effectiveDetailCollapsed(s.workspaceLayout, true) : s.detailCollapsed,
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(repo, (r) => {
-              r.ui.detailTab = 'status'
-              r.ui.commitDetail = { phase: 'idle' }
-            }),
-          },
+          detailCollapsed,
+          repos: { ...s.repos, [id]: nextRepo },
         }
       })
       const repo = get().repos[id]
-      if (changed && token !== undefined) persistRepoCache(set, repo, token)
-      if (changed && token !== undefined && repo?.ui.selectedBranch) {
-        void get().refreshPullRequests(id, [repo.ui.selectedBranch], { token, mode: 'full' })
+      if (changed && token !== undefined && repo) persistRepoCache(set, repo, token)
+      if (changed && token !== undefined && repo) {
+        runSelectedBranchStatusWorkflow(get, { id, token, selectedBranch: repo.ui.selectedBranch })
       }
     },
 
@@ -257,24 +256,16 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         if (repo.ui.selectedBranch === branch && repo.ui.commitDetail.phase === 'idle') return s
         changed = true
         token = repo.instanceToken
-        return {
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(repo, (r) => {
-              r.ui.selectedBranch = branch
-              r.ui.detailTab = detailTabForSelection(repo, r.ui.detailTab, branch)
-              r.ui.commitDetail = { phase: 'idle' }
-            }),
-          },
-        }
+        return replaceRepoState(s, repo, (r) => {
+          r.ui.selectedBranch = branch
+          r.ui.detailTab = detailTabForSelection(repo, r.ui.detailTab, branch)
+          r.ui.commitDetail = { phase: 'idle' }
+        })
       })
       const repo = get().repos[id]
-      if (changed && token !== undefined) persistRepoCache(set, repo, token)
-      if (changed && token !== undefined && repo?.ui.detailTab === 'commits') {
-        void get().refreshBranchLog(id, branch, { token })
-      }
-      if (changed && token !== undefined) {
-        void get().refreshPullRequests(id, [branch], { token, mode: 'full' })
+      if (changed && token !== undefined && repo) persistRepoCache(set, repo, token)
+      if (changed && token !== undefined && repo) {
+        runSelectedBranchChangedWorkflow(get, { id, token, branch, tab: repo.ui.detailTab })
       }
     },
 
@@ -285,14 +276,9 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         const prev = repo.data.logsByBranch[branch]
         if (!prev) return s
         if (!prev.entries.some((entry) => entry.hash === hash) || prev.selectedHash === hash) return s
-        return {
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(repo, (r) => {
-              r.data.logsByBranch[branch] = { ...prev, selectedHash: hash }
-            }),
-          },
-        }
+        return replaceRepoState(s, repo, (r) => {
+          r.data.logsByBranch[branch]!.selectedHash = hash
+        })
       })
     },
 

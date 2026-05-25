@@ -3,6 +3,7 @@ import { lastPathSegment } from '#/renderer/lib/paths.ts'
 import { emptyRepo, inFlightFetchById } from '#/renderer/stores/repos/helpers.ts'
 import { hydrateCachedRepo } from '#/renderer/stores/repos/persistence.ts'
 import { disposeRepoRuntime } from '#/renderer/stores/repos/runtime.ts'
+import { runInitialRepoLoad } from '#/renderer/stores/repos/refresh-workflows.ts'
 import type { MissingRepo, OpenRepoResult, ReposGet, ReposSet, ReposStore } from '#/renderer/stores/repos/types.ts'
 import { rpc } from '#/renderer/rpc.ts'
 
@@ -85,10 +86,7 @@ function activeAfterHydrateStep(
 function refreshInitialRepoState(get: ReposGet, refresh: InitialRepoRefresh) {
   const repo = get().repos[refresh.id]
   if (!repo || repo.instanceToken !== refresh.token) return
-  void get().refreshSnapshot(refresh.id, { token: refresh.token })
-  // Status drives the selected-branch detail badge, so load it
-  // eagerly before the user opens the Status detail tab.
-  void get().refreshStatus(refresh.id, { token: refresh.token })
+  runInitialRepoLoad(get, refresh)
 }
 
 export function createLifecycleActions(set: ReposSet, get: ReposGet) {

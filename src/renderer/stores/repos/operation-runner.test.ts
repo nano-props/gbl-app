@@ -81,7 +81,7 @@ describe('runExclusiveOperation', () => {
       lane: 'network',
       priority: 1,
       targets: [
-        { select: (r) => r.ops.branchAction, reason: 'branch:pull' },
+        { select: (r) => r.ops.branchAction, reason: 'branch:pull', target: 'feature/a' },
         { select: (r) => r.ops.fetch, reason: 'pull' },
       ],
       task: () =>
@@ -93,6 +93,8 @@ describe('runExclusiveOperation', () => {
     const running = useReposStore.getState().repos[REPO_ID]
     expect(running?.ops.branchAction.phase).toBe('running')
     expect(running?.ops.fetch.phase).toBe('running')
+    expect(running?.ops.branchAction.target).toBe('feature/a')
+    expect(running?.ops.fetch.target).toBeNull()
     expect(operationBusy(running!.ops.branchAction)).toBe(true)
 
     release()
@@ -101,6 +103,7 @@ describe('runExclusiveOperation', () => {
     const settled = useReposStore.getState().repos[REPO_ID]
     expect(settled?.ops.branchAction.phase).toBe('idle')
     expect(settled?.ops.fetch.phase).toBe('idle')
+    expect(settled?.ops.branchAction.target).toBeNull()
   })
 
   test('returns busyResult without scheduling when blocked', async () => {

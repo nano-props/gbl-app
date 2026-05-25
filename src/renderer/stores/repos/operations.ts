@@ -28,6 +28,7 @@ export interface RepoOperationState {
   requestId: number
   phase: RepoOperationPhase
   reason: RepoOperationReason | null
+  target: string | null
   startedAt: number | null
   settledAt: number | null
   error: string | null
@@ -47,15 +48,20 @@ export function idleOperation(): RepoOperationState {
     requestId: 0,
     phase: 'idle',
     reason: null,
+    target: null,
     startedAt: null,
     settledAt: null,
     error: null,
   }
 }
 
-export function runningOperation(options?: { requestId?: number; reason?: RepoOperationReason }): RepoOperationState {
+export function runningOperation(options?: {
+  requestId?: number
+  reason?: RepoOperationReason
+  target?: string | null
+}): RepoOperationState {
   const operation = idleOperation()
-  startOperation(operation, options?.requestId ?? 0, { reason: options?.reason })
+  startOperation(operation, options?.requestId ?? 0, { reason: options?.reason, target: options?.target })
   return operation
 }
 
@@ -84,11 +90,12 @@ export function idleRepoOperations(): RepoOperationsState {
 export function startOperation(
   operation: RepoOperationState,
   requestId: number,
-  options?: { reason?: RepoOperationReason },
+  options?: { reason?: RepoOperationReason; target?: string | null },
 ): void {
   operation.requestId = requestId
   operation.phase = 'running'
   operation.reason = options?.reason ?? null
+  operation.target = options?.target ?? null
   operation.startedAt = Date.now()
   operation.settledAt = null
   operation.error = null
@@ -97,11 +104,12 @@ export function startOperation(
 export function queueOperation(
   operation: RepoOperationState,
   requestId: number,
-  options?: { reason?: RepoOperationReason },
+  options?: { reason?: RepoOperationReason; target?: string | null },
 ): void {
   operation.requestId = requestId
   operation.phase = 'queued'
   operation.reason = options?.reason ?? null
+  operation.target = options?.target ?? null
   operation.startedAt = null
   operation.settledAt = null
   operation.error = null
@@ -114,6 +122,7 @@ export function settleOperation(
 ): boolean {
   if (operation.requestId !== requestId) return false
   operation.phase = 'idle'
+  operation.target = null
   operation.settledAt = Date.now()
   operation.error = options?.error ?? null
   return true

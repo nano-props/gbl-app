@@ -724,7 +724,6 @@ function createLogState(selectedHash: string): BranchLogState {
       { hash: 'b', shortHash: 'b', message: 'b', author: 'b', date: '2026-01-02' },
     ],
     selectedHash,
-    loading: false,
     hasMore: false,
   }
 }

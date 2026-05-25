@@ -2,7 +2,7 @@ import { useId } from 'react'
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { RepoState, RepoWorkspaceLayout } from '#/renderer/stores/repos/types.ts'
-import { getSelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
+import { getSelectedBranchDetailPresentation } from '#/renderer/components/branch-detail/model.ts'
 import { BranchDetailToolbar } from '#/renderer/components/branch-detail/BranchDetailToolbar.tsx'
 import { BranchDetailContent } from '#/renderer/components/branch-detail/BranchDetailContent.tsx'
 import { DEFAULT_WORKSPACE_LAYOUT } from '#/shared/workspace-layout.ts'
@@ -46,7 +46,7 @@ export function BranchDetail({ repoId, layout = DEFAULT_WORKSPACE_LAYOUT, collap
   const repo = useStoreWithEqualityFn(useReposStore, (s) => s.repos[repoId], branchDetailRepoEqual)
   if (!repo) return null
 
-  const detail = getSelectedBranchDetail(repo)
+  const detail = getSelectedBranchDetailPresentation(repo)
   const contentId = `${detailId}-content`
 
   return (

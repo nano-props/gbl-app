@@ -3,34 +3,19 @@ import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { Tip } from '#/renderer/components/Tip.tsx'
-import { Button } from '#/renderer/components/ui/button.tsx'
-import { getRepoSyncActivity, isRepoSyncBlocked } from '#/renderer/components/repo-sync/model.ts'
+import { AsyncButton } from '#/renderer/components/AsyncButton.tsx'
+import { getRepoSyncActivity, getRepoSyncPresentation } from '#/renderer/components/repo-sync/model.ts'
 import { useVisibleLoadingValue } from '#/renderer/hooks/useLoadingVisibility.ts'
+import { cn } from '#/renderer/lib/cn.ts'
 
 interface Props {
   repo: RepoState
 }
 
-interface RepoSyncPresentation {
-  rawBlocked: boolean
-  visibleActivity: ReturnType<typeof getRepoSyncActivity>
-  visualBusy: boolean
-  visualDisabled: boolean
-}
-
-function useRepoSyncPresentation(repo: RepoState): RepoSyncPresentation {
+function useRepoSyncPresentation(repo: RepoState) {
   const rawActivity = getRepoSyncActivity(repo)
-  const rawBlocked = isRepoSyncBlocked(repo)
   const visibleActivity = useVisibleLoadingValue(rawActivity)
-  const visualBusy = visibleActivity !== null
-  return {
-    rawBlocked,
-    visibleActivity,
-    visualBusy,
-    // Raw blocked state still guards clicks in handleSync; visual disabled is delayed
-    // with the spinner/label so short background refreshes do not flash button opacity.
-    visualDisabled: visualBusy && rawBlocked,
-  }
+  return getRepoSyncPresentation(repo, visibleActivity)
 }
 
 export function RepoSyncControl({ repo }: Props) {
@@ -49,15 +34,25 @@ export function RepoSyncControl({ repo }: Props) {
   return (
     <div className="flex items-center gap-2">
       <Tip label={t('action.fetch-title')}>
-        <Button
+        <AsyncButton
           variant="ghost"
           onClick={handleSync}
+          loading={visualBusy}
           disabled={visualDisabled}
-          aria-busy={visualBusy ? true : undefined}
+          className={cn(
+            visualBusy && 'bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground',
+          )}
         >
-          <Icon className={visualBusy ? 'animate-spin' : ''} />
-          {buttonLabel}
-        </Button>
+          {({ busy }) => {
+            const BusyIcon = busy ? Loader2 : Icon
+            return (
+              <>
+                <BusyIcon className={busy ? 'animate-spin' : ''} />
+                {buttonLabel}
+              </>
+            )
+          }}
+        </AsyncButton>
       </Tip>
       {visualBusy && (
         <span className="sr-only" role="status">

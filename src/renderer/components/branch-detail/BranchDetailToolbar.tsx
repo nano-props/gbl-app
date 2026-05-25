@@ -11,11 +11,11 @@ import { Toolbar } from '#/renderer/components/Layout.tsx'
 import { detailTabNavigationKey, navigatedDetailTab, visibleDetailTabs } from '#/renderer/lib/detail-tabs.ts'
 import { cn } from '#/renderer/lib/cn.ts'
 import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
-import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
+import type { SelectedBranchDetailPresentation } from '#/renderer/components/branch-detail/model.ts'
 
 interface Props {
   repo: RepoState
-  detail: SelectedBranchDetail
+  detail: SelectedBranchDetailPresentation
   detailId: string
   contentId: string
   collapsed: boolean

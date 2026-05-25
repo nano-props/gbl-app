@@ -2,6 +2,7 @@ import {
   appendRepoEvent,
   errorEvent,
   replaceRepo,
+  replaceRepoState,
   resultEvent,
   updateIfFresh,
 } from '#/renderer/stores/repos/helpers.ts'
@@ -20,10 +21,10 @@ export function createCommitActions(set: ReposSet, get: ReposGet) {
         const nextRepo = replaceRepo(repo, (r) => {
           r.ui.commitDetail = { phase: 'opening', hash }
         })
-        return {
-          repos: { ...s.repos, [id]: nextRepo },
-          detailCollapsed: s.activeId === id ? false : s.detailCollapsed,
-        }
+        const detailCollapsed = s.activeId === id ? false : s.detailCollapsed
+        if (nextRepo === repo && detailCollapsed === s.detailCollapsed) return s
+        if (nextRepo === repo) return { detailCollapsed }
+        return { repos: { ...s.repos, [id]: nextRepo }, detailCollapsed }
       })
       try {
         const detail = await rpc.repo.commit.query({ cwd: id, hash })
@@ -45,30 +46,19 @@ export function createCommitActions(set: ReposSet, get: ReposGet) {
       set((s) => {
         const cur = s.repos[id]
         if (!cur || cur.ui.commitDetail.phase === 'idle') return s
-        return {
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(cur, (repo) => {
-              repo.ui.commitDetail = { phase: 'idle' }
-            }),
-          },
-        }
+        return replaceRepoState(s, cur, (repo) => {
+          repo.ui.commitDetail = { phase: 'idle' }
+        })
       })
     },
 
     setLastResult(id: string, result: { ok: boolean; message: string }, token: number) {
       set((s) => {
         const repo = s.repos[id]
-        if (!repo) return s
-        if (repo.instanceToken !== token) return s
-        return {
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(repo, (r) => {
-              r.events = appendRepoEvent(r.events, resultEvent(result))
-            }),
-          },
-        }
+        if (!repo || repo.instanceToken !== token) return s
+        return replaceRepoState(s, repo, (r) => {
+          r.events = appendRepoEvent(r.events, resultEvent(result))
+        })
       })
     },
 
@@ -80,31 +70,21 @@ export function createCommitActions(set: ReposSet, get: ReposGet) {
         if (!repo) return s
         const events = repo.events.filter((event) => !ids.has(event.id))
         if (events.length === repo.events.length) return s
-        return {
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(repo, (r) => {
-              r.events = events
-            }),
-          },
-        }
+        return replaceRepoState(s, repo, (r) => {
+          r.events = events
+        })
       })
     },
 
     clearFetchFailed(id: string, token: number) {
       set((s) => {
         const repo = s.repos[id]
-        if (!repo || !repo.remote.fetchFailed) return s
-        if (repo.instanceToken !== token) return s
-        return {
-          repos: {
-            ...s.repos,
-            [id]: replaceRepo(repo, (r) => {
-              r.remote.fetchFailed = false
-              r.remote.fetchError = null
-            }),
-          },
-        }
+        if (!repo || repo.instanceToken !== token) return s
+        if (!repo.remote.fetchFailed) return s
+        return replaceRepoState(s, repo, (r) => {
+          r.remote.fetchFailed = false
+          r.remote.fetchError = null
+        })
       })
     },
   }

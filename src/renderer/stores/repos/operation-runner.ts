@@ -17,6 +17,7 @@ export type RepoOperationSelector = (repo: RepoDraft) => RepoOperationState
 export interface RepoOperationTarget {
   select: RepoOperationSelector
   reason: RepoOperationReason
+  target?: string | null
 }
 
 interface RepoOperationContext {
@@ -86,9 +87,9 @@ function markTargets(
     for (const target of targets) {
       const operation = target.select(repo)
       if (phase === 'running') {
-        startOperation(operation, requestId, { reason: target.reason })
+        startOperation(operation, requestId, { reason: target.reason, target: target.target })
       } else {
-        queueOperation(operation, requestId, { reason: target.reason })
+        queueOperation(operation, requestId, { reason: target.reason, target: target.target })
       }
     }
   })
@@ -103,7 +104,9 @@ function settleTargets(
   error: string | null,
 ) {
   updateIfFresh(set, id, token, (repo) => {
-    for (const target of targets) settleOperation(target.select(repo), requestId, { error })
+    for (const target of targets) {
+      settleOperation(target.select(repo), requestId, { error })
+    }
   })
 }
 

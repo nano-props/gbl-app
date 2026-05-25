@@ -5,25 +5,25 @@ import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { EditorAppIcon, TerminalAppIcon } from '#/renderer/components/ExternalAppIcon/index.tsx'
-import { useBranchActions, type BranchUiAction } from '#/renderer/hooks/useBranchActions.tsx'
+import { useBranchActions, type BranchActionItemId } from '#/renderer/hooks/useBranchActions.tsx'
 import { branchPullRequestBelongsToBranch } from '#/shared/git-types.ts'
 import type { BranchInfo } from '#/renderer/types.ts'
 
 export interface BranchActionItem {
-  id: BranchUiAction
+  id: BranchActionItemId
   label: string
   title?: string
   ariaLabel?: string
   disabled: boolean
+  busy?: boolean
   visible: boolean
   destructive?: boolean
   shortcut?: string
   icon: ReactNode
-  onSelect: () => void
+  onSelect: () => void | Promise<void>
 }
 
 export interface BranchActionItemGroups {
-  busy: BranchUiAction | null
   patchItems: BranchActionItem[]
   mainItems: BranchActionItem[]
   destructiveItems: BranchActionItem[]
@@ -38,7 +38,9 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
   const editorApp = useSettingsStore((s) => s.editorApp)
   const resolvedEditorApp = useSettingsStore((s) => s.resolvedEditorApp)
   const editorAvailable = useSettingsStore((s) => s.editorAvailable)
-  const { busy, capabilities, actions, dialogs } = useBranchActions(repo, branch)
+  const { blocked, busyAction, capabilities, actions, dialogs } = useBranchActions(repo, branch)
+  const disabled = blocked
+  const busy = (id: BranchActionItemId) => busyAction === id
   const pullRequest =
     branch.pullRequest && branchPullRequestBelongsToBranch(branch, branch.pullRequest) ? branch.pullRequest : undefined
   const githubIcon = pullRequest ? GitPullRequest : GitHubOutlineIcon
@@ -50,7 +52,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
           label: t('status.copy-patch'),
           title: t('status.copy-patch-title'),
           ariaLabel: t('status.copy-patch-title'),
-          disabled: !!busy,
+          disabled,
+          busy: busy('copyPatch'),
           visible: true,
           icon: createElement(ClipboardCopy),
           onSelect: actions.copyPatch,
@@ -62,7 +65,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
     {
       id: 'checkout',
       label: t('action.checkout'),
-      disabled: !!busy,
+      disabled,
+      busy: busy('checkout'),
       visible: !capabilities.isCurrent && !capabilities.checkedOutInAnotherWorktree,
       shortcut: '↩',
       icon: createElement(GitBranch),
@@ -71,7 +75,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
     {
       id: 'pull',
       label: t('action.pull'),
-      disabled: !!busy,
+      disabled,
+      busy: busy('pull'),
       visible: capabilities.canPull,
       shortcut: 'P',
       icon: createElement(ArrowDown),
@@ -80,7 +85,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
     {
       id: 'push',
       label: t('action.push'),
-      disabled: !!busy,
+      disabled,
+      busy: busy('push'),
       visible: true,
       shortcut: '⇧P',
       icon: createElement(ArrowUp),
@@ -91,7 +97,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
           {
             id: 'terminal' as const,
             label: t('worktrees.open-in-terminal-label'),
-            disabled: !!busy,
+            disabled,
+            busy: busy('terminal'),
             visible: true,
             shortcut: 'G',
             icon: createElement(TerminalAppIcon, { pref: resolvedTerminalApp ?? terminalApp }),
@@ -104,7 +111,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
           {
             id: 'editor' as const,
             label: t('worktrees.open-in-editor-label'),
-            disabled: !!busy,
+            disabled,
+            busy: busy('editor'),
             visible: true,
             shortcut: 'V',
             icon: createElement(EditorAppIcon, { pref: resolvedEditorApp ?? editorApp }),
@@ -115,7 +123,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
     {
       id: 'github',
       label: pullRequest ? t('action.github-pr', { n: pullRequest.number }) : t('action.github'),
-      disabled: !!busy,
+      disabled,
+      busy: busy('github'),
       visible: true,
       shortcut: '⇧G',
       icon: createElement(githubIcon),
@@ -129,7 +138,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
           {
             id: 'removeWorktree' as const,
             label: t('action.remove-worktree'),
-            disabled: !!busy,
+            disabled,
+            busy: busy('removeWorktree'),
             visible: true,
             destructive: true,
             icon: createElement(Trash2),
@@ -142,7 +152,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
           {
             id: 'deleteBranch' as const,
             label: t('action.delete-branch'),
-            disabled: !!busy,
+            disabled,
+            busy: busy('deleteBranch'),
             visible: true,
             destructive: true,
             icon: createElement(Trash2),
@@ -152,5 +163,5 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
       : []),
   ]
 
-  return { busy, patchItems, mainItems, destructiveItems, dialogs }
+  return { patchItems, mainItems, destructiveItems, dialogs }
 }

@@ -8,9 +8,8 @@
 // / Open in GitHub) live with the selected-branch detail, not here —
 // those need a branch context to be meaningful.
 
-import { useEffect, useRef, useState } from 'react'
-import { FolderPlus, Loader2 } from 'lucide-react'
-import { operationBusy } from '#/renderer/stores/repos/operations.ts'
+import { useEffect, useState } from 'react'
+import { FolderPlus } from 'lucide-react'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
@@ -18,6 +17,7 @@ import { Tip } from '#/renderer/components/Tip.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import { CreateWorktreeDialog, type CreateWorktreeRequest } from '#/renderer/components/CreateWorktreeDialog.tsx'
 import { RepoSyncControl } from '#/renderer/components/repo-sync/RepoSyncControl.tsx'
+import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 
 interface Props {
   repo: RepoState
@@ -27,10 +27,7 @@ export function RepoToolbarActions({ repo }: Props) {
   const t = useT()
   const runBranchAction = useReposStore((s) => s.runBranchAction)
   const [createOpen, setCreateOpen] = useState(false)
-  const [creatingByRepo, setCreatingByRepo] = useState<Record<string, string>>({})
-  const [createTipByRepo, setCreateTipByRepo] = useState<Record<string, boolean>>({})
-  const createTipTimers = useRef<Record<string, number>>({})
-  const creatingRef = useRef<Record<string, boolean>>({})
+  const branchActionBusy = operationBusy(repo.ops.branchAction)
 
   // RepoView reuses the same React instance across repo switches
   // (no `key={activeId}` on the parent), so RepoToolbarActions keeps
@@ -41,81 +38,40 @@ export function RepoToolbarActions({ repo }: Props) {
     setCreateOpen(false)
   }, [repo.id])
 
-  useEffect(
-    () => () => {
-      for (const timer of Object.values(createTipTimers.current)) window.clearTimeout(timer)
-    },
-    [],
-  )
-
-  function showCreateTip(repoId: string) {
-    const existing = createTipTimers.current[repoId]
-    if (existing) window.clearTimeout(existing)
-    setCreateTipByRepo((s) => ({ ...s, [repoId]: true }))
-    createTipTimers.current[repoId] = window.setTimeout(() => {
-      setCreateTipByRepo((s) => {
-        if (!s[repoId]) return s
-        const next = { ...s }
-        delete next[repoId]
-        return next
-      })
-      delete createTipTimers.current[repoId]
-    }, 3000)
-  }
-
   async function handleCreateWorktree(request: CreateWorktreeRequest) {
     const targetRepoId = repo.id
     const token = repo.instanceToken
-    if (creatingRef.current[targetRepoId] || operationBusy(repo.ops.branchAction)) return
-    creatingRef.current[targetRepoId] = true
-    setCreatingByRepo((s) => ({ ...s, [targetRepoId]: request.newBranch }))
-    showCreateTip(targetRepoId)
-    try {
-      await runBranchAction(
-        targetRepoId,
-        {
-          kind: 'createWorktree',
-          worktreePath: request.worktreePath,
-          newBranch: request.newBranch,
-          baseBranch: request.baseBranch,
-        },
-        { token, refreshOnError: false },
-      )
-    } finally {
-      delete creatingRef.current[targetRepoId]
-      setCreatingByRepo((s) => {
-        if (!s[targetRepoId]) return s
-        const next = { ...s }
-        delete next[targetRepoId]
-        return next
-      })
-    }
+    if (branchActionBusy) return
+    await runBranchAction(
+      targetRepoId,
+      {
+        kind: 'createWorktree',
+        worktreePath: request.worktreePath,
+        newBranch: request.newBranch,
+        baseBranch: request.baseBranch,
+      },
+      { token, refreshOnError: false },
+    )
   }
 
-  const creatingBranch = creatingByRepo[repo.id]
-  const createBusy = !!creatingBranch
-  const branchActionBusy = operationBusy(repo.ops.branchAction)
-  const createTip = createBusy
-    ? t('action.create-worktree-creating-title', { branch: creatingBranch })
-    : t('action.create-worktree-title')
+  const createTip = t('action.create-worktree-title')
 
   // Buttons carry their label inline so the adjacent refresh-like glyphs
   // don't make the user guess which action they are invoking.
   return (
     <div className="flex items-center gap-1">
       <RepoSyncControl repo={repo} />
-      <Tip label={createTip} forceOpen={createBusy && !!createTipByRepo[repo.id]}>
+      <Tip label={createTip}>
         <span className="inline-flex">
           <Button
             variant="ghost"
             onClick={() => {
-              if (!createBusy && !branchActionBusy) setCreateOpen(true)
+              if (!branchActionBusy) setCreateOpen(true)
             }}
-            disabled={createBusy || branchActionBusy}
-            aria-busy={createBusy ? true : undefined}
+            disabled={branchActionBusy}
             aria-label={createTip}
           >
-            {createBusy ? <Loader2 className="animate-spin" /> : <FolderPlus />}
+            <FolderPlus />
             {t('action.create-worktree')}
           </Button>
         </span>

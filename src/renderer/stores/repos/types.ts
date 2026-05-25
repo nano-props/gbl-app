@@ -17,7 +17,6 @@ export type CommitDetailState =
 export interface BranchLogState {
   entries: LogEntry[]
   selectedHash: string | null
-  loading: boolean
   hasMore: boolean
 }
 

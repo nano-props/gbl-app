@@ -20,7 +20,7 @@ export const LOG_PAGE_SIZE = 30
 export const MAX_LOG_COUNT = 300
 
 function emptyBranchLog(): BranchLogState {
-  return { entries: [], selectedHash: null, loading: false, hasMore: false }
+  return { entries: [], selectedHash: null, hasMore: false }
 }
 
 function logPage(entries: LogEntry[], pageSize: number): { entries: LogEntry[]; hasMore: boolean } {
@@ -124,7 +124,7 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
     const existing = repoBefore.data.logsByBranch[branch]
     const existingOperation = repoBefore.ops.logsByBranch[branch] ?? idleOperation()
     if (append) {
-      if (!existing || existing.loading || operationBusy(existingOperation)) return
+      if (!existing || operationBusy(existingOperation)) return
       if (!existing.hasMore || existing.entries.length >= MAX_LOG_COUNT) return
     }
     const loaded = append ? existing.entries.length : 0
@@ -132,8 +132,7 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
     if (pageSize <= 0) return
     const requestCount = pageSize + 1
     updateIfFresh(set, id, token, (r) => {
-      const prev = r.data.logsByBranch[branch] ?? emptyBranchLog()
-      r.data.logsByBranch[branch] = { ...prev, loading: true }
+      r.data.logsByBranch[branch] ??= emptyBranchLog()
       r.ops.logsByBranch[branch] ??= idleOperation()
     })
     const selectLogOperation: RepoOperationSelector = (r) => r.ops.logsByBranch[branch] ?? idleOperation()
@@ -158,7 +157,6 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
           r.data.logsByBranch[branch] = {
             entries,
             selectedHash,
-            loading: false,
             hasMore: entries.length < MAX_LOG_COUNT && page.hasMore,
           }
         })
@@ -166,12 +164,7 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
       onError: (message) => {
         console.warn('[refreshBranchLog] failed', message)
         updateIfFresh(set, id, token, (r) => {
-          if (r.data.branches.some((b) => b.name === branch)) {
-            r.data.logsByBranch[branch] = {
-              ...(r.data.logsByBranch[branch] ?? emptyBranchLog()),
-              loading: false,
-            }
-          }
+          if (r.data.branches.some((b) => b.name === branch)) r.data.logsByBranch[branch] ??= emptyBranchLog()
           r.events = appendRepoEvent(r.events, errorEvent(message))
         })
       },
@@ -414,11 +407,18 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
       const token = options?.token ?? repoBefore.instanceToken
       if (repoBefore.instanceToken !== token) return
       if (!canStartRemoteFetch(repoBefore)) return
-      const result = await runNetworkTask(id, (signal) => rpc.repo.fetch.mutate({ cwd: id }, { signal }), {
-        token,
-        reason: 'user-fetch',
-        priority: 100,
-      })
+      let result: ExecResult | null
+      try {
+        result = await runNetworkTask(id, (signal) => rpc.repo.fetch.mutate({ cwd: id }, { signal }), {
+          token,
+          reason: 'user-fetch',
+          priority: 100,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        get().setLastResult(id, { ok: false, message }, token)
+        return
+      }
       if (!result) return
       if (!result.ok && result.message === 'cancelled') return
       get().setLastResult(id, result, token)

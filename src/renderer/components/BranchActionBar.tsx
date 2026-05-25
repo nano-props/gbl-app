@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
-import { Button } from '#/renderer/components/ui/button.tsx'
+import { AsyncButton } from '#/renderer/components/AsyncButton.tsx'
 import { BranchActionsDropdown } from '#/renderer/components/BranchActionsMenu.tsx'
 import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
 import { useBranchActionItems, type BranchActionItem } from '#/renderer/hooks/useBranchActionItems.ts'
@@ -16,9 +16,10 @@ interface Props {
 }
 
 export function BranchActionBar({ repo, branch, variant = 'bar' }: Props) {
-  const { busy, patchItems, mainItems, destructiveItems, dialogs } = useBranchActionItems(repo, branch)
+  const { patchItems, mainItems, destructiveItems, dialogs } = useBranchActionItems(repo, branch)
   const visibleItems = [...patchItems, ...mainItems, ...destructiveItems].filter((item) => item.visible)
-  // Register the global shortcut once; it reads from this ref so branch/action changes don't stale the handler.
+  // Register the global shortcut once. The ref is reassigned on every render,
+  // including the latest item callbacks, so repo/branch changes don't stale the handler.
   const visibleItemsRef = useRef(visibleItems)
   visibleItemsRef.current = visibleItems
 
@@ -26,19 +27,14 @@ export function BranchActionBar({ repo, branch, variant = 'bar' }: Props) {
     return setBranchActionShortcutHandler((action) => {
       const item = visibleItemsRef.current.find((item) => item.id === action)
       if (!item || item.disabled) return
-      item.onSelect()
+      void item.onSelect()
     })
   }, [])
 
   if (variant === 'menu') {
     return (
       <>
-        <BranchActionsDropdown
-          busy={busy}
-          patchItems={patchItems}
-          mainItems={mainItems}
-          destructiveItems={destructiveItems}
-        />
+        <BranchActionsDropdown patchItems={patchItems} mainItems={mainItems} destructiveItems={destructiveItems} />
 
         {dialogs}
       </>
@@ -49,7 +45,6 @@ export function BranchActionBar({ repo, branch, variant = 'bar' }: Props) {
     return (
       <>
         <BranchActionAuto
-          busy={busy}
           visibleItems={visibleItems}
           patchItems={patchItems}
           mainItems={mainItems}
@@ -63,7 +58,7 @@ export function BranchActionBar({ repo, branch, variant = 'bar' }: Props) {
 
   return (
     <>
-      <BranchActionButtonScroller busy={busy} visibleItems={visibleItems} />
+      <BranchActionButtonScroller visibleItems={visibleItems} />
 
       {dialogs}
     </>
@@ -71,13 +66,11 @@ export function BranchActionBar({ repo, branch, variant = 'bar' }: Props) {
 }
 
 function BranchActionAuto({
-  busy,
   visibleItems,
   patchItems,
   mainItems,
   destructiveItems,
 }: {
-  busy: BranchActionItem['id'] | null
   visibleItems: BranchActionItem[]
   patchItems: BranchActionItem[]
   mainItems: BranchActionItem[]
@@ -87,7 +80,7 @@ function BranchActionAuto({
   const measureRef = useRef<HTMLDivElement | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const layoutKey = visibleItems
-    .map((item) => `${item.id}:${item.label}:${item.disabled}:${busy === item.id}`)
+    .map((item) => `${item.id}:${item.label}:${item.disabled}`)
     .join('|')
 
   useLayoutEffect(() => {
@@ -115,43 +108,34 @@ function BranchActionAuto({
   return (
     <div ref={containerRef} className="relative flex min-w-0 flex-1 justify-end">
       {collapsed ? (
-        <BranchActionsDropdown
-          busy={busy}
-          patchItems={patchItems}
-          mainItems={mainItems}
-          destructiveItems={destructiveItems}
-        />
+        <BranchActionsDropdown patchItems={patchItems} mainItems={mainItems} destructiveItems={destructiveItems} />
       ) : (
-        <BranchActionButtonScroller busy={busy} visibleItems={visibleItems} />
+        <BranchActionButtonScroller visibleItems={visibleItems} />
       )}
       <div ref={measureRef} aria-hidden="true" className="pointer-events-none invisible absolute right-0 top-0">
-        <BranchActionButtonRow busy={busy} visibleItems={visibleItems} measure />
+        <BranchActionButtonRow visibleItems={visibleItems} measure />
       </div>
     </div>
   )
 }
 
 function BranchActionButtonScroller({
-  busy,
   visibleItems,
 }: {
-  busy: BranchActionItem['id'] | null
   visibleItems: BranchActionItem[]
 }) {
   return (
     <ScrollArea orientation="horizontal" className="min-w-0 flex-1">
-      <BranchActionButtonRow busy={busy} visibleItems={visibleItems} className="min-w-full" />
+      <BranchActionButtonRow visibleItems={visibleItems} className="min-w-full" />
     </ScrollArea>
   )
 }
 
 function BranchActionButtonRow({
-  busy,
   visibleItems,
   className,
   measure = false,
 }: {
-  busy: BranchActionItem['id'] | null
   visibleItems: BranchActionItem[]
   className?: string
   measure?: boolean
@@ -159,7 +143,7 @@ function BranchActionButtonRow({
   return (
     <div className={cn('flex w-max items-center justify-end gap-1 py-1', className)}>
       {visibleItems.map((item) => (
-        <BranchActionButton key={item.id} item={item} busy={busy} measure={measure} />
+        <BranchActionButton key={item.id} item={item} measure={measure} />
       ))}
     </div>
   )
@@ -167,26 +151,28 @@ function BranchActionButtonRow({
 
 function BranchActionButton({
   item,
-  busy,
   measure = false,
 }: {
   item: BranchActionItem
-  busy: BranchActionItem['id'] | null
   measure?: boolean
 }) {
   return (
-    <Button
+    <AsyncButton
       variant="ghost"
       size="sm"
+      loading={item.busy}
       disabled={measure || item.disabled}
       onClick={item.onSelect}
       title={item.title ?? item.label}
       aria-label={item.ariaLabel ?? item.title ?? item.label}
-      aria-busy={busy === item.id ? true : undefined}
       className={item.destructive ? 'text-danger hover:bg-danger-surface hover:text-danger' : undefined}
     >
-      {busy === item.id ? <Loader2 size={16} className="animate-spin" /> : item.icon}
-      {item.label}
-    </Button>
+      {({ busy }) => (
+        <>
+          {busy ? <Loader2 size={16} className="animate-spin" /> : item.icon}
+          {item.label}
+        </>
+      )}
+    </AsyncButton>
   )
 }

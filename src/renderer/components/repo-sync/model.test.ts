@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { getRepoSyncActivity, isRepoSyncBlocked } from '#/renderer/components/repo-sync/model.ts'
+import {
+  getRepoSyncActivity,
+  getRepoSyncPresentation,
+  isRepoSyncBlocked,
+} from '#/renderer/components/repo-sync/model.ts'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
 import { idleRepoOperations, runningOperation } from '#/renderer/stores/repos/operations.ts'
 import type { RepoDataSource, RepoState } from '#/renderer/stores/repos/types.ts'
@@ -12,6 +16,8 @@ interface RepoOverrides {
   pullRequestsBusy?: boolean
   currentBranch?: string
   logsByBranch?: RepoState['data']['logsByBranch']
+  logBusyBranch?: string
+  logBusyBranches?: string[]
   fetchBusy?: boolean
   selectedBranch?: string | null
 }
@@ -40,7 +46,12 @@ function repo(overrides: RepoOverrides = {}): RepoState {
         ? runningOperation({ reason: 'pullRequests' })
         : idleRepoOperations().pullRequests,
       fetch: overrides.fetchBusy ? runningOperation({ reason: 'fetch' }) : idleRepoOperations().fetch,
-      logsByBranch: {},
+      logsByBranch: Object.fromEntries(
+        (overrides.logBusyBranches ?? (overrides.logBusyBranch ? [overrides.logBusyBranch] : [])).map((branch) => [
+          branch,
+          runningOperation({ reason: 'log' }),
+        ]),
+      ),
     },
     cache: {
       ...base.cache,
@@ -66,11 +77,35 @@ describe('getRepoSyncActivity', () => {
       getRepoSyncActivity(
         repo({
           currentBranch: 'main',
-          logsByBranch: { main: { entries: [], selectedHash: null, loading: true, hasMore: false } },
+          logBusyBranch: 'main',
           fetchBusy: true,
         }),
       )?.stage,
     ).toBe('log')
+  })
+
+  test('detects any repo log loading, even when it is not the visible branch', () => {
+    expect(
+      getRepoSyncActivity(repo({ currentBranch: 'main', selectedBranch: 'main', logBusyBranch: 'feature/a' }))?.stage,
+    ).toBe('log')
+  })
+
+  test('treats any concurrent branch log operation as repo activity', () => {
+    expect(getRepoSyncActivity(repo({ logBusyBranches: ['feature/a', 'feature/b'] }))?.stage).toBe('log')
+  })
+
+  test('keeps branch-changing work above metadata and remote stages', () => {
+    expect(
+      getRepoSyncActivity(
+        repo({
+          branchActionBusy: true,
+          statusBusy: true,
+          pullRequestsBusy: true,
+          logBusyBranch: 'feature/a',
+          fetchBusy: true,
+        }),
+      )?.stage,
+    ).toBe('branches')
   })
 
   test('falls back to remote activity and idle states', () => {
@@ -94,9 +129,57 @@ describe('isRepoSyncBlocked', () => {
       isRepoSyncBlocked(
         repo({
           selectedBranch: 'feature',
-          logsByBranch: { feature: { entries: [], selectedHash: null, loading: true, hasMore: false } },
+          logBusyBranch: 'feature',
         }),
       ),
     ).toBe(false)
+  })
+})
+
+describe('getRepoSyncPresentation', () => {
+  test('disables visible metadata loading to keep button presentation consistent', () => {
+    const r = repo({ pullRequestsBusy: true })
+    const activity = getRepoSyncActivity(r)
+
+    expect(getRepoSyncPresentation(r, activity)).toEqual({
+      rawBlocked: false,
+      visibleActivity: activity,
+      visualBusy: true,
+      visualDisabled: true,
+    })
+  })
+
+  test('shows fetch-unsafe loading as disabled once it becomes visible', () => {
+    const r = repo({ statusBusy: true })
+    const activity = getRepoSyncActivity(r)
+
+    expect(getRepoSyncPresentation(r, activity)).toEqual({
+      rawBlocked: true,
+      visibleActivity: activity,
+      visualBusy: true,
+      visualDisabled: true,
+    })
+  })
+
+  test('keeps the button visually idle while the delay hook hides raw activity', () => {
+    const r = repo({ fetchBusy: true })
+
+    expect(getRepoSyncPresentation(r, null)).toEqual({
+      rawBlocked: true,
+      visibleActivity: null,
+      visualBusy: false,
+      visualDisabled: false,
+    })
+  })
+
+  test('keeps hidden non-blocking activity visually idle and enabled', () => {
+    const r = repo({ pullRequestsBusy: true })
+
+    expect(getRepoSyncPresentation(r, null)).toEqual({
+      rawBlocked: false,
+      visibleActivity: null,
+      visualBusy: false,
+      visualDisabled: false,
+    })
   })
 })

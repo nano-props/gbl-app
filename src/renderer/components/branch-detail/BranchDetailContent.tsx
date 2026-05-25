@@ -10,14 +10,13 @@ import { StatusList } from '#/renderer/components/StatusList.tsx'
 import { ListSkeleton } from '#/renderer/components/Skeleton.tsx'
 import { BranchStatus } from '#/renderer/components/branch-detail/BranchStatus.tsx'
 import { TerminalSlot } from '#/renderer/components/terminal/TerminalSlot.tsx'
-import type { SelectedBranchDetail } from '#/renderer/components/branch-detail/model.ts'
-import { operationBusy } from '#/renderer/stores/repos/operations.ts'
+import type { SelectedBranchDetailPresentation } from '#/renderer/components/branch-detail/model.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import { detailTabForWorktree } from '#/renderer/lib/detail-tabs.ts'
 
 interface Props {
   repo: RepoState
-  detail: SelectedBranchDetail
+  detail: SelectedBranchDetailPresentation
   detailId: string
   contentId: string
   layout: RepoWorkspaceLayout
@@ -30,7 +29,7 @@ interface TabPanelProps {
   children: ReactNode
 }
 
-type BranchDetailBranch = NonNullable<SelectedBranchDetail['branch']>
+type BranchDetailBranch = NonNullable<SelectedBranchDetailPresentation['branch']>
 
 export function BranchDetailContent({ repo, detail, detailId, contentId, layout }: Props) {
   const t = useT()
@@ -44,24 +43,20 @@ export function BranchDetailContent({ repo, detail, detailId, contentId, layout 
   if (!branch)
     return <EmptyState title={t(repo.data.branches.length === 0 ? 'branches.empty' : 'branches.filter-empty')} />
 
-  const branchLogOperation = repo.ops.logsByBranch[branch.name]
-  const commitsBusy =
-    repo.ui.commitDetail.phase === 'opening' ||
-    detail.branchLog?.loading === true ||
-    (branchLogOperation ? operationBusy(branchLogOperation) : false)
-
   return (
     <div id={contentId} className="flex min-h-0 flex-1 flex-col">
       {repo.ui.detailTab === 'status' && (
-        <BranchStatusTab
-          detailId={detailId}
-          detail={detail}
-          layout={layout}
-          busy={operationBusy(repo.ops.pullRequests)}
-        />
+        <BranchStatusTab detailId={detailId} detail={detail} layout={layout} busy={detail.loading.pullRequests} />
       )}
       {repo.ui.detailTab === 'changes' && (
-        <BranchChangesTab detailId={detailId} repo={repo} branch={branch} selectedStatus={detail.selectedStatus} />
+        <BranchChangesTab
+          detailId={detailId}
+          repo={repo}
+          branch={branch}
+          selectedStatus={detail.selectedStatus}
+          statusLoading={detail.loading.status}
+          statusError={detail.errors.status}
+        />
       )}
       {repo.ui.detailTab === 'commits' && (
         <BranchCommitsTab
@@ -70,7 +65,9 @@ export function BranchDetailContent({ repo, detail, detailId, contentId, layout 
           branch={branch}
           branchLog={detail.branchLog}
           commitDetail={repo.ui.commitDetail}
-          busy={commitsBusy}
+          busy={detail.loading.commits}
+          initialLoading={detail.loading.logInitial}
+          appendLoading={detail.loading.logAppend}
         />
       )}
       {repo.ui.detailTab === 'terminal' && branch.worktreePath && (
@@ -101,7 +98,7 @@ function BranchStatusTab({
   busy,
 }: {
   detailId: string
-  detail: SelectedBranchDetail
+  detail: SelectedBranchDetailPresentation
   layout: RepoWorkspaceLayout
   busy?: boolean
 }) {
@@ -119,15 +116,17 @@ function BranchChangesTab({
   repo,
   branch,
   selectedStatus,
+  statusLoading,
+  statusError,
 }: {
   detailId: string
   repo: RepoState
   branch: BranchDetailBranch
-  selectedStatus: SelectedBranchDetail['selectedStatus']
+  selectedStatus: SelectedBranchDetailPresentation['selectedStatus']
+  statusLoading: boolean
+  statusError: string | null
 }) {
   const t = useT()
-  const statusLoading = operationBusy(repo.ops.status)
-  const statusError = repo.ops.status.error
   // Keep this tab-level count separate from StatusList's empty-state check: the tab decides the scroll boundary.
   const totalEntries = selectedStatus.reduce((n, wt) => n + wt.entries.length, 0)
 
@@ -163,13 +162,17 @@ function BranchCommitsTab({
   branchLog,
   commitDetail,
   busy,
+  initialLoading,
+  appendLoading,
 }: {
   detailId: string
   repoId: string
   branch: BranchDetailBranch
-  branchLog: SelectedBranchDetail['branchLog']
+  branchLog: SelectedBranchDetailPresentation['branchLog']
   commitDetail: RepoState['ui']['commitDetail']
   busy: boolean
+  initialLoading: boolean
+  appendLoading: boolean
 }) {
   return (
     <BranchTabPanel detailId={detailId} tabId="commits" busy={busy}>
@@ -177,7 +180,7 @@ function BranchCommitsTab({
         <CommitDetail repoId={repoId} detail={commitDetail.detail} />
       ) : commitDetail.phase === 'opening' ? (
         <OpeningCommitDetail repoId={repoId} />
-      ) : branchLog?.loading && !branchLog.entries.length ? (
+      ) : initialLoading ? (
         <ListSkeleton variant="log" />
       ) : branchLog?.entries.length ? (
         <ScrollPane>
@@ -187,7 +190,7 @@ function BranchCommitsTab({
             branch={branch.name}
             selectedHash={branchLog.selectedHash ?? null}
             hasMore={branchLog.hasMore}
-            loading={branchLog.loading}
+            loading={appendLoading}
           />
         </ScrollPane>
       ) : (

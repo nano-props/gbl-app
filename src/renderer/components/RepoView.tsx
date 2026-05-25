@@ -9,8 +9,8 @@ import { RepoToolbar } from '#/renderer/components/repo-toolbar/RepoToolbar.tsx'
 import { RepoWorkspaceSkeleton } from '#/renderer/components/Skeleton.tsx'
 import { RepoWorkspace, RepoWorkspacePane } from '#/renderer/components/Layout.tsx'
 import { useRepoToasts } from '#/renderer/hooks/useRepoToasts.tsx'
-import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
+import { getRepoWorkspacePresentation } from '#/renderer/components/repo-workspace/model.ts'
 
 interface Props {
   repoId: string
@@ -21,9 +21,10 @@ export function RepoView({ repoId }: Props) {
     useReposStore,
     (s) => {
       const repo = s.repos[repoId]
+      const presentation = getRepoWorkspacePresentation(repo)
       return {
-        exists: !!repo,
-        initialLoading: !!repo && operationBusy(repo.ops.snapshot) && repo.data.branches.length === 0,
+        exists: presentation.exists,
+        initialLoading: presentation.initialLoading,
         detailCollapsed: s.detailCollapsed,
         detailFocusMode: s.detailFocusMode,
         workspaceLayout: s.workspaceLayout,

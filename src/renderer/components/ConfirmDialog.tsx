@@ -6,10 +6,10 @@
 //   - Esc + outside-click both cancel
 // The `destructive` flag swaps the confirm button's variant so an
 // irreversible action reads as red rather than neutral.
+import { Loader2 } from 'lucide-react'
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -17,7 +17,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '#/renderer/components/ui/alert-dialog.tsx'
+import { Button } from '#/renderer/components/ui/button.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
+import { useAsyncPending } from '#/renderer/hooks/useAsyncPending.ts'
 
 interface Props {
   open: boolean
@@ -27,13 +29,19 @@ interface Props {
   /** Renders the confirm button red. Use for genuinely irreversible ops. */
   destructive?: boolean
   onCancel: () => void
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
 }
 
 export function ConfirmDialog({ open, title, message, confirmLabel, destructive, onCancel, onConfirm }: Props) {
   const t = useT()
+  const { isPending, run } = useAsyncPending<'confirm'>()
+
+  function handleConfirm() {
+    void run('confirm', onConfirm)
+  }
+
   return (
-    <AlertDialog open={open} onOpenChange={(o) => !o && onCancel()}>
+    <AlertDialog open={open} onOpenChange={(o) => !o && !isPending && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -45,10 +53,19 @@ export function ConfirmDialog({ open, title, message, confirmLabel, destructive,
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>{t('dialog.cancel')}</AlertDialogCancel>
-          <AlertDialogAction variant={destructive ? 'destructive' : 'default'} onClick={onConfirm}>
+          <AlertDialogCancel disabled={isPending} onClick={onCancel}>
+            {t('dialog.cancel')}
+          </AlertDialogCancel>
+          <Button
+            size="sm"
+            variant={destructive ? 'destructive' : 'default'}
+            disabled={isPending}
+            aria-busy={isPending ? true : undefined}
+            onClick={handleConfirm}
+          >
+            {isPending && <Loader2 className="animate-spin" />}
             {confirmLabel}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

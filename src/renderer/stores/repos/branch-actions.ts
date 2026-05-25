@@ -1,4 +1,4 @@
-import { runExclusiveOperation } from '#/renderer/stores/repos/operation-runner.ts'
+import { runExclusiveOperation, type RepoOperationTarget } from '#/renderer/stores/repos/operation-runner.ts'
 import { operationBusy } from '#/renderer/stores/repos/operations.ts'
 import type { RepoBranchActionReason, RepoOperationReason } from '#/renderer/stores/repos/operations.ts'
 import { canStartRemoteFetch } from '#/renderer/stores/repos/sync-state.ts'
@@ -9,6 +9,7 @@ import type {
 } from '#/renderer/stores/repos/branch-action-types.ts'
 import type { RepoState, ReposGet, ReposSet } from '#/renderer/stores/repos/types.ts'
 import type { ExecResult } from '#/renderer/types.ts'
+import { runBranchActionRefreshWorkflow } from '#/renderer/stores/repos/refresh-workflows.ts'
 import { rpc } from '#/renderer/rpc.ts'
 
 const NETWORK_BRANCH_ACTIONS = new Set<RepoBranchActionKind>(['pull', 'push'])
@@ -20,9 +21,6 @@ const BRANCH_ACTION_REASON_BY_KIND: Record<RepoBranchActionKind, RepoBranchActio
   deleteBranch: 'branch:deleteBranch',
   removeWorktree: 'branch:removeWorktree',
 }
-const BRANCH_ACTION_KIND_BY_REASON = Object.fromEntries(
-  Object.entries(BRANCH_ACTION_REASON_BY_KIND).map(([kind, reason]) => [reason, kind]),
-) as Record<RepoBranchActionReason, RepoBranchActionKind>
 type NetworkRepoBranchAction = Extract<RepoBranchAction, { kind: 'pull' | 'push' }>
 type NetworkFetchReason = Extract<RepoOperationReason, 'pull' | 'push'>
 const NETWORK_FETCH_REASON_BY_KIND: Record<NetworkRepoBranchAction['kind'], NetworkFetchReason> = {
@@ -34,16 +32,23 @@ export function repoBranchActionReason(kind: RepoBranchActionKind): RepoBranchAc
   return BRANCH_ACTION_REASON_BY_KIND[kind]
 }
 
-export function repoBranchActionKindFromReason(reason: RepoOperationReason | null): RepoBranchActionKind | null {
-  return isRepoBranchActionReason(reason) ? BRANCH_ACTION_KIND_BY_REASON[reason] : null
-}
-
 function branchActionReason(action: RepoBranchAction): RepoBranchActionReason {
   return repoBranchActionReason(action.kind)
 }
 
-function isRepoBranchActionReason(reason: RepoOperationReason | null): reason is RepoBranchActionReason {
-  return reason !== null && reason in BRANCH_ACTION_KIND_BY_REASON
+function branchActionOperationTarget(action: RepoBranchAction): string | null {
+  switch (action.kind) {
+    case 'checkout':
+    case 'pull':
+    case 'push':
+    case 'deleteBranch':
+    case 'removeWorktree':
+      return action.branch
+    case 'createWorktree':
+      return action.newBranch
+  }
+  const exhaustive: never = action
+  return exhaustive
 }
 
 function networkFetchReason(action: NetworkRepoBranchAction): NetworkFetchReason {
@@ -52,6 +57,14 @@ function networkFetchReason(action: NetworkRepoBranchAction): NetworkFetchReason
 
 function isNetworkBranchAction(action: RepoBranchAction): action is NetworkRepoBranchAction {
   return NETWORK_BRANCH_ACTIONS.has(action.kind)
+}
+
+function branchActionTarget(action: RepoBranchAction): RepoOperationTarget {
+  return {
+    select: (r) => r.ops.branchAction,
+    reason: branchActionReason(action),
+    target: branchActionOperationTarget(action),
+  }
 }
 
 function canStartBranchNetwork(repo: RepoState): boolean {
@@ -123,10 +136,10 @@ export function createBranchActions(set: ReposSet, get: ReposGet) {
         priority: 100,
         targets: network
           ? [
-              { select: (r) => r.ops.branchAction, reason: branchActionReason(action) },
+              branchActionTarget(action),
               { select: (r) => r.ops.fetch, reason: networkFetchReason(action) },
             ]
-          : [{ select: (r) => r.ops.branchAction, reason: branchActionReason(action) }],
+          : [branchActionTarget(action)],
         canStart: network ? canStartBranchNetwork : undefined,
         busyResult: network
           ? { ok: false, message: 'error.network-op-in-progress' }
@@ -139,7 +152,8 @@ export function createBranchActions(set: ReposSet, get: ReposGet) {
           get().setLastResult(id, result, token)
           if (!result.ok && result.message === 'error.network-op-in-progress') return
           if (result.ok || options?.refreshOnError !== false) {
-            await Promise.all([get().refreshSnapshot(id, { token }), get().refreshStatus(id, { token })])
+            const repo = get().repos[id]
+            if (repo?.instanceToken === token) await runBranchActionRefreshWorkflow(get, { id, token })
           }
           if (result.ok && network) get().clearFetchFailed(id, token)
         },

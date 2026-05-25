@@ -64,6 +64,7 @@ export function BranchList({ repoId, showActions = true, variant = 'list' }: Pro
         a.repo.data.branches === b.repo.data.branches &&
         a.repo.ui.branchViewMode === b.repo.ui.branchViewMode &&
         a.repo.data.status === b.repo.data.status &&
+        a.repo.ops.branchAction === b.repo.ops.branchAction &&
         a.branchCount === b.branchCount &&
         a.selected === b.selected &&
         a.current === b.current),

@@ -248,6 +248,19 @@ describe('remote fetch timestamps', () => {
     expect(snapshotCount).toBe(1)
   })
 
+  test('manual sync records thrown fetch failures instead of rejecting', async () => {
+    const token = seedRepo([branch('feature/a')])
+    rpcHandlers['repo.fetch'] = async () => {
+      throw new Error('network down')
+    }
+
+    await expect(useReposStore.getState().syncAndRefresh(REPO_ID, { token })).resolves.toBeUndefined()
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(repo?.events.at(-1)).toMatchObject({ kind: 'result', result: { ok: false, message: 'network down' } })
+    expect(repo?.ops.fetch.phase).toBe('idle')
+  })
+
   test('branch network actions expose branch and fetch operation state', async () => {
     const token = seedRepo([branch('feature/a')])
     let resolvePull!: (value: { ok: true; message: string }) => void
@@ -662,8 +675,8 @@ describe('core refresh request ordering', () => {
     const token = seedRepo([branch('stale'), branch('fresh')])
     updateRepoForTest((repo) => {
       repo.data.logsByBranch = {
-        stale: { entries: [], selectedHash: null, loading: false, hasMore: false },
-        fresh: { entries: [], selectedHash: null, loading: false, hasMore: false },
+        stale: { entries: [], selectedHash: null, hasMore: false },
+        fresh: { entries: [], selectedHash: null, hasMore: false },
       }
       repo.ops.logsByBranch = {
         stale: runningOperation({ reason: 'log' }),
@@ -770,7 +783,7 @@ describe('core refresh request ordering', () => {
     expect(log?.entries).toHaveLength(INITIAL_LOG_COUNT)
     expect(log?.selectedHash).toBe('hash-0')
     expect(log?.hasMore).toBe(true)
-    expect(log?.loading).toBe(false)
+    expect(useReposStore.getState().repos[REPO_ID]?.ops.logsByBranch.main?.phase).toBe('idle')
   })
 
   test('loadMoreBranchLog appends the next page', async () => {
@@ -779,7 +792,6 @@ describe('core refresh request ordering', () => {
       repo.data.logsByBranch.main = {
         entries: Array.from({ length: INITIAL_LOG_COUNT }, (_, i) => logEntry(i)),
         selectedHash: 'hash-0',
-        loading: false,
         hasMore: true,
       }
     })

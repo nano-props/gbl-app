@@ -1,6 +1,6 @@
 import { produce, type Draft } from 'immer'
 import { emptyRepoOperations } from '#/renderer/stores/repos/operations.ts'
-import type { RepoEvent, RepoState, ReposSet } from '#/renderer/stores/repos/types.ts'
+import type { RepoEvent, RepoState, ReposSet, ReposStore } from '#/renderer/stores/repos/types.ts'
 
 let nextInstanceToken = 1
 let nextEventId = 1
@@ -10,6 +10,7 @@ const MAX_REPO_EVENTS = 50
 export const inFlightFetchById = new Map<string, Promise<void>>()
 
 type RepoMutator = (repo: Draft<RepoState>) => void
+type ReposPatch = Pick<ReposStore, 'repos'>
 
 export function emptyRepo(id: string, name: string): RepoState {
   return {
@@ -62,12 +63,19 @@ export function updateIfFresh(set: ReposSet, id: string, token: number, mutator:
   set((s) => {
     const repo = s.repos[id]
     if (!repo || repo.instanceToken !== token) return s
-    const nextRepo = produce(repo, mutator)
-    if (nextRepo === repo) return s
-    return { repos: { ...s.repos, [id]: nextRepo } }
+    return replaceRepoState(s, repo, mutator)
   })
 }
 
 export function replaceRepo(repo: RepoState, mutator: RepoMutator): RepoState {
   return produce(repo, mutator)
+}
+
+export function replaceRepoState(
+  state: ReposPatch,
+  repo: RepoState,
+  mutator: RepoMutator,
+): ReposPatch {
+  const nextRepo = replaceRepo(repo, mutator)
+  return nextRepo === repo ? state : { repos: { ...state.repos, [repo.id]: nextRepo } }
 }
