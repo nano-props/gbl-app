@@ -1,6 +1,12 @@
 import { produce, type Draft } from 'immer'
 import { emptyRepoResources } from '#/renderer/stores/repos/resources.ts'
-import type { RepoEvent, RepoResultEventOptions, RepoState, ReposSet, ReposStore } from '#/renderer/stores/repos/types.ts'
+import type {
+  RepoEvent,
+  RepoResultEventOptions,
+  RepoState,
+  ReposSet,
+  ReposStore,
+} from '#/renderer/stores/repos/types.ts'
 
 let nextInstanceToken = 1
 let nextEventId = 1

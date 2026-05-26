@@ -1,7 +1,6 @@
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { promises as fs } from 'node:fs'
-import path from 'node:path'
 import { TRPCError } from '@trpc/server'
 import {
   createAppRouter,
@@ -29,7 +28,14 @@ import {
   isAncestor,
   isGitRepo,
 } from '#/main/git/branches.ts'
-import { fetchAll, getBrowserRemoteUrl, getNewPullRequestUrl, getRemoteInfo, pullBranch, pushBranch } from '#/main/git/remote.ts'
+import {
+  fetchAll,
+  getBrowserRemoteUrl,
+  getNewPullRequestUrl,
+  getRemoteInfo,
+  pullBranch,
+  pushBranch,
+} from '#/main/git/remote.ts'
 import { getWorkingStatus } from '#/main/git/status.ts'
 import { getWorktreePatch } from '#/main/git/patch.ts'
 import { resolveKnownWorktree, resolveRemovableWorktree } from '#/main/git/guards.ts'
@@ -46,7 +52,13 @@ import {
 } from '#/shared/git-types.ts'
 import { isReservedGlobalShortcut, parseGlobalShortcut } from '#/shared/accelerator.ts'
 import { checkGitAvailable } from '#/main/git/helper.ts'
-import { isValidAbsolutePath, isValidBranch, isValidCwd, isValidOptionalBranch } from '#/main/ipc/validation.ts'
+import {
+  isValidAbsolutePath,
+  isValidBranch,
+  isValidCwd,
+  isValidOptionalBranch,
+  toSafeSessionPath,
+} from '#/main/ipc/validation.ts'
 import { getMainWindow } from '#/main/window.ts'
 import { getTheme, setColorTheme, setThemePref, subscribeTheme } from '#/main/theme.ts'
 import {
@@ -502,8 +514,9 @@ function createRpcHandlers(): AppRpcHandlers {
       },
       saveSession: async ({ session }) => saveSession(session),
       addRecentRepo: async ({ repoPath }) => {
-        if (typeof repoPath !== 'string') return []
-        const recentRepos = await addRecentRepo(repoPath)
+        const safePath = toSafeSessionPath(repoPath)
+        if (!safePath) return []
+        const recentRepos = await addRecentRepo(safePath)
         buildAppMenu()
         return recentRepos
       },
@@ -642,18 +655,22 @@ async function removeRepoWorktree(
 async function createPatch({ cwd, worktreePath }: { cwd: string; worktreePath: string }): Promise<ExecResult> {
   if (!isValidCwd(cwd) || !isValidAbsolutePath(worktreePath))
     return { ok: false, message: 'error.invalid-worktree-path' }
+  const rpcSignal = currentRpcSignal()
+  if (rpcSignal?.aborted) return { ok: false, message: 'cancelled' }
   const ctrl = new AbortController()
   let timedOut = false
+  const abortPatch = () => ctrl.abort()
+  rpcSignal?.addEventListener('abort', abortPatch, { once: true })
   const timeout = setTimeout(() => {
     timedOut = true
     ctrl.abort()
   }, PATCH_TIMEOUT_MS)
   if ('unref' in timeout && typeof timeout.unref === 'function') timeout.unref()
   try {
-    const target = resolveKnownWorktree(
-      await getWorktrees(cwd, { includeStatus: false, signal: ctrl.signal }),
-      worktreePath,
-    )
+    const worktrees = await getWorktrees(cwd, { includeStatus: false, signal: ctrl.signal })
+    if (timedOut) return { ok: false, message: `git timed out after ${PATCH_TIMEOUT_MS / 1000}s` }
+    if (ctrl.signal.aborted) return { ok: false, message: 'cancelled' }
+    const target = resolveKnownWorktree(worktrees, worktreePath)
     if (!target.ok) return target
     const patch = await getWorktreePatch(target.path, { signal: ctrl.signal })
     if (timedOut) return { ok: false, message: `git timed out after ${PATCH_TIMEOUT_MS / 1000}s` }
@@ -668,18 +685,23 @@ async function createPatch({ cwd, worktreePath }: { cwd: string; worktreePath: s
     const msg = (typeof e.stderr === 'string' && e.stderr.trim()) || e.message || 'error.unknown'
     return { ok: false, message: msg }
   } finally {
+    rpcSignal?.removeEventListener('abort', abortPatch)
     clearTimeout(timeout)
   }
 }
 
 async function openRepoRemote({ cwd, branch }: { cwd: string; branch?: string }): Promise<ExecResult> {
   if (!isValidCwd(cwd) || !isValidOptionalBranch(branch)) return { ok: false, message: 'error.invalid-arguments' }
+  const signal = currentRpcSignal()
+  const signalOptions = signal ? { signal } : undefined
   // Only branch opens need the default branch: it tells us whether a PR is a
   // reverse/default-branch PR that should not be opened from the default row.
-  const defaultBranch = branch ? await getDefaultBranch(cwd) : ''
+  const defaultBranch = branch ? await getDefaultBranch(cwd, signalOptions) : ''
+  if (signal?.aborted) return { ok: false, message: 'cancelled' }
   const isDefaultBranch = !!defaultBranch && branch === defaultBranch
   if (branch) {
-    const detectedPr = await getBranchPullRequest(cwd, branch)
+    const detectedPr = await getBranchPullRequest(cwd, branch, signalOptions)
+    if (signal?.aborted) return { ok: false, message: 'cancelled' }
     if (
       detectedPr?.url &&
       branchPullRequestBelongsToBranch({ name: branch, isDefault: isDefaultBranch }, detectedPr) &&
@@ -689,10 +711,12 @@ async function openRepoRemote({ cwd, branch }: { cwd: string; branch?: string })
     }
   }
   if (typeof branch === 'string' && branch && !isDefaultBranch) {
-    const prUrl = await getNewPullRequestUrl(cwd, branch)
+    const prUrl = await getNewPullRequestUrl(cwd, branch, signalOptions)
+    if (signal?.aborted) return { ok: false, message: 'cancelled' }
     if (prUrl && (await openHttpsExternal(prUrl))) return { ok: true, message: prUrl }
   }
-  const url = await getBrowserRemoteUrl(cwd, { branch })
+  const url = await getBrowserRemoteUrl(cwd, signal ? { branch, signal } : { branch })
+  if (signal?.aborted) return { ok: false, message: 'cancelled' }
   if (!url) return { ok: false, message: 'error.open-remote-unavailable' }
   if (!(await openHttpsExternal(url))) return { ok: false, message: 'error.invalid-url' }
   return { ok: true, message: url }
@@ -856,11 +880,6 @@ async function saveSession(session: SessionState): Promise<void> {
   // layout; the live native menu snapshot is only an optimization for
   // immediate radio/check enabled state.
   setMenuWorkspaceLayout(workspaceLayout)
-}
-
-function toSafeSessionPath(p: unknown): string | null {
-  if (typeof p !== 'string' || p.length === 0 || p.includes('\0') || !path.isAbsolute(p)) return null
-  return path.normalize(p)
 }
 
 function globalShortcutPayload(accelerator: string): { accelerator: string; registered: boolean } {

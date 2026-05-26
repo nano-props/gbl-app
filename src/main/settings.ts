@@ -24,6 +24,7 @@ import {
   type WorkspaceLayout,
 } from '#/shared/workspace-layout.ts'
 import { DEFAULT_COLOR_THEME, isColorTheme } from '#/shared/color-theme.ts'
+import { toSafeSessionPath } from '#/main/ipc/validation.ts'
 import type { EditorPref, LangPref, SessionState, TerminalPref, ThemePref } from '#/shared/rpc.ts'
 import type { ColorTheme } from '#/shared/color-theme.ts'
 
@@ -141,14 +142,6 @@ function normalizeRecentRepos(recentRepos: unknown): string[] {
     if (normalized.length >= MAX_RECENT_REPOS) break
   }
   return normalized
-}
-
-function toSafeSessionPath(p: unknown): string | null {
-  if (typeof p !== 'string' || p.length === 0 || p.includes('\0') || !path.isAbsolute(p)) return null
-  // Session/recent-repo entries are persisted local paths, not a sandbox
-  // boundary. Normalize odd absolute spellings; repo probes still decide
-  // whether the path is usable when it is opened.
-  return path.normalize(p)
 }
 
 function normalizeThemePref(value: unknown): ThemePref {

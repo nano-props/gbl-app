@@ -1,5 +1,6 @@
 import { git, gitResultWithOptions } from '#/main/git/helper.ts'
 import { parseStatus, parseWorktrees } from '#/main/git/parsers.ts'
+import { mapWithConcurrency } from '#/main/git/concurrency.ts'
 import type { ExecResult, WorktreeInfo } from '#/shared/git-types.ts'
 
 const WORKTREE_STATUS_CONCURRENCY = 16
@@ -34,7 +35,7 @@ export async function getWorktrees(cwd: string, options?: GetWorktreesOptions): 
           wt.isDirty = undefined
         }
       },
-      options?.signal,
+      { signal: options?.signal, abort: 'throw' },
     )
 
     return worktrees
@@ -89,22 +90,4 @@ export async function createWorktree(
     worktreePath,
     baseBranch,
   )
-}
-
-async function mapWithConcurrency<T>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<void>,
-  signal?: AbortSignal,
-): Promise<void> {
-  let cursor = 0
-  const worker = async () => {
-    while (true) {
-      if (signal?.aborted) throw new Error('cancelled')
-      const i = cursor++
-      if (i >= items.length) return
-      await fn(items[i]!)
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
 }

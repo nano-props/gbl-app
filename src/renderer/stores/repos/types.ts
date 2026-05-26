@@ -86,9 +86,7 @@ export interface RepoRemoteState {
   fetchError: string | null
 }
 
-export type RepoAvailabilityState =
-  | { phase: 'available' }
-  | { phase: 'unavailable'; reason: string; checkedAt: number }
+export type RepoAvailabilityState = { phase: 'available' } | { phase: 'unavailable'; reason: string; checkedAt: number }
 
 export interface CachedRepoState {
   savedAt: number
@@ -185,7 +183,12 @@ export interface ReposStore {
   openCommit: (id: string, hash: string) => Promise<void>
   closeCommit: (id: string) => void
 
-  setLastResult: (id: string, result: { ok: boolean; message: string }, token: number, options?: RepoResultEventOptions) => void
+  setLastResult: (
+    id: string,
+    result: { ok: boolean; message: string },
+    token: number,
+    options?: RepoResultEventOptions,
+  ) => void
   clearEvents: (id: string, eventIds: number[]) => void
   hydrateSession: (openRepos: string[], activeRepo: string | null) => Promise<void>
   /** Clear the fetchFailed flag — called by manual fetch success and

@@ -25,6 +25,7 @@
 import { execa } from 'execa'
 import { git } from '#/main/git/helper.ts'
 import { parseStatus } from '#/main/git/parsers.ts'
+import { mapWithConcurrency } from '#/main/git/concurrency.ts'
 
 // Cap concurrent `git diff --no-index` invocations. Without a cap a
 // worktree with thousands of untracked files would fork that many git
@@ -62,7 +63,7 @@ export async function getWorktreePatch(worktreePath: string, options?: { signal?
       if (patch === null) throw new Error(`Failed to diff untracked file: ${p}`)
       return patch
     },
-    signal,
+    { signal, abort: 'throw' },
   )
 
   const combined = [trackedPatch, ...untrackedPatches].filter((s) => s.length > 0).join('\n')
@@ -90,29 +91,4 @@ async function safeDiffNoIndex(cwd: string, relativePath: string, signal?: Abort
   if (signal?.aborted || result.isCanceled) throw new Error('cancelled')
   if (result.exitCode === 0 || result.exitCode === 1) return result.stdout.trimEnd()
   return null
-}
-
-/** Run `fn` over `items` with at most `limit` invocations in flight at
- *  once, preserving input order in the result array. Used instead of
- *  `Promise.all(items.map(fn))` when each call spawns an OS process —
- *  unbounded fan-out can exhaust the process table on big worktrees. */
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-  signal?: AbortSignal,
-): Promise<R[]> {
-  const results = new Array<R>(items.length)
-  let cursor = 0
-  const worker = async () => {
-    while (true) {
-      if (signal?.aborted) throw new Error('cancelled')
-      const i = cursor++
-      if (i >= items.length) return
-      results[i] = await fn(items[i]!)
-    }
-  }
-  const workers = Array.from({ length: Math.min(limit, items.length) }, worker)
-  await Promise.all(workers)
-  return results
 }

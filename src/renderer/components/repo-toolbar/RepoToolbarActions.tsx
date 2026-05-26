@@ -49,11 +49,7 @@ function CreateWorktreeAction({ repoId }: Props) {
     },
     (a, b) =>
       a === b ||
-      (!!a &&
-        !!b &&
-        a.id === b.id &&
-        a.instanceToken === b.instanceToken &&
-        a.branchAction === b.branchAction),
+      (!!a && !!b && a.id === b.id && a.instanceToken === b.instanceToken && a.branchAction === b.branchAction),
   )
   const [createOpen, setCreateOpen] = useState(false)
   const branchActionBusy = repo ? resourceBusy(repo.branchAction) : true

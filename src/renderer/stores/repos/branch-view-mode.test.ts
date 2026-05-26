@@ -54,10 +54,7 @@ describe('visibleBranches', () => {
   test('returns branches visible in the active repo view mode', () => {
     const branches = [branch('main', { worktreePath: '/repo' }), branch('feature/plain')]
 
-    expect(visibleBranches({ branches, viewMode: 'all' }).map((b) => b.name)).toEqual([
-      'main',
-      'feature/plain',
-    ])
+    expect(visibleBranches({ branches, viewMode: 'all' }).map((b) => b.name)).toEqual(['main', 'feature/plain'])
     expect(visibleBranches({ branches, viewMode: 'worktrees' }).map((b) => b.name)).toEqual(['main'])
     expect(visibleBranches({ branches, viewMode: 'no-worktree' }).map((b) => b.name)).toEqual(['feature/plain'])
   })
@@ -69,9 +66,9 @@ describe('visibleBranches', () => {
       'feature/plain',
       'fix/plain',
     ])
-    expect(
-      visibleBranches({ branches, viewMode: 'no-worktree', searchQuery: 'feature' }).map((b) => b.name),
-    ).toEqual(['feature/plain'])
+    expect(visibleBranches({ branches, viewMode: 'no-worktree', searchQuery: 'feature' }).map((b) => b.name)).toEqual([
+      'feature/plain',
+    ])
   })
 })
 

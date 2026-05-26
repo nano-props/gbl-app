@@ -118,7 +118,6 @@ export function openTerminalSession(input: TerminalOpenSessionInput): TerminalOp
   session.disposables.push(
     session.pty.onExit(() => {
       session.pty = null
-      disposeSessionListeners(session)
       // Exit IPC is a renderer UI hint for dismissing the terminal pane; main
       // still tears down the session immediately, so missed delivery only leaves
       // stale renderer chrome while subsequent writes/resizes no-op.
@@ -317,7 +316,17 @@ function sendToOwner(
   channel: string,
   event: TerminalOutputEvent | TerminalExitEvent,
 ): void {
-  const win = BrowserWindow.getAllWindows().find((candidate) => candidate.webContents.id === ownerWebContentsId)
+  const win = BrowserWindow.getAllWindows().find((candidate) => {
+    try {
+      return (
+        !candidate.isDestroyed() &&
+        !candidate.webContents.isDestroyed() &&
+        candidate.webContents.id === ownerWebContentsId
+      )
+    } catch {
+      return false
+    }
+  })
   if (win) sendToWindow(win, channel, event)
 }
 

@@ -30,6 +30,7 @@ describe('parseGlobalShortcut', () => {
     expect(parseGlobalShortcut('Shift+G')).toBeNull()
     expect(parseGlobalShortcut('Command')).toBeNull()
     expect(parseGlobalShortcut('Command+G+H')).toBeNull()
+    expect(parseGlobalShortcut(`Command+${'A'.repeat(200)}`)).toBeNull()
   })
 
   test('accepts app-reserved punctuation keys for conflict checks', () => {
@@ -41,6 +42,8 @@ describe('parseGlobalShortcut', () => {
 describe('global shortcut reservations', () => {
   test('rejects app menu shortcuts as global activation shortcuts', () => {
     expect(isReservedGlobalShortcut('Command+O')).toBe(true)
+    expect(isReservedGlobalShortcut('Control+Shift+O')).toBe(true)
+    expect(isReservedGlobalShortcut('Command+4')).toBe(true)
     expect(isReservedGlobalShortcut('Control+W')).toBe(true)
     expect(isReservedGlobalShortcut('Control+Shift+W')).toBe(true)
     expect(isReservedGlobalShortcut('Command+Alt+I')).toBe(true)

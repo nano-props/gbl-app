@@ -106,6 +106,7 @@ export function BranchDetailToolbar({ repo, detail, detailId, contentId, collaps
               type="button"
               role="tab"
               aria-selected={selected}
+              aria-expanded={selected ? !collapsed : undefined}
               aria-controls={collapsed ? undefined : `${detailId}-${tab.id}-panel`}
               tabIndex={selected ? 0 : -1}
               onClick={() => {

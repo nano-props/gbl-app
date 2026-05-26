@@ -18,19 +18,16 @@ export async function getBrowserRemoteUrl(
   cwd: string,
   options?: { branch?: string; signal?: AbortSignal },
 ): Promise<string | null> {
-  try {
-    const [remotes, upstream] = await Promise.all([
-      getRemotes(cwd, options?.signal),
-      options?.branch ? getUpstreamParts(cwd, options.branch, options.signal) : Promise.resolve(null),
-    ])
-    return pickBrowserRemote(remotes, upstream)?.url ?? null
-  } catch {
-    return null
-  }
+  const remote = await getBrowserRemote(cwd, options)
+  return remote?.url ?? null
 }
 
-export async function getNewPullRequestUrl(cwd: string, branch: string): Promise<string | null> {
-  const remote = await getBrowserRemote(cwd, { branch })
+export async function getNewPullRequestUrl(
+  cwd: string,
+  branch: string,
+  options?: { signal?: AbortSignal },
+): Promise<string | null> {
+  const remote = await getBrowserRemote(cwd, { branch, signal: options?.signal })
   if (!remote) return null
   if (remote.provider === 'gitlab') {
     const params = new URLSearchParams({ 'merge_request[source_branch]': branch })

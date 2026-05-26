@@ -113,7 +113,8 @@ export const ko: Record<DictKey, string> = {
   'repo-tabs.clone-cloning': '클론 중…',
   'repo-tabs.clone-opened': '리포지토리를 클론했습니다',
   'repo-unavailable.title': '리포지토리 경로를 사용할 수 없음',
-  'repo-unavailable.body': 'Goblin 이 이 경로를 Git 리포지토리로 읽을 수 없습니다. 폴더를 복원하거나 .git 을 다시 만든 뒤 재시도하세요.',
+  'repo-unavailable.body':
+    'Goblin 이 이 경로를 Git 리포지토리로 읽을 수 없습니다. 폴더를 복원하거나 .git 을 다시 만든 뒤 재시도하세요.',
   'repo-unavailable.path': '경로',
   'repo-unavailable.reason': '이유',
   'repo-unavailable.retry': '다시 확인',
@@ -339,7 +340,8 @@ export const ko: Record<DictKey, string> = {
   'error.open-remote-unavailable': '브라우저에서 열 수 있는 원격이 없습니다',
   'error.pull-no-remote': '업스트림 원격이 설정되어 있지 않습니다',
   'error.push-no-remote': '푸시할 원격이 설정되어 있지 않습니다',
-  'error.push-ambiguous-remote': '여러 원격이 설정되어 있습니다. 푸시하기 전에 업스트림을 설정하거나 origin 원격을 추가하세요.',
+  'error.push-ambiguous-remote':
+    '여러 원격이 설정되어 있습니다. 푸시하기 전에 업스트림을 설정하거나 origin 원격을 추가하세요.',
   'error.invalid-url': 'URL이 올바르지 않습니다',
   'error.invalid-path': '경로가 올바르지 않습니다',
   'error.invalid-worktree-path': '워크트리 경로가 올바르지 않습니다',
@@ -425,7 +427,6 @@ export const ko: Record<DictKey, string> = {
   'help.section.nav': '내비게이션',
   'help.section.views': '보기',
   'help.section.branch-actions': '브랜치 동작',
-  'help.section.actions': '동작',
   'help.section.app': '앱',
   'help.row.next-branch': '다음 브랜치 / 커밋',
   'help.row.prev-branch': '이전 브랜치 / 커밋',

@@ -1,5 +1,6 @@
 import { git } from '#/main/git/helper.ts'
 import { parseStatus, parseWorktrees } from '#/main/git/parsers.ts'
+import { mapWithConcurrency } from '#/main/git/concurrency.ts'
 import type { WorktreeStatus } from '#/shared/git-types.ts'
 
 const WORKTREE_STATUS_CONCURRENCY = 16
@@ -46,7 +47,7 @@ export async function getWorkingStatus(cwd: string, options?: { signal?: AbortSi
         return null
       }
     },
-    options?.signal,
+    { signal: options?.signal },
   )
 
   if (options?.signal?.aborted) return []
@@ -56,24 +57,4 @@ export async function getWorkingStatus(cwd: string, options?: { signal?: AbortSi
   // in the terminal).
   filtered.sort((a, b) => Number(b.isMain) - Number(a.isMain))
   return filtered
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-  signal?: AbortSignal,
-): Promise<R[]> {
-  const results = new Array<R>(items.length)
-  let cursor = 0
-  const worker = async () => {
-    while (true) {
-      if (signal?.aborted) return
-      const i = cursor++
-      if (i >= items.length) return
-      results[i] = await fn(items[i]!)
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
-  return results
 }

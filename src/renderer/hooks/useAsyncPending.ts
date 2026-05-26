@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   return !!value && typeof (value as { then?: unknown }).then === 'function'
 }
 

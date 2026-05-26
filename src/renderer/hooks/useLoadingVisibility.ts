@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export const DEFAULT_LOADING_DELAY_MS = 150
 export const DEFAULT_MIN_LOADING_VISIBLE_MS = 300
@@ -12,29 +12,33 @@ export function useLoadingVisibility(loading: boolean, options?: LoadingVisibili
   const delayMs = options?.delayMs ?? DEFAULT_LOADING_DELAY_MS
   const minVisibleMs = options?.minVisibleMs ?? DEFAULT_MIN_LOADING_VISIBLE_MS
   const [visible, setVisible] = useState(false)
-  const [shownAt, setShownAt] = useState<number | null>(null)
+  const visibleRef = useRef(false)
+  const shownAtRef = useRef<number | null>(null)
 
   useEffect(() => {
     let timer: number | undefined
     if (loading) {
-      if (visible) return
+      if (visibleRef.current) return
       timer = window.setTimeout(() => {
-        setShownAt(Date.now())
+        shownAtRef.current = Date.now()
+        visibleRef.current = true
         setVisible(true)
       }, delayMs)
     } else {
-      if (!visible) return
+      if (!visibleRef.current) return
+      const shownAt = shownAtRef.current
       const elapsed = shownAt === null ? minVisibleMs : Date.now() - shownAt
       timer = window.setTimeout(
         () => {
-          setShownAt(null)
+          shownAtRef.current = null
+          visibleRef.current = false
           setVisible(false)
         },
         Math.max(0, minVisibleMs - elapsed),
       )
     }
     return () => window.clearTimeout(timer)
-  }, [delayMs, loading, minVisibleMs, shownAt, visible])
+  }, [delayMs, loading, minVisibleMs])
 
   return visible
 }

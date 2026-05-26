@@ -120,7 +120,8 @@ export const ja: Record<DictKey, string> = {
   'repo-tabs.clone-cloning': 'クローン中…',
   'repo-tabs.clone-opened': 'リポジトリをクローンしました',
   'repo-unavailable.title': 'リポジトリパスを利用できません',
-  'repo-unavailable.body': 'Goblin はこのパスを Git リポジトリとして読み取れません。フォルダを復元するか .git を作り直してから再試行してください。',
+  'repo-unavailable.body':
+    'Goblin はこのパスを Git リポジトリとして読み取れません。フォルダを復元するか .git を作り直してから再試行してください。',
   'repo-unavailable.path': 'パス',
   'repo-unavailable.reason': '理由',
   'repo-unavailable.retry': '再確認',
@@ -346,7 +347,8 @@ export const ja: Record<DictKey, string> = {
   'error.open-remote-unavailable': 'ブラウザで開けるリモートがありません',
   'error.pull-no-remote': '上流リモートが設定されていません',
   'error.push-no-remote': 'プッシュ先のリモートが設定されていません',
-  'error.push-ambiguous-remote': '複数のリモートが設定されています。プッシュする前に上流を設定するか origin リモートを追加してください。',
+  'error.push-ambiguous-remote':
+    '複数のリモートが設定されています。プッシュする前に上流を設定するか origin リモートを追加してください。',
   'error.invalid-url': '無効な URL',
   'error.invalid-path': '無効なパス',
   'error.invalid-worktree-path': '無効なワークツリーパス',
@@ -432,7 +434,6 @@ export const ja: Record<DictKey, string> = {
   'help.section.nav': 'ナビゲーション',
   'help.section.views': 'ビュー',
   'help.section.branch-actions': 'ブランチ操作',
-  'help.section.actions': 'アクション',
   'help.section.app': 'アプリ',
   'help.row.next-branch': '次のブランチ / コミット',
   'help.row.prev-branch': '前のブランチ / コミット',

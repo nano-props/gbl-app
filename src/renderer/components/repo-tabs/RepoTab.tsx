@@ -76,12 +76,6 @@ export function RepoTab({
               repo.id,
               e.key === 'ArrowLeft' ? 'prev' : e.key === 'ArrowRight' ? 'next' : e.key === 'Home' ? 'first' : 'last',
             )
-            return
-          }
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            onActivate(repo.id)
-            return
           }
         }}
         className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-sm border-0 bg-transparent p-0 text-left text-inherit outline-none"

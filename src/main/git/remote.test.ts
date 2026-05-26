@@ -1,22 +1,30 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
 import { execaSync } from 'execa'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { fetchAll, getBrowserRemoteUrl, getNewPullRequestUrl, getRemoteInfo, pullBranch, pushBranch } from '#/main/git/remote.ts'
+import {
+  fetchAll,
+  getBrowserRemoteUrl,
+  getNewPullRequestUrl,
+  getRemoteInfo,
+  pullBranch,
+  pushBranch,
+} from '#/main/git/remote.ts'
 import { getGitHubRepoRef } from '#/main/github/graphql.ts'
 
+let templateBase: string | null = null
 let tmp: string | null = null
 
 function git(cwd: string, ...args: string[]): string {
   return execaSync('git', args, { cwd }).stdout.trim()
 }
 
-function initRepo(remoteDirName = 'remote.git'): { repo: string; remote: string } {
-  tmp = mkdtempSync(path.join(os.tmpdir(), 'gbl-remote-test-'))
-  const remote = path.join(tmp, remoteDirName)
-  const seed = path.join(tmp, 'seed')
-  const repo = path.join(tmp, 'repo')
+beforeAll(() => {
+  templateBase = mkdtempSync(path.join(os.tmpdir(), 'gbl-remote-template-'))
+  const remote = path.join(templateBase, 'remote.git')
+  const seed = path.join(templateBase, 'seed')
+  const repo = path.join(templateBase, 'repo')
   execaSync('git', ['init', '--bare', remote], { stdio: 'ignore' })
   execaSync('git', ['init', seed], { stdio: 'ignore' })
   git(seed, 'config', 'user.email', 'test@example.com')
@@ -28,6 +36,22 @@ function initRepo(remoteDirName = 'remote.git'): { repo: string; remote: string 
   execaSync('git', ['clone', '-b', 'main', remote, repo], { stdio: 'ignore' })
   git(repo, 'config', 'user.email', 'test@example.com')
   git(repo, 'config', 'user.name', 'Test User')
+})
+
+afterAll(() => {
+  if (templateBase) rmSync(templateBase, { recursive: true, force: true })
+  templateBase = null
+})
+
+function initRepo(remoteDirName = 'remote.git'): { repo: string; remote: string } {
+  tmp = mkdtempSync(path.join(os.tmpdir(), 'gbl-remote-test-'))
+  cpSync(templateBase!, tmp, { recursive: true })
+  if (remoteDirName !== 'remote.git') {
+    renameSync(path.join(tmp, 'remote.git'), path.join(tmp, remoteDirName))
+  }
+  const remote = path.join(tmp, remoteDirName)
+  const repo = path.join(tmp, 'repo')
+  git(repo, 'remote', 'set-url', 'origin', remote)
   return { repo, remote }
 }
 

@@ -41,10 +41,16 @@ export function BranchSearchInput({ value, disabled = false, onChange }: Props) 
         'group/search relative flex h-7 shrink-0 items-center overflow-hidden rounded-md border border-input bg-background shadow-xs transition-[width,border-color,background-color,opacity] duration-150 ease-out focus-within:border-ring',
         expanded ? 'w-52' : 'w-7',
         !expanded && !disabled && 'hover:bg-accent',
-        disabled && 'opacity-50',
+        disabled && 'cursor-not-allowed opacity-50',
       )}
     >
-      <Search className="ml-1.5 size-3.5 shrink-0 text-muted-foreground group-hover/search:text-foreground" aria-hidden />
+      <Search
+        className={cn(
+          'ml-1.5 size-3.5 shrink-0 text-muted-foreground',
+          !disabled && 'group-hover/search:text-foreground',
+        )}
+        aria-hidden
+      />
       <input
         ref={inputRef}
         value={value}

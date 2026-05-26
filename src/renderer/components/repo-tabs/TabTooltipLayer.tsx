@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react'
+import { useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react'
 import { createPortal } from 'react-dom'
 import { tildify } from '#/renderer/lib/paths.ts'
 import type { RepoTabSummary } from '#/renderer/components/repo-tabs/types.ts'
@@ -26,23 +26,18 @@ const MARGIN = 8
 export function TabTooltipLayer({ repos, delayMs = DEFAULT_DELAY_MS, children, ...props }: TabTooltipLayerProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const timerRef = useRef<number | null>(null)
-  const reposRef = useRef(repos)
-  const delayRef = useRef(delayMs)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
-  reposRef.current = repos
-  delayRef.current = delayMs
-
-  function clearTimer() {
+  const clearTimer = useCallback(() => {
     if (timerRef.current === null) return
     window.clearTimeout(timerRef.current)
     timerRef.current = null
-  }
+  }, [])
 
-  function hideTooltip() {
+  const hideTooltip = useCallback(() => {
     clearTimer()
     setTooltip(null)
-  }
+  }, [clearTimer])
 
   useEffect(() => {
     const root = rootRef.current
@@ -55,7 +50,7 @@ export function TabTooltipLayer({ repos, delayMs = DEFAULT_DELAY_MS, children, .
     function repoFromElement(element: HTMLElement): RepoTabSummary | null {
       const id = element.dataset.repoTabTooltipId
       if (!id) return null
-      return reposRef.current.find((repo) => repo.id === id) ?? null
+      return repos.find((repo) => repo.id === id) ?? null
     }
 
     function showTooltipAfterDelay(element: HTMLElement, repo: RepoTabSummary) {
@@ -73,7 +68,7 @@ export function TabTooltipLayer({ repos, delayMs = DEFAULT_DELAY_MS, children, .
             height: rect.height,
           },
         })
-      }, delayRef.current)
+      }, delayMs)
     }
 
     function handlePointerOver(event: PointerEvent) {
@@ -127,11 +122,11 @@ export function TabTooltipLayer({ repos, delayMs = DEFAULT_DELAY_MS, children, .
       window.removeEventListener('blur', hideTooltip)
       clearTimer()
     }
-  }, [])
+  }, [clearTimer, delayMs, hideTooltip, repos])
 
   useEffect(() => {
     hideTooltip()
-  }, [repos])
+  }, [hideTooltip, repos])
 
   return (
     <>

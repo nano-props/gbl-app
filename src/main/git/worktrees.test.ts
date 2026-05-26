@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { createWorktree, removeWorktree } from '#/main/git/worktrees.ts'
 
+let templateRepo: string | null = null
 let tmp: string | null = null
 const extraPaths: string[] = []
 
@@ -12,14 +13,24 @@ function runGit(cwd: string, args: string[]): void {
   execFileSync('git', args, { cwd, stdio: 'ignore' })
 }
 
+beforeAll(() => {
+  templateRepo = mkdtempSync(path.join(os.tmpdir(), 'gbl-worktrees-template-'))
+  runGit(templateRepo, ['init', '-b', 'main'])
+  runGit(templateRepo, ['config', 'user.email', 'test@example.com'])
+  runGit(templateRepo, ['config', 'user.name', 'Test User'])
+  writeFileSync(path.join(templateRepo, 'README.md'), 'initial\n')
+  runGit(templateRepo, ['add', 'README.md'])
+  runGit(templateRepo, ['commit', '-q', '-m', 'initial'])
+})
+
+afterAll(() => {
+  if (templateRepo) rmSync(templateRepo, { recursive: true, force: true })
+  templateRepo = null
+})
+
 function createRepo(): string {
   tmp = mkdtempSync(path.join(os.tmpdir(), 'gbl-worktrees-test-'))
-  runGit(tmp, ['init', '-b', 'main'])
-  runGit(tmp, ['config', 'user.email', 'test@example.com'])
-  runGit(tmp, ['config', 'user.name', 'Test User'])
-  writeFileSync(path.join(tmp, 'README.md'), 'initial\n')
-  runGit(tmp, ['add', 'README.md'])
-  runGit(tmp, ['commit', '-q', '-m', 'initial'])
+  cpSync(templateRepo!, tmp, { recursive: true })
   return tmp
 }
 

@@ -53,7 +53,12 @@ export function createCommitActions(set: ReposSet, get: ReposGet) {
       })
     },
 
-    setLastResult(id: string, result: { ok: boolean; message: string }, token: number, options?: RepoResultEventOptions) {
+    setLastResult(
+      id: string,
+      result: { ok: boolean; message: string },
+      token: number,
+      options?: RepoResultEventOptions,
+    ) {
       set((s) => {
         const repo = s.repos[id]
         if (!repo || repo.instanceToken !== token) return s

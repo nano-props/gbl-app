@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { execaSync } from 'execa'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import {
@@ -12,14 +12,28 @@ import {
 
 const TOKEN_ENV_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN'] as const
 
+let templateRepo: string | null = null
 let originalFetch: typeof globalThis.fetch
 let originalEnv: Partial<Record<(typeof TOKEN_ENV_KEYS)[number], string | undefined>>
 let tmp: string | null = null
 
+beforeAll(() => {
+  templateRepo = mkdtempSync(path.join(os.tmpdir(), 'gbl-pr-template-'))
+  execaSync('git', ['init', templateRepo], { stdio: 'ignore' })
+  execaSync('git', ['remote', 'add', 'origin', 'https://github.com/acme/repo.git'], {
+    cwd: templateRepo,
+    stdio: 'ignore',
+  })
+})
+
+afterAll(() => {
+  if (templateRepo) rmSync(templateRepo, { recursive: true, force: true })
+  templateRepo = null
+})
+
 function initGitHubRepo(): string {
   tmp = mkdtempSync(path.join(os.tmpdir(), 'gbl-pr-test-'))
-  execaSync('git', ['init', tmp], { stdio: 'ignore' })
-  execaSync('git', ['remote', 'add', 'origin', 'https://github.com/acme/repo.git'], { cwd: tmp, stdio: 'ignore' })
+  cpSync(templateRepo!, tmp, { recursive: true })
   return tmp
 }
 

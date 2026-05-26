@@ -1,4 +1,4 @@
-import { repoOperation, repoOperationBusy } from '#/renderer/stores/repos/runtime.ts'
+import { repoOperationBusy } from '#/renderer/stores/repos/runtime.ts'
 import { resourceBusy } from '#/renderer/stores/repos/resources.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 
@@ -26,6 +26,6 @@ export function isRemoteFetchDue(
   now: number = Date.now(),
 ): repo is RepoState {
   if (intervalMs <= 0 || !canStartRemoteFetch(repo)) return false
-  const lastFetchAt = repo.resources.fetch.loadedAt ?? repoOperation(repo.id, 'fetch').settledAt
+  const lastFetchAt = repo.resources.fetch.loadedAt
   return lastFetchAt === null || now - lastFetchAt >= intervalMs
 }

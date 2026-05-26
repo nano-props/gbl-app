@@ -1,5 +1,9 @@
 import { appendRepoEvent, errorEvent, inFlightFetchById, updateIfFresh } from '#/renderer/stores/repos/helpers.ts'
-import { isRepoUnavailableReason, markRepoAvailable, markRepoUnavailable } from '#/renderer/stores/repos/availability.ts'
+import {
+  isRepoUnavailableReason,
+  markRepoAvailable,
+  markRepoUnavailable,
+} from '#/renderer/stores/repos/availability.ts'
 import { branchForVisibleLog, selectedBranchForBranchSet } from '#/renderer/stores/repos/branch-view-mode.ts'
 import { runExclusiveOperation, runLatestOperation } from '#/renderer/stores/repos/operation-runner.ts'
 import { persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
@@ -178,7 +182,6 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
       selectResource: (r) => (r.resources.logsByBranch[branch] ??= idleResource()),
       start: (r) => {
         r.data.logsByBranch[branch] ??= emptyBranchLog()
-        r.resources.logsByBranch[branch] ??= idleResource()
         return { hasData: (r.data.logsByBranch[branch]?.entries.length ?? 0) > 0 }
       },
       task: (signal) => rpc.repo.log.query({ cwd: id, branch, count: requestCount, skip: loaded }, { signal }),

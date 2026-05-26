@@ -120,7 +120,8 @@ export const en = {
   'repo-tabs.clone-cloning': 'Cloning…',
   'repo-tabs.clone-opened': 'Repository cloned',
   'repo-unavailable.title': 'Repository path unavailable',
-  'repo-unavailable.body': 'Goblin cannot read this path as a Git repository. Restore the folder or recreate .git, then retry.',
+  'repo-unavailable.body':
+    'Goblin cannot read this path as a Git repository. Restore the folder or recreate .git, then retry.',
   'repo-unavailable.path': 'Path',
   'repo-unavailable.reason': 'Reason',
   'repo-unavailable.retry': 'Check again',
@@ -348,7 +349,8 @@ export const en = {
   'error.open-remote-unavailable': 'No browser remote',
   'error.pull-no-remote': 'Upstream remote is not configured',
   'error.push-no-remote': 'No remote configured for push',
-  'error.push-ambiguous-remote': 'Multiple remotes are configured. Set an upstream or add an origin remote before pushing.',
+  'error.push-ambiguous-remote':
+    'Multiple remotes are configured. Set an upstream or add an origin remote before pushing.',
   'error.invalid-url': 'Invalid URL',
   'error.invalid-path': 'Invalid path',
   'error.invalid-worktree-path': 'Invalid worktree path',
@@ -433,7 +435,6 @@ export const en = {
   'help.section.nav': 'Navigation',
   'help.section.views': 'Views',
   'help.section.branch-actions': 'Branch actions',
-  'help.section.actions': 'Actions',
   'help.section.app': 'App',
   'help.row.next-branch': 'Next branch / commit',
   'help.row.prev-branch': 'Previous branch / commit',

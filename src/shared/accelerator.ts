@@ -3,15 +3,20 @@ export const DEFAULT_GLOBAL_SHORTCUT = 'Alt+G'
 const MODIFIERS = ['Command', 'Control', 'Alt', 'Shift'] as const
 const PRIMARY_MODIFIERS = new Set<string>(['Command', 'Control', 'Alt'])
 const SPECIAL_SHORTCUT_KEYS = new Set<string>([',', '.', '[', ']'])
+const MAX_GLOBAL_SHORTCUT_LENGTH = 128
 const RESERVED_GLOBAL_SHORTCUTS = new Set<string>([
   'Command+O',
   'Control+O',
+  'Command+Shift+O',
+  'Control+Shift+O',
   'Command+1',
   'Control+1',
   'Command+2',
   'Control+2',
   'Command+3',
   'Control+3',
+  'Command+4',
+  'Control+4',
   'Command+J',
   'Control+J',
   'Command+R',
@@ -70,6 +75,7 @@ const MODIFIER_LABELS: Record<(typeof MODIFIERS)[number], string> = {
 
 export function parseGlobalShortcut(value: unknown): string | null {
   if (typeof value !== 'string') return null
+  if (value.length > MAX_GLOBAL_SHORTCUT_LENGTH) return null
   const tokens = value
     .split('+')
     .map((token) => token.trim())

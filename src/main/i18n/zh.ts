@@ -292,7 +292,8 @@ export const zh: Record<DictKey, string> = {
   'action.confirm-push-protected-body': '你正准备直接推送到 <branch>{branch}</branch>，通常这种分支应该走 PR。继续吗？',
   'action.confirm-push-confirm': '仍然推送',
   'action.confirm-delete-branch-title': '删除 {branch}？',
-  'action.confirm-delete-branch-body': '这会删除本地分支 <branch>{branch}</branch>。如果分支尚未完全合并，Git 会拒绝删除。',
+  'action.confirm-delete-branch-body':
+    '这会删除本地分支 <branch>{branch}</branch>。如果分支尚未完全合并，Git 会拒绝删除。',
   'action.confirm-delete-branch-confirm': '删除分支',
   'action.confirm-force-delete-standalone-title': '强制删除 {branch}？',
   'action.confirm-force-delete-standalone-body':
@@ -420,7 +421,6 @@ export const zh: Record<DictKey, string> = {
   'help.section.nav': '导航',
   'help.section.views': '视图',
   'help.section.branch-actions': '分支操作',
-  'help.section.actions': '操作',
   'help.section.app': '应用',
   'help.row.next-branch': '下一个分支 / 提交',
   'help.row.prev-branch': '上一个分支 / 提交',

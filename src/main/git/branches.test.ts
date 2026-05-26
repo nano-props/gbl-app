@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import {
@@ -15,6 +15,7 @@ import {
 } from '#/main/git/branches.ts'
 import type { BranchInfo } from '#/shared/git-types.ts'
 
+let templateRepo: string | null = null
 let tmp: string | null = null
 
 function branch(name: string): BranchInfo {
@@ -45,12 +46,22 @@ function commitFile(cwd: string, file: string, value: string, message: string, s
   runGit(cwd, ['commit', '-q', '-m', message], seconds)
 }
 
+beforeAll(() => {
+  templateRepo = mkdtempSync(path.join(os.tmpdir(), 'gbl-branches-template-'))
+  runGit(templateRepo, ['init', '-b', 'main'])
+  runGit(templateRepo, ['config', 'user.email', 'test@example.com'])
+  runGit(templateRepo, ['config', 'user.name', 'Test User'])
+  commitFile(templateRepo, 'README.md', 'initial\n', 'initial', 0)
+})
+
+afterAll(() => {
+  if (templateRepo) rmSync(templateRepo, { recursive: true, force: true })
+  templateRepo = null
+})
+
 function createRepo(): string {
   tmp = mkdtempSync(path.join(os.tmpdir(), 'gbl-branches-test-'))
-  runGit(tmp, ['init', '-b', 'main'])
-  runGit(tmp, ['config', 'user.email', 'test@example.com'])
-  runGit(tmp, ['config', 'user.name', 'Test User'])
-  commitFile(tmp, 'README.md', 'initial\n', 'initial', 0)
+  cpSync(templateRepo!, tmp, { recursive: true })
   return tmp
 }
 

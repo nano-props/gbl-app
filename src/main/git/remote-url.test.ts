@@ -19,9 +19,7 @@ describe('parseGitRemoteUrl', () => {
 
   test('normalizes browser URLs from supported remote URL forms', () => {
     expect(remoteUrlToHttps('git@gitlab.com:acme/platform/repo.git')).toBe('https://gitlab.com/acme/platform/repo')
-    expect(remoteUrlToHttps('ssh://git@github.example.com/acme/repo.git')).toBe(
-      'https://github.example.com/acme/repo',
-    )
+    expect(remoteUrlToHttps('ssh://git@github.example.com/acme/repo.git')).toBe('https://github.example.com/acme/repo')
   })
 
   test('rejects malformed and local remotes', () => {

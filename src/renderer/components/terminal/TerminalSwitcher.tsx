@@ -67,6 +67,7 @@ export function TerminalSwitcher({
                   className="goblin-terminal-switcher__select"
                   onClick={() => onSelect(groupKey, session.key)}
                   title={session.title}
+                  aria-label={session.title}
                   aria-current={session.active ? 'true' : undefined}
                 >
                   <TerminalIcon size={16} />

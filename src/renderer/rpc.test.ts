@@ -67,4 +67,17 @@ describe('renderer rpc abort forwarding', () => {
     expect(calls).toContainEqual({ path: 'repo.abort', input: { cwd: '/tmp/repo' } })
     expect(calls).toContainEqual({ path: 'goblin:rpc-abort', input: { requestId: expect.any(String) } })
   })
+
+  test('patch aborts only its RPC request', async () => {
+    const calls: Array<{ path: string; input?: unknown }> = []
+    installBridge(calls)
+    const ctrl = new AbortController()
+    const promise = rpc.repo.patch.mutate({ cwd: '/tmp/repo', worktreePath: '/tmp/repo' }, { signal: ctrl.signal })
+
+    ctrl.abort()
+    await expect(promise).rejects.toThrow('Request aborted')
+
+    expect(calls).not.toContainEqual({ path: 'repo.abort', input: { cwd: '/tmp/repo' } })
+    expect(calls).toContainEqual({ path: 'goblin:rpc-abort', input: { requestId: expect.any(String) } })
+  })
 })

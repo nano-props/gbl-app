@@ -3,6 +3,7 @@ import { ipcMain } from 'electron'
 import { getDefaultBranch, isAncestor, getCurrentBranch, getUpstream, isGitRepo } from '#/main/git/branches.ts'
 import { getWorktrees } from '#/main/git/worktrees.ts'
 import { getWorkingStatus } from '#/main/git/status.ts'
+import { getWorktreePatch } from '#/main/git/patch.ts'
 import { resolveKnownWorktree, resolveRemovableWorktree } from '#/main/git/guards.ts'
 import { getBrowserRemoteUrl, getNewPullRequestUrl, pullBranch } from '#/main/git/remote.ts'
 import { getBranchPullRequest } from '#/main/git/pull-requests.ts'
@@ -305,6 +306,36 @@ describe('main repo rpc cancellation', () => {
     expect(aborted).toBe(true)
     await expect(status).resolves.toEqual({ ok: true, data: [] })
     expect(getWorkingStatus).toHaveBeenCalledWith('/repo', { signal: expect.any(AbortSignal) })
+  })
+
+  test('returns cancelled when patch is aborted during worktree loading', async () => {
+    let observedSignal: AbortSignal | undefined
+    vi.mocked(getWorktrees).mockImplementationOnce(
+      (_cwd, options) =>
+        new Promise((resolve) => {
+          observedSignal = options?.signal
+          options?.signal?.addEventListener(
+            'abort',
+            () => resolve([{ path: '/repo-feature', branch: 'feature/cancel', isBare: false, isPrimary: false }]),
+            { once: true },
+          )
+        }),
+    )
+
+    const patch = invokeRpc(
+      'repo.patch',
+      { cwd: '/repo', worktreePath: '/repo-feature' },
+      trustedEvent,
+      'rpc-read-patch',
+    )
+    await vi.waitFor(() => expect(getWorktrees).toHaveBeenCalled())
+    expect(observedSignal).toBeInstanceOf(AbortSignal)
+    const aborted = await invokeAbortRpc({ requestId: 'rpc-read-patch' }, trustedEvent)
+
+    expect(aborted).toBe(true)
+    await expect(patch).resolves.toEqual({ ok: true, data: { ok: false, message: 'cancelled' } })
+    expect(resolveKnownWorktree).not.toHaveBeenCalled()
+    expect(getWorktreePatch).not.toHaveBeenCalled()
   })
 
   test('passes branch context when opening a default branch remote URL', async () => {

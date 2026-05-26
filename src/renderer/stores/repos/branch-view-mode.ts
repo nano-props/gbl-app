@@ -27,8 +27,7 @@ export function branchMatchesSearchQuery(branch: BranchInfo, query: string): boo
 
 export function visibleBranches({ branches, viewMode, searchQuery = '' }: VisibleBranchesInput): BranchInfo[] {
   return branches.filter(
-    (branch) =>
-      branchMatchesViewMode(branch, viewMode) && branchMatchesSearchQuery(branch, searchQuery),
+    (branch) => branchMatchesViewMode(branch, viewMode) && branchMatchesSearchQuery(branch, searchQuery),
   )
 }
 
