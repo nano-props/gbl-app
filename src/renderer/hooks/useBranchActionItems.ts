@@ -7,6 +7,7 @@ import { useT } from '#/renderer/stores/i18n.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { EditorAppIcon, TerminalAppIcon } from '#/renderer/components/ExternalAppIcon/index.tsx'
 import { useBranchActions, type BranchActionItemId } from '#/renderer/hooks/useBranchActions.tsx'
+import { branchActionDisplayPhase, cancelableBranchActionItemId } from '#/renderer/hooks/branch-action-state.ts'
 import { branchPullRequestBelongsToBranch } from '#/shared/git-types.ts'
 import type { BranchInfo, BrowserRemoteProvider } from '#/renderer/types.ts'
 
@@ -17,6 +18,7 @@ export interface BranchActionItem {
   ariaLabel?: string
   disabled: boolean
   busy?: boolean
+  cancelable?: boolean
   visible: boolean
   destructive?: boolean
   shortcut?: string
@@ -59,6 +61,21 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
   const { blocked, busyAction, capabilities, actions, dialogs } = useBranchActions(repo, branch)
   const disabled = blocked
   const busy = (id: BranchActionItemId) => busyAction === id
+  const phase = branchActionDisplayPhase(repo, branch.name)
+  const cancelableAction = cancelableBranchActionItemId(repo, branch.name)
+  const cancelable = (id: BranchActionItemId) => cancelableAction === id
+  const disabledFor = (id: BranchActionItemId) => disabled && !cancelable(id)
+  const titleFor = (id: BranchActionItemId, title?: string) => (cancelable(id) ? t('action.cancel') : title)
+  const branchActionLabel = (
+    id: BranchActionItemId,
+    idleKey: string,
+    loadingKey: string,
+    queuedKey?: string,
+  ): string => {
+    if (!busy(id)) return t(idleKey)
+    if (phase === 'queued' && queuedKey) return t(queuedKey)
+    return t(loadingKey)
+  }
   const pullRequest =
     branch.pullRequest && branchPullRequestBelongsToBranch(branch, branch.pullRequest) ? branch.pullRequest : undefined
   const remoteIcon = pullRequest ? GitPullRequest : browserRemoteIcon(branchBrowserRemoteProvider(repo, branch))
@@ -82,8 +99,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
   const mainItems: BranchActionItem[] = [
     {
       id: 'checkout',
-      label: t('action.checkout'),
-      disabled,
+      label: branchActionLabel('checkout', 'action.checkout', 'action.checkout-loading'),
+      disabled: disabledFor('checkout'),
       busy: busy('checkout'),
       visible: !capabilities.isCurrent && !capabilities.checkedOutInAnotherWorktree,
       shortcut: '↩',
@@ -92,9 +109,11 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
     },
     {
       id: 'pull',
-      label: t('action.pull'),
-      disabled,
+      label: branchActionLabel('pull', 'action.pull', 'action.pull-loading', 'action.pull-queued'),
+      title: titleFor('pull'),
+      disabled: disabledFor('pull'),
       busy: busy('pull'),
+      cancelable: cancelable('pull'),
       visible: capabilities.canPull,
       shortcut: 'P',
       icon: createElement(ArrowDown),
@@ -102,9 +121,11 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
     },
     {
       id: 'push',
-      label: t('action.push'),
-      disabled,
+      label: branchActionLabel('push', 'action.push', 'action.push-loading', 'action.push-queued'),
+      title: titleFor('push'),
+      disabled: disabledFor('push'),
       busy: busy('push'),
+      cancelable: cancelable('push'),
       visible: capabilities.canPush,
       shortcut: '⇧P',
       icon: createElement(ArrowUp),
@@ -115,7 +136,7 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
           {
             id: 'terminal' as const,
             label: t('worktrees.open-in-terminal-label'),
-            disabled,
+            disabled: disabledFor('terminal'),
             busy: busy('terminal'),
             visible: true,
             shortcut: 'G',
@@ -129,7 +150,7 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
           {
             id: 'editor' as const,
             label: t('worktrees.open-in-editor-label'),
-            disabled,
+            disabled: disabledFor('editor'),
             busy: busy('editor'),
             visible: true,
             shortcut: 'V',
@@ -141,7 +162,7 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
     {
       id: 'remote',
       label: pullRequest ? t('action.remote-pr', { n: pullRequest.number }) : t('action.remote'),
-      disabled,
+      disabled: disabledFor('remote'),
       busy: busy('remote'),
       visible: capabilities.canOpenRemote,
       shortcut: '⇧G',
@@ -155,8 +176,12 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
       ? [
           {
             id: 'removeWorktree' as const,
-            label: t('action.remove-worktree'),
-            disabled,
+            label: branchActionLabel(
+              'removeWorktree',
+              'action.remove-worktree',
+              'action.remove-worktree-removing-title',
+            ),
+            disabled: disabledFor('removeWorktree'),
             busy: busy('removeWorktree'),
             visible: true,
             destructive: true,
@@ -169,8 +194,8 @@ export function useBranchActionItems(repo: RepoState, branch: BranchInfo): Branc
       ? [
           {
             id: 'deleteBranch' as const,
-            label: t('action.delete-branch'),
-            disabled,
+            label: branchActionLabel('deleteBranch', 'action.delete-branch', 'action.delete-branch-deleting-title'),
+            disabled: disabledFor('deleteBranch'),
             busy: busy('deleteBranch'),
             visible: true,
             destructive: true,

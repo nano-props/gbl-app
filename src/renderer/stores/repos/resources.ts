@@ -17,6 +17,8 @@ export interface RepoPullRequestResourceState extends RepoResourceState {
 export interface RepoBranchActionResourceState extends RepoResourceState {
   kind: RepoBranchActionKind | null
   target: string | null
+  /** UI-facing phase for an active branch action; null when the resource is idle. */
+  actionPhase: 'queued' | 'running' | null
 }
 
 export interface RepoResourcesState {
@@ -53,6 +55,7 @@ export function idleBranchActionResource(loadedAt: number | null = null): RepoBr
     ...idleResource(loadedAt),
     kind: null,
     target: null,
+    actionPhase: null,
   }
 }
 
@@ -141,10 +144,20 @@ export function startBranchActionResource(
   resource: RepoBranchActionResourceState,
   kind: RepoBranchActionKind,
   target: string | null,
+  options?: { actionPhase?: 'queued' | 'running' },
 ): void {
   startResource(resource)
   resource.kind = kind
   resource.target = target
+  resource.actionPhase = options?.actionPhase ?? 'running'
+}
+
+export function setBranchActionResourcePhase(
+  resource: RepoBranchActionResourceState,
+  actionPhase: 'queued' | 'running',
+): void {
+  if (!resourceBusy(resource)) return
+  resource.actionPhase = actionPhase
 }
 
 export function finishBranchActionResourceSuccess(
@@ -154,10 +167,12 @@ export function finishBranchActionResourceSuccess(
   finishResourceSuccess(resource, loadedAt)
   resource.kind = null
   resource.target = null
+  resource.actionPhase = null
 }
 
 export function finishBranchActionResourceError(resource: RepoBranchActionResourceState, error: string): void {
   finishResourceError(resource, error)
   resource.kind = null
   resource.target = null
+  resource.actionPhase = null
 }

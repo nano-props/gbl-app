@@ -15,9 +15,20 @@ const BRANCH_ACTION_LOADING_LABEL_KEYS: Record<RepoBranchActionKind, string> = {
   removeWorktree: 'action.remove-worktree-removing-title',
 }
 
-export function repoBranchActionLoadingLabel(kind: RepoBranchActionKind): RepoActionLabel {
+const BRANCH_ACTION_QUEUED_LABEL_KEYS: Partial<Record<RepoBranchActionKind, string>> = {
+  pull: 'action.pull-queued',
+  push: 'action.push-queued',
+}
+
+export function repoBranchActionLoadingLabel(
+  kind: RepoBranchActionKind,
+  phase: 'queued' | 'running' = 'running',
+): RepoActionLabel {
   return {
-    labelKey: BRANCH_ACTION_LOADING_LABEL_KEYS[kind],
+    labelKey:
+      phase === 'queued'
+        ? (BRANCH_ACTION_QUEUED_LABEL_KEYS[kind] ?? BRANCH_ACTION_LOADING_LABEL_KEYS[kind])
+        : BRANCH_ACTION_LOADING_LABEL_KEYS[kind],
   }
 }
 

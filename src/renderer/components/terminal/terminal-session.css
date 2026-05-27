@@ -17,10 +17,15 @@
 }
 
 .goblin-terminal-progress {
-  position: relative;
-  flex: 0 0 2px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  height: 2px;
   background: color-mix(in srgb, var(--color-brand) 20%, transparent);
   overflow: hidden;
+  pointer-events: none;
 }
 
 .goblin-terminal-progress__bar {
@@ -59,8 +64,12 @@
 }
 
 @keyframes goblin-terminal-progress-indeterminate {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(350%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
 }
 
 .goblin-managed-terminal-frame {

@@ -10,7 +10,9 @@ import type { BranchInfo, ExecResult } from '#/renderer/types.ts'
 import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
 import { rpc } from '#/renderer/rpc.ts'
 import {
-  branchActionItemIdFromOperation,
+  branchActionDisplayPhase,
+  branchActionBusyItemId,
+  cancelableBranchActionItemId,
   isBranchActionBlocked,
   type BranchActionItemId,
 } from '#/renderer/hooks/branch-action-state.ts'
@@ -65,8 +67,11 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
   const t = useT()
   const setLastResult = useReposStore((s) => s.setLastResult)
   const runBranchAction = useReposStore((s) => s.runBranchAction)
+  const cancelBranchAction = useReposStore((s) => s.cancelBranchAction)
   const branchActionBusy = isBranchActionBlocked(repo)
-  const branchOperationAction = branchActionItemIdFromOperation(repo, branch.name)
+  const branchBusyAction = branchActionBusyItemId(repo, branch.name)
+  const branchActionPhase = branchActionDisplayPhase(repo, branch.name)
+  const cancelableBranchAction = cancelableBranchActionItemId(repo, branch.name)
   const {
     pending: pendingLocalAction,
     hasPending: hasPendingLocalAction,
@@ -138,10 +143,18 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
   }
 
   function pull() {
+    if (cancelableBranchAction === 'pull' && branchActionPhase !== null) {
+      cancelBranchAction(repo.id, { token: repo.instanceToken })
+      return
+    }
     return runRepoAction({ kind: 'pull', branch: branch.name, worktreePath: branch.worktreePath })
   }
 
   function push() {
+    if (cancelableBranchAction === 'push' && branchActionPhase !== null) {
+      cancelBranchAction(repo.id, { token: repo.instanceToken })
+      return
+    }
     if (branchActionBusy || hasPendingLocalAction()) return
     if (PROTECTED_BRANCHES.has(branch.name)) {
       setPushConfirm(branch.name)
@@ -401,7 +414,7 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
 
   return {
     blocked: branchActionBusy || pendingLocalAction !== null,
-    busyAction: pendingLocalAction ?? branchOperationAction,
+    busyAction: pendingLocalAction ?? branchBusyAction,
     capabilities,
     actions: {
       copyPatch,

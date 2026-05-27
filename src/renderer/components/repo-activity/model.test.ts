@@ -30,6 +30,7 @@ interface RepoOverrides {
   fetchBusy?: boolean
   branchActionKind?: RepoBranchActionKind
   branchActionTarget?: string
+  branchActionPhase?: 'queued' | 'running'
   selectedBranch?: string | null
 }
 
@@ -44,6 +45,7 @@ function repo(overrides: RepoOverrides = {}): RepoState {
       base.resources.branchAction,
       overrides.branchActionKind ?? 'checkout',
       overrides.branchActionTarget ?? 'feature/a',
+      overrides.branchActionPhase ? { actionPhase: overrides.branchActionPhase } : undefined,
     )
   }
   for (const branch of overrides.logBusyBranches ?? (overrides.logBusyBranch ? [overrides.logBusyBranch] : [])) {
@@ -136,6 +138,57 @@ describe('getRepoActivity', () => {
       kind: 'branch-action',
       labelKey: 'action.delete-branch-deleting-title',
       blocksSync: true,
+    })
+  })
+
+  test('uses short waiting labels for queued branch network actions', () => {
+    const r = repo({
+      branchActionBusy: true,
+      branchActionKind: 'pull',
+      branchActionTarget: 'feature/a',
+      branchActionPhase: 'queued',
+    })
+
+    expect(getRepoActivity(r)).toMatchObject({
+      kind: 'branch-action',
+      labelKey: 'action.pull-queued',
+      blocksSync: true,
+    })
+  })
+
+  test('keeps branch network actions waiting while core refresh is busy', () => {
+    const r = repo({
+      branchActionBusy: true,
+      branchActionKind: 'push',
+      branchActionTarget: 'feature/a',
+      branchActionPhase: 'queued',
+      statusBusy: true,
+    })
+
+    expect(getRepoActivity(r)).toMatchObject({
+      kind: 'branch-action',
+      labelKey: 'action.push-queued',
+      blocksSync: true,
+    })
+  })
+
+  test('uses running labels when actionPhase is running or unset', () => {
+    const running = repo({
+      branchActionBusy: true,
+      branchActionKind: 'pull',
+      branchActionTarget: 'feature/a',
+      branchActionPhase: 'running',
+    })
+    const unset = repo({ branchActionBusy: true, branchActionKind: 'push', branchActionTarget: 'feature/a' })
+    unset.resources.branchAction.actionPhase = null
+
+    expect(getRepoActivity(running)).toMatchObject({
+      kind: 'branch-action',
+      labelKey: 'action.pull-loading',
+    })
+    expect(getRepoActivity(unset)).toMatchObject({
+      kind: 'branch-action',
+      labelKey: 'action.push-loading',
     })
   })
 

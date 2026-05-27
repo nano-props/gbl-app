@@ -49,7 +49,7 @@ export function BranchActionsDropdown({
   const busyAction = pendingAction ?? visibleItems.find((item) => item.busy)?.id ?? null
 
   function runItem(item: BranchActionItem) {
-    if (item.disabled || busyAction) return
+    if (branchActionMenuItemDisabled(item, busyAction)) return
     void run(item.id, item.onSelect)
   }
 
@@ -106,7 +106,8 @@ function BranchActionMenuItem({
 }) {
   return (
     <DropdownMenuItem
-      disabled={item.disabled || busy !== null}
+      disabled={branchActionMenuItemDisabled(item, busy)}
+      title={item.title}
       onClick={onSelect}
       variant={item.destructive ? 'destructive' : 'default'}
       className={item.shortcut ? 'whitespace-nowrap' : undefined}
@@ -116,4 +117,8 @@ function BranchActionMenuItem({
       {item.shortcut && <DropdownMenuShortcut>{item.shortcut}</DropdownMenuShortcut>}
     </DropdownMenuItem>
   )
+}
+
+export function branchActionMenuItemDisabled(item: BranchActionItem, busy: BranchActionItem['id'] | null): boolean {
+  return item.disabled || (busy !== null && (busy !== item.id || !item.cancelable))
 }

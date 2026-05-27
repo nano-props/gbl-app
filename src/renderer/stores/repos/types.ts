@@ -179,6 +179,7 @@ export interface ReposStore {
     action: RepoBranchAction,
     options?: RunBranchActionOptions,
   ) => Promise<ExecResult | null>
+  cancelBranchAction: (id: string, options?: { token?: number }) => boolean
 
   openCommit: (id: string, hash: string) => Promise<void>
   closeCommit: (id: string) => void

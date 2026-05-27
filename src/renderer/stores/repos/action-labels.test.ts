@@ -28,6 +28,18 @@ describe('repoBranchActionLoadingLabel', () => {
       labelKey: 'action.checkout-loading',
     })
   })
+
+  test('returns short queued labels for network branch actions', () => {
+    expect(repoBranchActionLoadingLabel('pull', 'queued')).toEqual({
+      labelKey: 'action.pull-queued',
+    })
+    expect(repoBranchActionLoadingLabel('push', 'queued')).toEqual({
+      labelKey: 'action.push-queued',
+    })
+    expect(repoBranchActionLoadingLabel('checkout', 'queued')).toEqual({
+      labelKey: 'action.checkout-loading',
+    })
+  })
 })
 
 describe('repoEventActionSuccessLabel', () => {

@@ -55,7 +55,7 @@ function refreshActivity(kind: Exclude<RepoActivityKind, 'branch-action'>, block
 function branchActionActivity(repo: RepoState): RepoActivity | null {
   const action = repo.resources.branchAction
   if (!resourceBusy(action) || !action.kind) return null
-  const label = repoBranchActionLoadingLabel(action.kind)
+  const label = repoBranchActionLoadingLabel(action.kind, action.actionPhase ?? 'running')
   return {
     kind: 'branch-action',
     labelKey: label.labelKey,
