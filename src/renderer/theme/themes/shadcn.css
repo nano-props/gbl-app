@@ -7,9 +7,12 @@ html[data-color-theme='shadcn'][data-theme='light'] {
   --gbl-surface-overlay: #ffffff;
   --gbl-surface-muted: #f4f4f5;
   --gbl-surface-hover: #e4e4e7;
+  --gbl-surface-control: #ffffff;
+  --gbl-surface-control-hover: #f4f4f5;
   --gbl-text-primary: #09090b;
   --gbl-text-secondary-strong: #27272a;
   --gbl-text-secondary: #71717a;
+  --gbl-text-selected-secondary: #52525b;
   --gbl-border-subtle: rgb(9 9 11 / 0.1);
   --gbl-border-default: #e4e4e7;
   --gbl-border-strong: #d4d4d8;
@@ -40,7 +43,10 @@ html[data-color-theme='shadcn'][data-theme='light'] {
   --gbl-status-danger-border: rgb(var(--gbl-status-danger-rgb) / 0.3);
 
   --color-overlay-scrim: rgb(0 0 0 / 0.42);
+  --gbl-shadow-xs: 0 1px 1px rgb(0 0 0 / 0.04);
   --gbl-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --gbl-shadow-md: 0 8px 24px rgb(0 0 0 / 0.1);
+  --gbl-shadow-lg: 0 18px 48px rgb(0 0 0 / 0.14);
   --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.3);
   --shadow-control-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.35);
   --radius: 0.625rem;
@@ -79,9 +85,12 @@ html[data-color-theme='shadcn'][data-theme='dark'] {
   --gbl-surface-overlay: #18181b;
   --gbl-surface-muted: #27272a;
   --gbl-surface-hover: #27272a;
+  --gbl-surface-control: #18181b;
+  --gbl-surface-control-hover: #27272a;
   --gbl-text-primary: #fafafa;
   --gbl-text-secondary-strong: #e4e4e7;
   --gbl-text-secondary: #a1a1aa;
+  --gbl-text-selected-secondary: #d4d4d8;
   --gbl-border-subtle: rgb(255 255 255 / 0.08);
   --gbl-border-default: rgb(255 255 255 / 0.1);
   --gbl-border-strong: rgb(255 255 255 / 0.16);
@@ -112,7 +121,10 @@ html[data-color-theme='shadcn'][data-theme='dark'] {
   --gbl-status-danger-border: rgb(var(--gbl-status-danger-rgb) / 0.32);
 
   --color-overlay-scrim: rgb(0 0 0 / 0.5);
-  --gbl-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.12);
+  --gbl-shadow-xs: 0 1px 1px rgb(0 0 0 / 0.16);
+  --gbl-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.22);
+  --gbl-shadow-md: 0 8px 24px rgb(0 0 0 / 0.34);
+  --gbl-shadow-lg: 0 18px 48px rgb(0 0 0 / 0.44);
   --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.08);
   --shadow-control-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.08);
   --radius: 0.625rem;

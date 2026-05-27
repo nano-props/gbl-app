@@ -88,12 +88,19 @@ export function BranchRow({
           ) : isWorktree ? (
             <FolderTree size={14} className={branch.worktreeDirty ? 'text-attention' : 'text-brand-text'} />
           ) : (
-            <GitBranch size={14} className="text-muted-foreground" />
+            <GitBranch size={14} className={isSelected ? 'text-selected-muted-foreground' : 'text-muted-foreground'} />
           )}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="min-w-0 truncate text-sm font-medium text-foreground">{branch.name}</span>
+            <span
+              className={cn(
+                'min-w-0 truncate text-sm font-medium',
+                isSelected ? 'text-selected-foreground' : 'text-foreground',
+              )}
+            >
+              {branch.name}
+            </span>
             <span className="flex shrink-0 items-center gap-1.5">
               {branch.isDefault && (
                 <Badge variant="outline" className="font-mono text-muted-foreground">
@@ -132,7 +139,12 @@ export function BranchRow({
               )}
             </span>
           </span>
-          <span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <span
+            className={cn(
+              'mt-0.5 flex min-w-0 items-center gap-2 text-xs',
+              isSelected ? 'text-selected-muted-foreground' : 'text-muted-foreground',
+            )}
+          >
             <span className="min-w-0 truncate" title={branch.lastCommitMessage || undefined}>
               {branch.lastCommitMessage || '—'}
             </span>

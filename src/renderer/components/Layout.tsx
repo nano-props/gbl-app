@@ -120,7 +120,7 @@ export function RepoWorkspace({
 }
 
 function WorkspaceSeparator() {
-  return <div className="bg-border" aria-hidden />
+  return <div className="bg-separator" aria-hidden />
 }
 
 export function RepoWorkspacePane({ children }: PaneProps) {

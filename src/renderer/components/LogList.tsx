@@ -62,10 +62,22 @@ export function LogList({ repoId, log, branch, selectedHash, hasMore = false, lo
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span className="font-mono text-xs text-brand-text shrink-0">{entry.shortHash}</span>
-                <span className="min-w-0 truncate text-sm text-foreground" title={message}>
+                <span
+                  className={cn(
+                    'min-w-0 truncate text-sm',
+                    isSelected ? 'text-selected-foreground' : 'text-foreground',
+                  )}
+                  title={message}
+                >
                   {message}
                 </span>
-                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground" title={commitMeta}>
+                <span
+                  className={cn(
+                    'shrink-0 whitespace-nowrap text-xs',
+                    isSelected ? 'text-selected-muted-foreground' : 'text-muted-foreground',
+                  )}
+                  title={commitMeta}
+                >
                   {commitMeta}
                 </span>
               </div>

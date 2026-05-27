@@ -525,7 +525,7 @@ function SettingsSelect<T extends string | number>({ id, value, options, onChang
         if (matched) onChange(matched.value)
       }}
     >
-      <SelectTrigger id={id} className="h-8 min-w-36 rounded-md bg-muted/50 px-2.5 text-xs shadow-none">
+      <SelectTrigger id={id} className="h-8 min-w-36 rounded-md bg-control px-2.5 text-xs shadow-none">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

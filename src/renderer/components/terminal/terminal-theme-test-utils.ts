@@ -25,9 +25,9 @@ export function installTerminalThemeStyles() {
       --color-terminal-ansi-bright-magenta: #bf5af2;
       --color-terminal-ansi-bright-cyan: #32ade6;
       --color-terminal-ansi-bright-white: #1d1d1f;
-      --color-terminal-search-match: #facc15;
-      --color-terminal-search-active-match: #fb923c;
-      --color-terminal-search-active-border: #ffffff;
+      --color-terminal-search-match: #bf8700;
+      --color-terminal-search-active-match: #fb8f44;
+      --color-terminal-search-active-border: #1d1d1f;
     }
 
     html[data-theme='dark'] {

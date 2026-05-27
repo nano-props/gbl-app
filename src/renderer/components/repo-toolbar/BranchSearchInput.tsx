@@ -38,9 +38,9 @@ export function BranchSearchInput({ value, disabled = false, onChange }: Props) 
     <div
       onBlur={handleBlur}
       className={cn(
-        'group/search relative flex h-7 shrink-0 items-center overflow-hidden rounded-md border border-input bg-background shadow-xs transition-[width,border-color,background-color,opacity] duration-150 ease-out focus-within:border-ring',
+        'group/search relative flex h-7 shrink-0 items-center overflow-hidden rounded-md border border-input bg-control shadow-xs transition-[width,border-color,background-color,opacity] duration-150 ease-out focus-within:border-ring',
         expanded ? 'w-52' : 'w-7',
-        !expanded && !disabled && 'hover:bg-accent',
+        !expanded && !disabled && 'hover:bg-control-hover',
         disabled && 'cursor-not-allowed opacity-50',
       )}
     >

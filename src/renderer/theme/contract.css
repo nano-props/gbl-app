@@ -25,6 +25,8 @@
   --color-muted-foreground: var(--gbl-text-secondary);
   --color-accent: var(--gbl-surface-hover);
   --color-accent-foreground: var(--gbl-text-primary);
+  --color-control: var(--gbl-surface-control, var(--gbl-surface-raised));
+  --color-control-hover: var(--gbl-surface-control-hover, var(--gbl-surface-hover));
   --color-separator: var(--gbl-border-subtle);
   --color-border: var(--gbl-border-default);
   --color-input: var(--gbl-border-strong);
@@ -56,6 +58,7 @@
   --color-danger-rgb: var(--gbl-status-danger-rgb);
   --color-danger-surface: var(--gbl-status-danger-surface);
   --color-danger-border: var(--gbl-status-danger-border);
+  --color-selected-muted-foreground: var(--gbl-text-selected-secondary, var(--gbl-text-secondary));
 
   /* Type / shadows / radius — shadcn radius scale, project shadow
    * and font stacks. */
@@ -63,7 +66,10 @@
     -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
+  --shadow-xs: var(--gbl-shadow-xs, var(--gbl-shadow-sm));
   --shadow-sm: var(--gbl-shadow-sm);
+  --shadow-md: var(--gbl-shadow-md, var(--gbl-shadow-sm));
+  --shadow-lg: var(--gbl-shadow-lg, var(--gbl-shadow-md, var(--gbl-shadow-sm)));
 
   --radius: 0.5rem;
   --radius-sm: calc(var(--radius) - 4px);

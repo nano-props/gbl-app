@@ -7,9 +7,12 @@ html[data-color-theme='github'][data-theme='light'] {
   --gbl-surface-overlay: #ffffff;
   --gbl-surface-muted: #f6f8fa;
   --gbl-surface-hover: #f3f4f6;
+  --gbl-surface-control: #ffffff;
+  --gbl-surface-control-hover: #f6f8fa;
   --gbl-text-primary: #1f2328;
   --gbl-text-secondary-strong: #3d444d;
   --gbl-text-secondary: #59636e;
+  --gbl-text-selected-secondary: #4b535d;
   --gbl-border-subtle: #d8dee4;
   --gbl-border-default: #d0d7de;
   --gbl-border-strong: #afb8c1;
@@ -40,7 +43,10 @@ html[data-color-theme='github'][data-theme='light'] {
   --gbl-status-danger-border: #ff8182;
 
   --color-overlay-scrim: rgb(31 35 40 / 0.4);
+  --gbl-shadow-xs: 0 1px 1px rgb(31 35 40 / 0.04);
   --gbl-shadow-sm: 0 1px 2px rgb(31 35 40 / 0.06);
+  --gbl-shadow-md: 0 8px 24px rgb(31 35 40 / 0.12);
+  --gbl-shadow-lg: 0 18px 48px rgb(31 35 40 / 0.16);
   --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.35);
   --shadow-control-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.4);
   --radius: 0.375rem;
@@ -79,9 +85,12 @@ html[data-color-theme='github'][data-theme='dark'] {
   --gbl-surface-overlay: #161b22;
   --gbl-surface-muted: #21262d;
   --gbl-surface-hover: #30363d;
+  --gbl-surface-control: #161b22;
+  --gbl-surface-control-hover: #21262d;
   --gbl-text-primary: #e6edf3;
   --gbl-text-secondary-strong: #c9d1d9;
   --gbl-text-secondary: #8b949e;
+  --gbl-text-selected-secondary: #c9d1d9;
   --gbl-border-subtle: #30363d;
   --gbl-border-default: #30363d;
   --gbl-border-strong: #484f58;
@@ -112,7 +121,10 @@ html[data-color-theme='github'][data-theme='dark'] {
   --gbl-status-danger-border: #da3633;
 
   --color-overlay-scrim: rgb(1 4 9 / 0.55);
+  --gbl-shadow-xs: 0 1px 1px rgb(1 4 9 / 0.3);
   --gbl-shadow-sm: 0 1px 2px rgb(1 4 9 / 0.35);
+  --gbl-shadow-md: 0 8px 24px rgb(1 4 9 / 0.42);
+  --gbl-shadow-lg: 0 18px 48px rgb(1 4 9 / 0.5);
   --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.08);
   --shadow-control-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.08);
   --radius: 0.375rem;

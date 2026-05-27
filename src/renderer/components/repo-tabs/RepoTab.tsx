@@ -51,7 +51,7 @@ export function RepoTab({
         'group relative flex h-8 min-w-36 max-w-56 shrink-0 touch-none select-none items-center gap-1.5 rounded-md border px-2 text-xs transition-colors duration-100 [&:has(:focus-visible)]:outline-2 [&:has(:focus-visible)]:-outline-offset-2 [&:has(:focus-visible)]:outline-ring',
         isActive
           ? 'border-input bg-card text-foreground'
-          : 'border-transparent text-foreground/65 hover:bg-accent/70 hover:text-foreground',
+          : 'border-transparent text-muted-foreground hover:bg-accent/70 hover:text-foreground',
         isDragging && 'z-10 cursor-grabbing bg-card text-foreground',
       )}
     >
@@ -80,7 +80,7 @@ export function RepoTab({
         }}
         className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-sm border-0 bg-transparent p-0 text-left text-inherit outline-none"
       >
-        <FolderGit2 size={13} className={cn('shrink-0', isActive ? 'text-foreground' : 'text-foreground/55')} />
+        <FolderGit2 size={13} className={cn('shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground')} />
         <span className="truncate font-medium">{repo.name}</span>
         {repo.unavailable && <AlertCircle size={12} className="shrink-0 text-warning" aria-hidden />}
       </button>

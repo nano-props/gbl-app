@@ -30,11 +30,11 @@
 }
 
 .goblin-terminal-progress--error {
-  background: color-mix(in srgb, var(--color-destructive) 20%, transparent);
+  background: color-mix(in srgb, var(--color-danger) 20%, transparent);
 }
 
 .goblin-terminal-progress--error .goblin-terminal-progress__bar {
-  background: var(--color-destructive);
+  background: var(--color-danger);
 }
 
 .goblin-terminal-progress--warning {
@@ -219,7 +219,7 @@
   width: clamp(80px, 32vw, 190px);
   border: 1px solid var(--color-input);
   border-radius: 5px;
-  background: var(--color-background);
+  background: var(--color-control);
   padding: 0 7px;
   color: var(--color-foreground);
   font-size: 12px;

@@ -148,10 +148,10 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
               placeholder={t('action.create-worktree-branch-placeholder')}
               aria-invalid={!!branchError}
               aria-describedby={branchError ? 'cwt-branch-error' : undefined}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20"
+              className="mt-1 w-full rounded-md border border-input bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring aria-invalid:border-danger-border aria-invalid:ring-danger/20 dark:aria-invalid:ring-danger/40"
             />
             {branchError && (
-              <div id="cwt-branch-error" className="mt-1 text-xs text-destructive">
+              <div id="cwt-branch-error" className="mt-1 text-xs text-danger">
                 {branchError}
               </div>
             )}
@@ -168,7 +168,7 @@ export function CreateWorktreeDialog({ open, repo, onClose, onCreate }: Props) {
               onChange={(e) => setWorktreePath(e.target.value)}
               placeholder={displayDefaultPath}
               aria-describedby="cwt-path-hint"
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 w-full rounded-md border border-input bg-control px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
             />
             <div
               id="cwt-path-hint"

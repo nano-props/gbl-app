@@ -40,11 +40,11 @@ describe('terminal theme', () => {
 
   test('resolves terminal search decorations from CSS tokens', () => {
     expect(terminalSearchDecorationsForCurrentDocument()).toMatchObject({
-      matchBackground: '#facc15',
-      matchOverviewRuler: '#facc15',
-      activeMatchBackground: '#fb923c',
-      activeMatchBorder: '#ffffff',
-      activeMatchColorOverviewRuler: '#fb923c',
+      matchBackground: '#bf8700',
+      matchOverviewRuler: '#bf8700',
+      activeMatchBackground: '#fb8f44',
+      activeMatchBorder: '#1d1d1f',
+      activeMatchColorOverviewRuler: '#fb8f44',
     })
   })
 

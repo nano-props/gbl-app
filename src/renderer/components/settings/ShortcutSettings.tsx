@@ -151,7 +151,7 @@ export function ShortcutSettings() {
             className={cn(
               'relative inline-flex h-7 w-20 items-center justify-center rounded-md border px-2 font-mono text-[12px] leading-none shadow-[var(--shadow-control-inset-highlight)] transition-colors duration-100',
               shortcutStatus?.tone === 'error'
-                ? 'border-destructive/55 bg-destructive/10 text-destructive hover:bg-destructive/15'
+                ? 'border-danger-border bg-danger-surface text-danger hover:bg-danger-surface'
                 : recordingShortcut
                   ? 'border-primary/70 bg-primary/10 text-primary hover:bg-primary/15'
                   : 'border-border bg-muted/50 text-foreground hover:bg-accent',
@@ -164,7 +164,7 @@ export function ShortcutSettings() {
             <span
               className={cn(
                 'absolute -right-0.5 -top-0.5 size-2 rounded-full border border-background',
-                shortcutStatus?.tone === 'error' ? 'bg-destructive' : recordingShortcut ? 'bg-primary' : 'hidden',
+                shortcutStatus?.tone === 'error' ? 'bg-danger' : recordingShortcut ? 'bg-primary' : 'hidden',
               )}
             />
           </button>

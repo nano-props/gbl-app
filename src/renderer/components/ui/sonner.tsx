@@ -42,7 +42,7 @@ const Toaster = ({ toastOptions, className, style, ...props }: ToasterProps) => 
           '--success-text': 'var(--color-success)',
           '--success-border': 'var(--color-border)',
           '--error-bg': 'var(--color-popover)',
-          '--error-text': 'var(--color-destructive)',
+          '--error-text': 'var(--color-danger)',
           '--error-border': 'var(--color-border)',
           '--warning-bg': 'var(--color-popover)',
           '--warning-text': 'var(--color-warning)',

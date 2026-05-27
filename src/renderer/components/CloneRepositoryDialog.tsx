@@ -151,7 +151,7 @@ export function CloneRepositoryDialog({ open, onClose, onClone }: Props) {
                 setError(null)
               }}
               placeholder={t('repo-tabs.clone-url-placeholder')}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full rounded-md border border-input bg-control px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -167,7 +167,7 @@ export function CloneRepositoryDialog({ open, onClose, onClone }: Props) {
                   setParentPath(event.target.value)
                   setError(null)
                 }}
-                className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                className="min-w-0 flex-1 rounded-md border border-input bg-control px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={pending}
               />
               <Button
@@ -198,10 +198,10 @@ export function CloneRepositoryDialog({ open, onClose, onClone }: Props) {
               placeholder={t('repo-tabs.clone-directory-placeholder')}
               aria-invalid={!!directoryError}
               aria-describedby={directoryError ? 'clone-directory-error' : 'clone-path-preview'}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20"
+              className="mt-1 w-full rounded-md border border-input bg-control px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ring aria-invalid:border-danger-border aria-invalid:ring-danger/20 dark:aria-invalid:ring-danger/40"
             />
             {directoryError ? (
-              <div id="clone-directory-error" className="mt-1 min-h-4 text-xs leading-4 text-destructive">
+              <div id="clone-directory-error" className="mt-1 min-h-4 text-xs leading-4 text-danger">
                 {directoryError}
               </div>
             ) : (
@@ -211,7 +211,7 @@ export function CloneRepositoryDialog({ open, onClose, onClone }: Props) {
             )}
           </div>
 
-          {error && <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</div>}
+          {error && <div className="rounded-md border border-danger-border bg-danger-surface px-3 py-2 text-xs text-danger">{error}</div>}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => void handleCancel()}>

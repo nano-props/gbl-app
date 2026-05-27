@@ -7,15 +7,18 @@ type ResizableHandleProps = React.ComponentProps<typeof ResizablePrimitive.Separ
   orientation?: ResizeDirection
 }
 
+// Keep the drag hit target and the visible splitter line separate: the
+// target stays transparent, while the 1px line paints the separator. This
+// avoids double-painting semi-transparent border tokens on light themes.
 const resizeHandle = {
-  root: [
-    'group relative z-10 flex shrink-0 items-center justify-center bg-border outline-none',
+  hitTarget: [
+    'group relative z-10 flex shrink-0 items-center justify-center bg-transparent outline-none',
     'before:absolute before:z-10 before:content-[""]',
   ].join(' '),
   horizontal: 'h-full w-px cursor-col-resize before:inset-y-0 before:left-1/2 before:w-2 before:-translate-x-1/2',
   vertical: 'h-px w-full cursor-row-resize before:inset-x-0 before:top-1/2 before:h-2 before:-translate-y-1/2',
-  line: [
-    'pointer-events-none absolute z-20 rounded-full bg-border',
+  visibleLine: [
+    'pointer-events-none absolute z-20 rounded-full bg-separator',
     'transition-[background-color,opacity,width,height] duration-100',
     'opacity-100 group-data-[separator=hover]:bg-brand group-data-[separator=hover]:opacity-60',
     'group-focus-visible:bg-brand group-focus-visible:opacity-100 group-data-[separator=active]:bg-brand group-data-[separator=active]:opacity-100',
@@ -40,13 +43,13 @@ function ResizableHandle({ className, orientation = 'horizontal', ...props }: Re
   return (
     <ResizablePrimitive.Separator
       data-slot="resizable-handle"
-      className={cn(resizeHandle.root, resizeHandle[orientation], className)}
+      className={cn(resizeHandle.hitTarget, resizeHandle[orientation], className)}
       {...props}
     >
       <span
         aria-hidden
         className={cn(
-          resizeHandle.line,
+          resizeHandle.visibleLine,
           orientation === 'horizontal' ? resizeHandle.lineHorizontal : resizeHandle.lineVertical,
         )}
       />

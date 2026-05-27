@@ -131,7 +131,7 @@ export function BranchDetailToolbar({
                 className={cn(
                   'inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-sm cursor-pointer transition-colors duration-100',
                   visuallySelected
-                    ? 'bg-accent text-foreground'
+                    ? 'bg-selected text-selected-foreground'
                     : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
                 )}
               >

@@ -9,9 +9,12 @@ html[data-color-theme='goblin'][data-theme='light'] {
   --gbl-surface-overlay: #ffffff;
   --gbl-surface-muted: #f1f1f5;
   --gbl-surface-hover: #e5e5ea;
+  --gbl-surface-control: #ffffff;
+  --gbl-surface-control-hover: #f2f2f7;
   --gbl-text-primary: #1d1d1f;
   --gbl-text-secondary-strong: #3c3c43;
   --gbl-text-secondary: #6e6e73;
+  --gbl-text-selected-secondary: rgb(60 60 67 / 0.68);
   --gbl-border-subtle: rgb(60 60 67 / 0.14);
   --gbl-border-default: rgb(60 60 67 / 0.22);
   --gbl-border-strong: rgb(60 60 67 / 0.26);
@@ -38,13 +41,16 @@ html[data-color-theme='goblin'][data-theme='light'] {
   --gbl-status-success-rgb: 52 199 89;
   --gbl-status-success-surface: rgb(var(--gbl-status-success-rgb) / 0.1);
   --gbl-status-success-border: rgb(var(--gbl-status-success-rgb) / 0.35);
-  --gbl-status-danger-text: #b00014;
-  --gbl-status-danger-rgb: 176 0 20;
+  --gbl-status-danger-text: var(--gbl-action-danger);
+  --gbl-status-danger-rgb: 215 0 21;
   --gbl-status-danger-surface: rgb(var(--gbl-status-danger-rgb) / 0.09);
   --gbl-status-danger-border: rgb(var(--gbl-status-danger-rgb) / 0.4);
 
   --color-overlay-scrim: rgb(0 0 0 / 0.4);
-  --gbl-shadow-sm: 0 1px 2px rgb(10 10 10 / 0.04);
+  --gbl-shadow-xs: 0 1px 1px rgb(10 10 10 / 0.03);
+  --gbl-shadow-sm: 0 1px 2px rgb(10 10 10 / 0.05);
+  --gbl-shadow-md: 0 8px 24px rgb(10 10 10 / 0.1);
+  --gbl-shadow-lg: 0 18px 48px rgb(10 10 10 / 0.14);
   --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.25);
   --shadow-control-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.3);
 
@@ -68,9 +74,9 @@ html[data-color-theme='goblin'][data-theme='light'] {
   --color-terminal-ansi-bright-magenta: #bf5af2;
   --color-terminal-ansi-bright-cyan: #32ade6;
   --color-terminal-ansi-bright-white: #1d1d1f;
-  --color-terminal-search-match: #facc15;
-  --color-terminal-search-active-match: #fb923c;
-  --color-terminal-search-active-border: #ffffff;
+  --color-terminal-search-match: #bf8700;
+  --color-terminal-search-active-match: #fb8f44;
+  --color-terminal-search-active-border: #1d1d1f;
 }
 
 html[data-theme='dark']:not([data-color-theme]),
@@ -78,14 +84,17 @@ html[data-color-theme='goblin'][data-theme='dark'] {
   color-scheme: dark;
 
   --gbl-surface-canvas: #1c1c1e;
-  --gbl-surface-base: #2c2c2e;
+  --gbl-surface-base: #242426;
   --gbl-surface-raised: #2c2c2e;
-  --gbl-surface-overlay: #2c2c2e;
-  --gbl-surface-muted: #2c2c2e;
+  --gbl-surface-overlay: #323236;
+  --gbl-surface-muted: #252528;
   --gbl-surface-hover: #3a3a3c;
+  --gbl-surface-control: #2c2c2e;
+  --gbl-surface-control-hover: #3a3a3c;
   --gbl-text-primary: #f5f5f7;
   --gbl-text-secondary-strong: rgb(235 235 245 / 0.86);
   --gbl-text-secondary: rgb(235 235 245 / 0.6);
+  --gbl-text-selected-secondary: rgb(235 235 245 / 0.72);
   --gbl-border-subtle: rgb(84 84 88 / 0.42);
   --gbl-border-default: rgb(84 84 88 / 0.55);
   --gbl-border-strong: rgb(84 84 88 / 0.65);
@@ -118,9 +127,12 @@ html[data-color-theme='goblin'][data-theme='dark'] {
   --gbl-status-danger-border: rgb(var(--gbl-status-danger-rgb) / 0.45);
 
   --color-overlay-scrim: rgb(0 0 0 / 0.48);
-  --gbl-shadow-sm: 0 1px 2px rgb(10 10 10 / 0.04);
-  --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.25);
-  --shadow-control-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.3);
+  --gbl-shadow-xs: 0 1px 1px rgb(0 0 0 / 0.22);
+  --gbl-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --gbl-shadow-md: 0 8px 24px rgb(0 0 0 / 0.36);
+  --gbl-shadow-lg: 0 18px 48px rgb(0 0 0 / 0.45);
+  --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.08);
+  --shadow-control-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.1);
 
   --color-terminal-background: #111113;
   --color-terminal-foreground: #f5f5f7;

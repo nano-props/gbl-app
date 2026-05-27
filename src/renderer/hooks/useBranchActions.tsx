@@ -4,6 +4,7 @@ import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { ConfirmDialog } from '#/renderer/components/ConfirmDialog.tsx'
+import { ConfirmCheckbox } from '#/renderer/components/ConfirmCheckbox.tsx'
 import { tildify } from '#/renderer/lib/paths.ts'
 import type { BranchInfo, ExecResult } from '#/renderer/types.ts'
 import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
@@ -267,15 +268,9 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
                 components={{ branch: <b className="text-foreground" /> }}
               />
               {hasUpstream && (
-                <label className="flex items-center gap-2 text-foreground cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={deleteAlsoUpstream}
-                    onChange={(e) => setDeleteAlsoUpstream(e.target.checked)}
-                    className="h-4 w-4 accent-destructive"
-                  />
-                  <span>{t('action.confirm-delete-branch-also-delete-upstream', { tracking: branch.tracking! })}</span>
-                </label>
+                <ConfirmCheckbox checked={deleteAlsoUpstream} onCheckedChange={setDeleteAlsoUpstream} destructive>
+                  {t('action.confirm-delete-branch-also-delete-upstream', { tracking: branch.tracking! })}
+                </ConfirmCheckbox>
               )}
             </div>
           ) : (
@@ -306,17 +301,9 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
                 components={{ branch: <b className="text-foreground" /> }}
               />
               {hasUpstream && (
-                <label className="flex items-center gap-2 text-foreground cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={deleteAlsoUpstream}
-                    onChange={(e) => setDeleteAlsoUpstream(e.target.checked)}
-                    className="h-4 w-4 accent-destructive"
-                  />
-                  <span>
-                    {t('action.confirm-delete-branch-also-delete-upstream', { tracking: branch.tracking! })}
-                  </span>
-                </label>
+                <ConfirmCheckbox checked={deleteAlsoUpstream} onCheckedChange={setDeleteAlsoUpstream} destructive>
+                  {t('action.confirm-delete-branch-also-delete-upstream', { tracking: branch.tracking! })}
+                </ConfirmCheckbox>
               )}
             </div>
           ) : (
@@ -344,39 +331,25 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
                 values={{ path: tildify(removeConfirm.path) }}
                 components={{ path: <b className="text-foreground" /> }}
               />
-              <label
-                className={
-                  removeConfirmProtected
-                    ? 'flex items-center gap-2 text-muted-foreground select-none cursor-not-allowed'
-                    : 'flex items-center gap-2 text-foreground cursor-pointer select-none'
-                }
+              <ConfirmCheckbox
+                checked={removeAlsoDeletes}
+                disabled={removeConfirmProtected}
+                describedBy={removeConfirmProtected ? 'remove-worktree-protected-hint' : undefined}
+                onCheckedChange={setRemoveAlsoDeletes}
+                destructive
                 title={removeConfirmProtected ? t('action.confirm-remove-worktree-protected-hint') : undefined}
               >
-                <input
-                  type="checkbox"
-                  checked={removeAlsoDeletes}
-                  disabled={removeConfirmProtected}
-                  aria-describedby={removeConfirmProtected ? 'remove-worktree-protected-hint' : undefined}
-                  onChange={(e) => setRemoveAlsoDeletes(e.target.checked)}
-                  className="h-4 w-4 accent-destructive disabled:opacity-50"
-                />
-                <span>{t('action.confirm-remove-worktree-also-delete-branch', { branch: removeConfirm.branch })}</span>
-              </label>
+                {t('action.confirm-remove-worktree-also-delete-branch', { branch: removeConfirm.branch })}
+              </ConfirmCheckbox>
               {removeConfirmProtected && (
                 <div id="remove-worktree-protected-hint" className="text-xs text-muted-foreground">
                   {t('action.confirm-remove-worktree-protected-hint')}
                 </div>
               )}
               {removeAlsoDeletes && hasUpstream && !removeConfirmProtected && (
-                <label className="flex items-center gap-2 text-foreground cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={removeAlsoUpstream}
-                    onChange={(e) => setRemoveAlsoUpstream(e.target.checked)}
-                    className="h-4 w-4 accent-destructive"
-                  />
-                  <span>{t('action.confirm-delete-branch-also-delete-upstream', { tracking: branch.tracking! })}</span>
-                </label>
+                <ConfirmCheckbox checked={removeAlsoUpstream} onCheckedChange={setRemoveAlsoUpstream} destructive>
+                  {t('action.confirm-delete-branch-also-delete-upstream', { tracking: branch.tracking! })}
+                </ConfirmCheckbox>
               )}
             </div>
           ) : (
@@ -404,17 +377,9 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
             <div className="space-y-3">
               <span>{t('action.confirm-force-delete-branch-body', { branch: forceRemoveConfirm.branch })}</span>
               {hasUpstream && (
-                <label className="flex items-center gap-2 text-foreground cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={removeAlsoUpstream}
-                    onChange={(e) => setRemoveAlsoUpstream(e.target.checked)}
-                    className="h-4 w-4 accent-destructive"
-                  />
-                  <span>
-                    {t('action.confirm-delete-branch-also-delete-upstream', { tracking: branch.tracking! })}
-                  </span>
-                </label>
+                <ConfirmCheckbox checked={removeAlsoUpstream} onCheckedChange={setRemoveAlsoUpstream} destructive>
+                  {t('action.confirm-delete-branch-also-delete-upstream', { tracking: branch.tracking! })}
+                </ConfirmCheckbox>
               )}
             </div>
           ) : (
