@@ -1,5 +1,5 @@
 import { ChevronDown, Loader2 } from 'lucide-react'
-import type { RepoState } from '#/renderer/stores/repos/types.ts'
+import type { RepoBranchState, RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import {
@@ -16,11 +16,10 @@ import {
   type BranchActionItemGroups,
 } from '#/renderer/hooks/useBranchActionItems.ts'
 import { useAsyncPending } from '#/renderer/hooks/useAsyncPending.ts'
-import type { BranchInfo } from '#/renderer/types.ts'
 
 interface Props {
   repo: RepoState
-  branch: BranchInfo
+  branch: RepoBranchState
 }
 
 export function BranchActionsMenu({ repo, branch }: Props) {

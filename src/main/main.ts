@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { createMainWindow, getMainWindow } from '#/main/window.ts'
+import { activateMainWindow } from '#/main/window.ts'
 import { initTheme } from '#/main/theme.ts'
 import { loadSettings, flushSettings } from '#/main/settings.ts'
 import { buildAppMenu } from '#/main/menu.ts'
@@ -8,6 +8,12 @@ import { wireRpcIpc } from '#/main/rpc.ts'
 import { wireTerminalIpc } from '#/main/terminal.ts'
 import { syncGlobalShortcuts, unregisterAppShortcuts } from '#/main/shortcuts.ts'
 
+function activateMainWindowFromEvent(): void {
+  void activateMainWindow().catch((err) => {
+    console.error('[window] failed to activate main window', err)
+  })
+}
+
 async function main(): Promise<void> {
   if (!app.requestSingleInstanceLock()) {
     app.quit()
@@ -15,13 +21,7 @@ async function main(): Promise<void> {
   }
 
   app.on('second-instance', () => {
-    const win = getMainWindow()
-    if (win) {
-      if (win.isMinimized()) win.restore()
-      win.focus()
-    } else {
-      void createMainWindow()
-    }
+    activateMainWindowFromEvent()
   })
 
   app.on('window-all-closed', () => {
@@ -30,10 +30,6 @@ async function main(): Promise<void> {
 
   app.on('will-quit', () => {
     unregisterAppShortcuts()
-  })
-
-  app.on('activate', () => {
-    if (!getMainWindow()) void createMainWindow()
   })
 
   // Drain debounced settings writes before exit so the last theme pick,
@@ -71,7 +67,8 @@ async function main(): Promise<void> {
   buildAppMenu()
   syncGlobalShortcuts(settings.globalShortcutDisabled, settings.globalShortcut)
 
-  await createMainWindow()
+  await activateMainWindow()
+  app.on('activate', activateMainWindowFromEvent)
 }
 
 void main()

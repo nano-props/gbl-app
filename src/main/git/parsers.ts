@@ -6,7 +6,7 @@
 // JSDoc comment; if a callsite changes the command (different format
 // string, removed flag), the parser must be updated in lockstep.
 
-import type { BranchInfo, LogEntry, StatusEntry, WorktreeInfo } from '#/shared/git-types.ts'
+import type { BranchSnapshotInfo, LogEntry, StatusEntry, WorktreeInfo } from '#/shared/git-types.ts'
 
 /** ASCII Unit Separator. Safe against subjects / author names / paths
  *  containing it. Used by both the branch and log format strings. */
@@ -17,7 +17,7 @@ export const FIELD_SEP = '\x1f'
  * Fields, in order: refname:short, objectname:short, subject,
  * authordate:iso-strict, authorname, upstream:short, upstream:track.
  */
-export function parseBranches(output: string, currentBranch: string, worktrees: WorktreeInfo[] = []): BranchInfo[] {
+export function parseBranches(output: string, currentBranch: string, worktrees: WorktreeInfo[] = []): BranchSnapshotInfo[] {
   if (!output) return []
 
   const worktreeMap = new Map<
@@ -37,7 +37,7 @@ export function parseBranches(output: string, currentBranch: string, worktrees: 
   }
 
   const lines = output.split('\n').filter(Boolean)
-  const branches: BranchInfo[] = []
+  const branches: BranchSnapshotInfo[] = []
 
   for (const line of lines) {
     const parts = line.split(FIELD_SEP)
@@ -56,7 +56,7 @@ export function parseBranches(output: string, currentBranch: string, worktrees: 
     if (aheadMatch) ahead = parseInt(aheadMatch[1] ?? '0', 10)
     if (behindMatch) behind = parseInt(behindMatch[1] ?? '0', 10)
 
-    const branchInfo: BranchInfo = {
+    const branchInfo: BranchSnapshotInfo = {
       name,
       isCurrent: name === currentBranch,
       ahead,
@@ -74,11 +74,20 @@ export function parseBranches(output: string, currentBranch: string, worktrees: 
 
     const wtInfo = worktreeMap.get(name)
     if (wtInfo) {
-      branchInfo.worktreePath = wtInfo.path
-      branchInfo.worktreeDirty = wtInfo.isDirty
-      branchInfo.worktreeIsPrimary = wtInfo.isPrimary
-      branchInfo.worktreeChangeCount = wtInfo.changeCount
-      branchInfo.worktreeLocked = wtInfo.isLocked
+      const hasSummary = wtInfo.isDirty !== undefined || wtInfo.changeCount !== undefined
+      branchInfo.worktree = {
+        path: wtInfo.path,
+        isPrimary: wtInfo.isPrimary,
+        ...(wtInfo.isLocked !== undefined ? { isLocked: wtInfo.isLocked } : {}),
+        ...(hasSummary
+          ? {
+              summary: {
+                ...(wtInfo.isDirty !== undefined ? { dirty: wtInfo.isDirty } : {}),
+                ...(wtInfo.changeCount !== undefined ? { changeCount: wtInfo.changeCount } : {}),
+              },
+            }
+          : {}),
+      }
     }
 
     branches.push(branchInfo)

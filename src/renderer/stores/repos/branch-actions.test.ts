@@ -6,7 +6,8 @@ import { replaceRepo } from '#/renderer/stores/repos/helpers.ts'
 import { getBranchActionCapabilities } from '#/renderer/hooks/useBranchActions.tsx'
 import { branchBrowserRemoteProvider } from '#/renderer/hooks/useBranchActionItems.ts'
 import {
-  createBranch,
+  createBranchSnapshot,
+  createRepoBranch,
   installGoblinTestBridge,
   resetReposStore,
   seedRepoState,
@@ -24,7 +25,7 @@ beforeEach(() => {
   seedRepoState({
     id: REPO_ID,
     instanceToken: 1,
-    branches: [createBranch('feature/a'), createBranch('feature/b')],
+    branches: [createRepoBranch('feature/a'), createRepoBranch('feature/b')],
   })
 })
 
@@ -52,9 +53,9 @@ function installSuccessfulCreateWorktreeBridge(options?: { onSnapshot?: () => vo
       options?.onSnapshot?.()
       return {
         branches: [
-          createBranch('feature/a'),
-          createBranch('feature/b'),
-          createBranch('feature/new', { worktreePath: '/tmp/gbl-branch-actions-test-worktree' }),
+          createBranchSnapshot('feature/a'),
+          createBranchSnapshot('feature/b'),
+          createBranchSnapshot('feature/new', { worktree: { path: '/tmp/gbl-branch-actions-test-worktree' } }),
         ],
         current: 'feature/a',
       }
@@ -66,7 +67,7 @@ function installSuccessfulCreateWorktreeBridge(options?: { onSnapshot?: () => vo
 
 describe('branch action capabilities', () => {
   test('gates remote-only actions when a repo transitions to local-only', () => {
-    const branch = createBranch('feature/local', { worktreePath: '/tmp/gbl-branch-actions-test-worktree' })
+    const branch = createRepoBranch('feature/local', { worktree: { path: '/tmp/gbl-branch-actions-test-worktree' } })
     seedRepoState({
       id: REPO_ID,
       branches: [branch],
@@ -106,8 +107,30 @@ describe('branch action capabilities', () => {
     })
   })
 
+  test('uses canonical worktree state to gate primary worktree removal', () => {
+    const branch = createRepoBranch('feature/main-worktree', { worktree: { path: REPO_ID } })
+    const repo = seedRepoState({
+      id: REPO_ID,
+      branches: [branch],
+      currentBranch: 'main',
+      worktreesByPath: {
+        [REPO_ID]: {
+          path: REPO_ID,
+          branch: 'feature/main-worktree',
+          isMain: true,
+        },
+      },
+    })
+
+    expect(branch.worktree).toEqual({ path: REPO_ID })
+    expect(getBranchActionCapabilities(repo, branch)).toMatchObject({
+      checkedOutInAnotherWorktree: true,
+      canRemoveWorktree: false,
+    })
+  })
+
   test('allows browser actions for non-GitHub web remotes', () => {
-    const branch = createBranch('feature/gitlab')
+    const branch = createRepoBranch('feature/gitlab')
     seedRepoState({
       id: REPO_ID,
       branches: [branch],
@@ -128,7 +151,7 @@ describe('branch action capabilities', () => {
   })
 
   test('resolves browser remote providers from tracking remotes', () => {
-    const branch = createBranch('feature/provider', { tracking: 'gitlab-upstream/feature/provider' })
+    const branch = createRepoBranch('feature/provider', { tracking: 'gitlab-upstream/feature/provider' })
     seedRepoState({
       id: REPO_ID,
       branches: [branch],
@@ -146,7 +169,7 @@ describe('branch action capabilities', () => {
   })
 
   test('falls back to the repo browser provider when tracking remote is missing', () => {
-    const branch = createBranch('feature/missing-provider', { tracking: 'deleted/feature/missing-provider' })
+    const branch = createRepoBranch('feature/missing-provider', { tracking: 'deleted/feature/missing-provider' })
     seedRepoState({
       id: REPO_ID,
       branches: [branch],
@@ -164,7 +187,7 @@ describe('branch action capabilities', () => {
   })
 
   test('uses the longest provider remote match for slash-containing tracking names', () => {
-    const branch = createBranch('feature/longest-provider', { tracking: 'origin/gitlab/feature/longest-provider' })
+    const branch = createRepoBranch('feature/longest-provider', { tracking: 'origin/gitlab/feature/longest-provider' })
     seedRepoState({
       id: REPO_ID,
       branches: [branch],
@@ -261,7 +284,7 @@ describe('runBranchAction', () => {
           resolvePull = () => resolve({ ok: true, message: 'ok' })
         })
       },
-      'repo.snapshot': async () => ({ branches: [createBranch('feature/a')], current: 'feature/a' }),
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
       'repo.status': async () => [],
       'repo.pullRequests': async () => [],
     })
@@ -311,7 +334,7 @@ describe('runBranchAction', () => {
         })
       },
       'repo.snapshot': async () => ({
-        branches: [createBranch('feature/a'), createBranch('feature/b')],
+        branches: [createBranchSnapshot('feature/a'), createBranchSnapshot('feature/b')],
         current: 'feature/a',
       }),
       'repo.status': async () => [],
@@ -357,7 +380,7 @@ describe('runBranchAction', () => {
         pullCalls += 1
         return { ok: true, message: 'should-not-run' }
       },
-      'repo.snapshot': async () => ({ branches: [createBranch('feature/a')], current: 'feature/a' }),
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
       'repo.status': async () => [],
       'repo.pullRequests': async () => [],
     })
@@ -393,7 +416,7 @@ describe('runBranchAction', () => {
         new Promise((resolve) => {
           resolvePull = () => resolve({ ok: false, message: 'cancelled' })
         }),
-      'repo.snapshot': async () => ({ branches: [createBranch('feature/a')], current: 'feature/a' }),
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
       'repo.status': async () => [],
       'repo.pullRequests': async () => [],
     })
@@ -419,7 +442,7 @@ describe('runBranchAction', () => {
   test('clears actionPhase after failed branch network actions', async () => {
     installGoblinTestBridge({
       'repo.pull': async () => ({ ok: false, message: 'boom' }),
-      'repo.snapshot': async () => ({ branches: [createBranch('feature/a')], current: 'feature/a' }),
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
       'repo.status': async () => [],
       'repo.pullRequests': async () => [],
     })
@@ -452,7 +475,7 @@ describe('runBranchAction', () => {
           resolvePush = () => resolve({ ok: true, message: 'ok' })
         }),
       'repo.snapshot': async () => ({
-        branches: [createBranch('feature/a'), createBranch('feature/b')],
+        branches: [createBranchSnapshot('feature/a'), createBranchSnapshot('feature/b')],
         current: 'feature/a',
       }),
       'repo.status': async () => [],
@@ -496,7 +519,7 @@ describe('runBranchAction', () => {
           resolvePull = () => resolve({ ok: true, message: 'ok' })
         })
       },
-      'repo.snapshot': async () => ({ branches: [createBranch('feature/a')], current: 'feature/a' }),
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
       'repo.pullRequests': async () => [],
     })
 
@@ -655,7 +678,7 @@ describe('runBranchAction', () => {
         seedRepoState({
           id: REPO_ID,
           instanceToken: 2,
-          branches: [createBranch('feature/a'), createBranch('feature/new')],
+          branches: [createRepoBranch('feature/a'), createRepoBranch('feature/new')],
           selectedBranch: 'feature/a',
         })
         setSelectionForTest('feature/a', 'no-worktree')
@@ -685,7 +708,7 @@ describe('runBranchAction', () => {
       'repo.pull': async () => ({ ok: true, message: 'ok' }),
       'repo.snapshot': () =>
         new Promise((resolve) => {
-          resolveSnapshot = () => resolve({ branches: [createBranch('feature/stale')], current: 'feature/stale' })
+          resolveSnapshot = () => resolve({ branches: [createBranchSnapshot('feature/stale')], current: 'feature/stale' })
         }),
       'repo.status': async () => [],
       'repo.pullRequests': async () => [],
@@ -696,7 +719,7 @@ describe('runBranchAction', () => {
     seedRepoState({
       id: REPO_ID,
       instanceToken: 2,
-      branches: [createBranch('feature/new-instance')],
+      branches: [createRepoBranch('feature/new-instance')],
       currentBranch: 'feature/new-instance',
     })
 
@@ -715,8 +738,8 @@ describe('runBranchAction', () => {
       'repo.deleteBranch': async () => ({ ok: true, message: 'ok' }),
       'repo.snapshot': async () => ({
         branches: [
-          createBranch('feature/a'),
-          createBranch('feature/new', { worktreePath: '/tmp/gbl-branch-actions-test-worktree' }),
+          createBranchSnapshot('feature/a'),
+          createBranchSnapshot('feature/new', { worktree: { path: '/tmp/gbl-branch-actions-test-worktree' } }),
         ],
         current: 'feature/a',
       }),

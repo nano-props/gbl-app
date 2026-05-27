@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { TerminalSessionProvider } from '#/renderer/components/terminal/TerminalSessionProvider.tsx'
 import { useTerminalSessionContext } from '#/renderer/components/terminal/terminal-session-context.ts'
 import { terminalSessionGroupKey } from '#/renderer/components/terminal/terminal-session-utils.ts'
-import { createBranch, resetReposStore, seedRepoState } from '#/renderer/stores/repos/test-utils.ts'
+import { createRepoBranch, resetReposStore, seedRepoState } from '#/renderer/stores/repos/test-utils.ts'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type {
   TerminalDescriptor,
@@ -123,7 +123,7 @@ describe('TerminalSessionProvider', () => {
   test('keeps terminal detail open and switches active session when one of multiple terminals exits', async () => {
     seedRepoState({
       id: REPO_ID,
-      branches: [createBranch('feature/worktree', { worktreePath: WORKTREE_PATH })],
+      branches: [createRepoBranch('feature/worktree', { worktree: { path: WORKTREE_PATH } })],
       selectedBranch: 'feature/worktree',
       detailTab: 'terminal',
     })

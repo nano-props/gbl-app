@@ -46,9 +46,9 @@ export function BranchDetailToolbar({
   const toggleDetailOnActionBarBlankClick = useSettingsStore((s) => s.toggleDetailOnActionBarBlankClick)
   const terminalContext = useTerminalSessionContext()
   const behavior = repoWorkspaceBehavior(layout, collapsed, focusMode)
-  const tabs = visibleDetailTabs(!!detail.branch?.worktreePath)
-  const terminalCount = detail.branch?.worktreePath
-    ? terminalContext.sessionSummaries(terminalSessionGroupKey(repo.id, detail.branch.worktreePath)).length
+  const tabs = visibleDetailTabs(!!detail.branch?.worktree?.path)
+  const terminalCount = detail.branch?.worktree?.path
+    ? terminalContext.sessionSummaries(terminalSessionGroupKey(repo.id, detail.branch.worktree?.path)).length
     : 0
 
   // No selected branch means there is no tab/action target; BranchDetailContent renders the empty state.
@@ -58,7 +58,7 @@ export function BranchDetailToolbar({
     const key = detailTabNavigationKey(e.key)
     if (!key) return
     e.preventDefault()
-    const nextTab = navigatedDetailTab(tabId, key, !!detail.branch?.worktreePath)
+    const nextTab = navigatedDetailTab(tabId, key, !!detail.branch?.worktree?.path)
     setDetailTab(repo.id, nextTab)
     setDetailCollapsed(false)
     // The tablist stays mounted even when the panel is collapsed; optional chaining guards transient unmounts.

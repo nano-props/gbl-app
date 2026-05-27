@@ -71,12 +71,12 @@ export function BranchStatus({ detail, layout }: Props) {
   if (!branch) return <EmptyState title={t('branches.empty')} />
 
   const protectedBranch = PROTECTED_BRANCHES.has(branch.name)
-  const worktreePath = branch.worktreePath ? tildify(branch.worktreePath) : ''
-  const worktreeChangeCount = statusCount > 0 ? statusCount : (branch.worktreeChangeCount ?? 0)
+  const worktreePath = branch.worktree?.path ? tildify(branch.worktree?.path) : ''
+  const worktreeChangeCount = detail.worktreeState?.changeCount ?? statusCount
   const pullRequest =
     branch.pullRequest && branchPullRequestBelongsToBranch(branch, branch.pullRequest) ? branch.pullRequest : undefined
   const hasRole = branch.isCurrent || branch.isDefault || protectedBranch
-  const hasWorktreeChanges = !!branch.worktreePath && (branch.worktreeDirty || worktreeChangeCount > 0)
+  const hasWorktreeChanges = !!branch.worktree?.path && (detail.worktreeState?.dirty || worktreeChangeCount > 0)
   const mergeKnown = branch.isDefault || branch.mergedToDefault !== undefined
   const showMerged = !branch.isDefault
   const mergeLabel = !mergeKnown
@@ -87,12 +87,13 @@ export function BranchStatus({ detail, layout }: Props) {
   const mergeTone: Tone = !mergeKnown ? 'neutral' : branch.mergedToDefault ? 'success' : 'attention'
   const remoteTone: Tone = branch.trackingGone || !branch.tracking ? 'attention' : 'brand'
   const syncTone: Tone = !branch.tracking ? 'attention' : branch.behind > 0 ? 'attention' : 'success'
+  const worktreeLocked = detail.worktreeState?.isLocked ?? false
   const worktreeTone: Tone =
-    branch.worktreeLocked || hasWorktreeChanges ? 'attention' : branch.worktreePath ? 'brand' : 'neutral'
-  const worktreeValue = branch.worktreePath ? (
+    worktreeLocked || hasWorktreeChanges ? 'attention' : branch.worktree?.path ? 'brand' : 'neutral'
+  const worktreeValue = branch.worktree?.path ? (
     <CopyableValue
       value={worktreePath}
-      copyValue={branch.worktreePath}
+      copyValue={branch.worktree?.path}
       copyLabel={t('branch-status.copy-worktree-path')}
       copiedLabel={t('branch-status.copied')}
     />
@@ -100,9 +101,9 @@ export function BranchStatus({ detail, layout }: Props) {
     <StatusChip>{t('branch-status.worktree.none')}</StatusChip>
   )
   const worktreeAfter =
-    branch.worktreeLocked || hasWorktreeChanges ? (
+    worktreeLocked || hasWorktreeChanges ? (
       <>
-        {branch.worktreeLocked && <StatusChip tone="attention">{t('branch-status.worktree.locked')}</StatusChip>}
+        {worktreeLocked && <StatusChip tone="attention">{t('branch-status.worktree.locked')}</StatusChip>}
         {hasWorktreeChanges && (
           <StatusChip tone="attention">{t('branch-status.worktree-dirty', { n: worktreeChangeCount })}</StatusChip>
         )}

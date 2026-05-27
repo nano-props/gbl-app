@@ -166,7 +166,7 @@ export function useKeyboard({ onShowHelp, isOverlayOpen }: Options) {
           // Global shortcuts do not own tab focus; a missing branch is treated as "no worktree".
           state.setDetailTab(
             repo.id,
-            adjacentDetailTab(repo.ui.detailTab, e.key === 'ArrowRight' ? 1 : -1, !!selected?.worktreePath),
+            adjacentDetailTab(repo.ui.detailTab, e.key === 'ArrowRight' ? 1 : -1, !!selected?.worktree?.path),
           )
           break
         }

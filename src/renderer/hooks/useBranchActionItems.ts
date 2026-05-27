@@ -2,14 +2,14 @@ import { ArrowDown, ArrowUp, ClipboardCopy, ExternalLink, GitBranch, GitPullRequ
 import { createElement, type ReactNode } from 'react'
 import { GitHubOutlineIcon } from '#/renderer/components/GitHubOutlineIcon.tsx'
 import { GitLabLogoIcon } from '#/renderer/components/GitLabLogoIcon.tsx'
-import type { RepoState } from '#/renderer/stores/repos/types.ts'
+import type { RepoBranchState, RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { EditorAppIcon, TerminalAppIcon } from '#/renderer/components/ExternalAppIcon/index.tsx'
 import { useBranchActions, type BranchActionItemId } from '#/renderer/hooks/useBranchActions.tsx'
 import { branchActionDisplayPhase, cancelableBranchActionItemId } from '#/renderer/hooks/branch-action-state.ts'
 import { branchPullRequestBelongsToBranch } from '#/shared/git-types.ts'
-import type { BranchInfo, BrowserRemoteProvider } from '#/renderer/types.ts'
+import type { BrowserRemoteProvider } from '#/renderer/types.ts'
 
 export interface BranchActionItem {
   id: BranchActionItemId
@@ -33,7 +33,7 @@ export interface BranchActionItemGroups {
   dialogs: ReactNode
 }
 
-export function branchBrowserRemoteProvider(repo: RepoState, branch: BranchInfo): BrowserRemoteProvider | undefined {
+export function branchBrowserRemoteProvider(repo: RepoState, branch: RepoBranchState): BrowserRemoteProvider | undefined {
   const providers = repo.remote.remoteProviders
   if (branch.tracking && providers) {
     const remoteName = Object.keys(providers)
@@ -50,7 +50,7 @@ function browserRemoteIcon(provider: BrowserRemoteProvider | undefined) {
   return ExternalLink
 }
 
-export function useBranchActionItems(repo: RepoState, branch: BranchInfo): BranchActionItemGroups {
+export function useBranchActionItems(repo: RepoState, branch: RepoBranchState): BranchActionItemGroups {
   const t = useT()
   const terminalApp = useSettingsStore((s) => s.terminalApp)
   const resolvedTerminalApp = useSettingsStore((s) => s.resolvedTerminalApp)

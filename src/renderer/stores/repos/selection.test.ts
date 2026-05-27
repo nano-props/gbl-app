@@ -3,13 +3,13 @@ import { replaceRepo } from '#/renderer/stores/repos/helpers.ts'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { BranchLogState, DetailTab, RepoState } from '#/renderer/stores/repos/types.ts'
 import {
-  createBranch as branch,
+  createRepoBranch as branch,
   createCommitDetail,
   installGoblinTestBridge,
   resetReposStore,
   seedRepoState,
 } from '#/renderer/stores/repos/test-utils.ts'
-import type { BranchInfo } from '#/renderer/types.ts'
+import type { BranchSnapshotInfo } from '#/renderer/types.ts'
 import { DEFAULT_DETAIL_PANE_SIZES } from '#/shared/workspace-layout.ts'
 
 const REPO_ID = '/tmp/gbl-selection-test-repo'
@@ -20,13 +20,13 @@ function seedRepo(options: {
   currentBranch?: string
   detailTab?: DetailTab
   openCommit?: boolean
-  branches?: BranchInfo[]
+  branches?: BranchSnapshotInfo[]
 }) {
   seedRepoState({
     id: REPO_ID,
     branches: options.branches ?? [
-      branch('main', { worktreePath: '/repo' }),
-      branch('feature/worktree', { worktreePath: '/tmp/feature-worktree' }),
+      branch('main', { worktree: { path: '/repo' } }),
+      branch('feature/worktree', { worktree: { path: '/tmp/feature-worktree' } }),
       branch('feature/plain'),
     ],
     currentBranch: options.currentBranch ?? 'main',
@@ -187,7 +187,7 @@ describe('setBranchViewMode', () => {
     seedRepo({
       selectedBranch: 'main',
       detailTab: 'terminal',
-      branches: [branch('main', { worktreePath: '/repo' }), branch('feature/plain')],
+      branches: [branch('main', { worktree: { path: '/repo' } }), branch('feature/plain')],
     })
 
     useReposStore.getState().setBranchViewMode(REPO_ID, 'no-worktree')
@@ -679,6 +679,7 @@ describe('setBranchSearchQuery', () => {
         currentBranch: repo.data.currentBranch,
         status: repo.data.status,
         statusLoaded: repo.data.statusLoaded,
+        worktreesByPath: repo.data.worktreesByPath,
       },
       ui: {
         selectedBranch: repo.ui.selectedBranch,
@@ -726,6 +727,7 @@ describe('selectLog', () => {
         currentBranch: repo.data.currentBranch,
         status: repo.data.status,
         statusLoaded: repo.data.statusLoaded,
+        worktreesByPath: repo.data.worktreesByPath,
       },
       ui: {
         selectedBranch: repo.ui.selectedBranch,

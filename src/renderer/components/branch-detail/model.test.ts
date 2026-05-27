@@ -5,12 +5,12 @@ import {
 } from '#/renderer/components/branch-detail/model.ts'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
 import { finishResourceError, startResource } from '#/renderer/stores/repos/resources.ts'
-import { createBranch } from '#/renderer/stores/repos/test-utils.ts'
+import { createRepoBranch } from '#/renderer/stores/repos/test-utils.ts'
 
 describe('getSelectedBranchDetailPresentation', () => {
   test('returns empty selected detail when no branch is selected', () => {
     const repo = emptyRepo('/tmp/gbl-detail-presentation-empty', 'repo')
-    repo.data.branches = [createBranch('main')]
+    repo.data.branches = [createRepoBranch('main')]
     repo.ui.selectedBranch = null
 
     expect(getSelectedBranchDetail(repo)).toEqual({
@@ -18,12 +18,13 @@ describe('getSelectedBranchDetailPresentation', () => {
       branchLog: undefined,
       selectedStatus: [],
       statusCount: 0,
+      worktreeState: null,
     })
   })
 
   test('returns empty selected detail when the selected branch no longer exists', () => {
     const repo = emptyRepo('/tmp/gbl-detail-presentation-missing', 'repo')
-    repo.data.branches = [createBranch('main')]
+    repo.data.branches = [createRepoBranch('main')]
     repo.ui.selectedBranch = 'feature/missing'
 
     expect(getSelectedBranchDetailPresentation(repo).branch).toBeNull()
@@ -31,7 +32,7 @@ describe('getSelectedBranchDetailPresentation', () => {
 
   test('derives log loading from resource state instead of log data', () => {
     const repo = emptyRepo('/tmp/gbl-detail-presentation-log', 'repo')
-    repo.data.branches = [createBranch('main')]
+    repo.data.branches = [createRepoBranch('main')]
     repo.ui.selectedBranch = 'main'
     repo.data.logsByBranch.main = { entries: [], selectedHash: null, hasMore: false }
     repo.resources.logsByBranch.main = { phase: 'loading', loadedAt: null, error: null, stale: false }
@@ -46,7 +47,7 @@ describe('getSelectedBranchDetailPresentation', () => {
 
   test('distinguishes append log loading from initial log loading', () => {
     const repo = emptyRepo('/tmp/gbl-detail-presentation-log-append', 'repo')
-    repo.data.branches = [createBranch('main')]
+    repo.data.branches = [createRepoBranch('main')]
     repo.ui.selectedBranch = 'main'
     repo.data.logsByBranch.main = {
       entries: [{ hash: 'a', shortHash: 'a', message: 'a', author: 'a', date: '2026-01-01' }],
@@ -63,7 +64,7 @@ describe('getSelectedBranchDetailPresentation', () => {
 
   test('surfaces status loading and errors from status resource state', () => {
     const repo = emptyRepo('/tmp/gbl-detail-presentation-status', 'repo')
-    repo.data.branches = [createBranch('main', { worktreePath: '/tmp/worktree' })]
+    repo.data.branches = [createRepoBranch('main', { worktree: { path: '/tmp/worktree' } })]
     repo.data.status = [
       {
         path: '/tmp/worktree',
@@ -88,7 +89,7 @@ describe('getSelectedBranchDetailPresentation', () => {
 
   test('surfaces stale status when refresh fails after data was loaded', () => {
     const repo = emptyRepo('/tmp/gbl-detail-presentation-status-stale', 'repo')
-    repo.data.branches = [createBranch('main', { worktreePath: '/tmp/worktree' })]
+    repo.data.branches = [createRepoBranch('main', { worktree: { path: '/tmp/worktree' } })]
     repo.data.statusLoaded = true
     repo.ui.selectedBranch = 'main'
     repo.resources.status.loadedAt = Date.now()

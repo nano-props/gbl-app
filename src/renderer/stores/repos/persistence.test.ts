@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, test } from 'vitest'
-import { normalizeRepoCache, persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
-import { createBranch, resetReposStore, seedRepoState } from '#/renderer/stores/repos/test-utils.ts'
+import { hydrateCachedRepo, normalizeRepoCache, persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
+import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
+import {
+  createBranchSnapshot,
+  createRepoBranch,
+  resetReposStore,
+  seedRepoState,
+} from '#/renderer/stores/repos/test-utils.ts'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { CachedRepoState } from '#/renderer/stores/repos/types.ts'
 
@@ -13,6 +19,7 @@ function cachedRepo(savedAt: number): CachedRepoState {
       currentBranch: '',
       status: [],
       statusLoaded: false,
+      worktreesByPath: {},
     },
     ui: {
       selectedBranch: null,
@@ -51,14 +58,40 @@ describe('normalizeRepoCache', () => {
     expect(Object.keys(normalized)).toEqual(['fresh'])
   })
 
-  test('accepts old terminal cache entries so hydrate can normalize them to status', () => {
+  test('does not restore terminal detail tabs from cache', () => {
     const now = Date.now()
-    const raw = cachedRepo(now)
+    const raw = cachedRepo(now) as any
     raw.ui.detailTab = 'terminal'
 
     const normalized = normalizeRepoCache({ repo: raw })
 
     expect(normalized.repo?.ui.detailTab).toBe('terminal')
+  })
+
+  test('normalizes cached branch worktree metadata into canonical worktree state', () => {
+    const now = Date.now()
+    const raw = cachedRepo(now)
+    raw.data.branches = [createRepoBranch('feature/a', { worktree: { path: '/tmp/worktree-a' } })]
+    raw.data.worktreesByPath = {
+      '/tmp/worktree-a': {
+        path: '/tmp/worktree-a',
+        branch: 'feature/a',
+        isMain: true,
+        isDirty: true,
+        changeCount: 2,
+        isLocked: true,
+      },
+    }
+
+    const normalized = normalizeRepoCache({ repo: raw })
+
+    expect(normalized.repo?.data.branches[0]?.worktree).toEqual({ path: '/tmp/worktree-a' })
+    expect(normalized.repo?.data.worktreesByPath['/tmp/worktree-a']).toMatchObject({
+      isMain: true,
+      isDirty: true,
+      changeCount: 2,
+      isLocked: true,
+    })
   })
 })
 
@@ -67,7 +100,7 @@ describe('persistRepoCache', () => {
     const staleRepo = seedRepoState({
       id: '/repo',
       instanceToken: 1,
-      branches: [createBranch('main')],
+      branches: [createRepoBranch('main')],
       currentBranch: 'main',
       selectedBranch: 'main',
     })
@@ -76,5 +109,65 @@ describe('persistRepoCache', () => {
     persistRepoCache(useReposStore.setState, staleRepo, 1)
 
     expect(useReposStore.getState().repoCache['/repo']).toBeUndefined()
+  })
+
+  test('persists worktree state outside branch state', () => {
+    const repo = seedRepoState({
+      id: '/repo',
+      instanceToken: 1,
+      branchSnapshots: [
+        createBranchSnapshot('feature/a', {
+          worktree: {
+            path: '/tmp/worktree-a',
+            isPrimary: true,
+            isLocked: true,
+            summary: {
+              dirty: true,
+              changeCount: 2,
+            },
+          },
+        }),
+      ],
+      currentBranch: 'feature/a',
+      selectedBranch: 'feature/a',
+    })
+
+    persistRepoCache(useReposStore.setState, repo, 1)
+
+    const cached = useReposStore.getState().repoCache['/repo']
+    expect(cached?.data.branches[0]?.worktree).toEqual({ path: '/tmp/worktree-a' })
+    expect(cached?.data.worktreesByPath['/tmp/worktree-a']).toMatchObject({
+      isMain: true,
+      isLocked: true,
+      isDirty: true,
+      changeCount: 2,
+    })
+  })
+})
+
+describe('hydrateCachedRepo', () => {
+  test('hydrates branches without restoring worktree metadata fields', () => {
+    const now = Date.now()
+    const cached = cachedRepo(now)
+    cached.data.branches = [
+      createBranchSnapshot('feature/a', { worktree: { path: '/tmp/worktree-a' } }),
+    ]
+    cached.data.worktreesByPath = {
+      '/tmp/worktree-a': {
+        path: '/tmp/worktree-a',
+        branch: 'feature/a',
+        isMain: false,
+        isDirty: true,
+        changeCount: 2,
+      },
+    }
+
+    const repo = hydrateCachedRepo(emptyRepo('/repo', 'repo'), cached)
+
+    expect(repo.data.branches[0]?.worktree).toEqual({ path: '/tmp/worktree-a' })
+    expect(repo.data.worktreesByPath['/tmp/worktree-a']).toMatchObject({
+      isDirty: true,
+      changeCount: 2,
+    })
   })
 })

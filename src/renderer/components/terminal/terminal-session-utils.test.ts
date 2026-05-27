@@ -5,7 +5,7 @@ import {
   terminalSessionGroupKey,
   terminalSessionKey,
 } from '#/renderer/components/terminal/terminal-session-utils.ts'
-import { createBranch, seedRepoState } from '#/renderer/stores/repos/test-utils.ts'
+import { createRepoBranch, seedRepoState } from '#/renderer/stores/repos/test-utils.ts'
 import type { ReposStore } from '#/renderer/stores/repos/types.ts'
 
 describe('terminal session utils', () => {
@@ -17,7 +17,7 @@ describe('terminal session utils', () => {
   test('checks whether a terminal descriptor still has a live worktree', () => {
     const repo = seedRepoState({
       id: '/repo',
-      branches: [createBranch('main', { worktreePath: '/repo' }), createBranch('feature')],
+      branches: [createRepoBranch('main', { worktree: { path: '/repo' } }), createRepoBranch('feature')],
     })
     const repos: ReposStore['repos'] = { '/repo': repo }
 

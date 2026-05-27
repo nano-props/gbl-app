@@ -1,8 +1,12 @@
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
 import { disposeAllRepoRuntimes } from '#/renderer/stores/repos/runtime.ts'
-import type { BranchInfo, PullRequestInfo, WorktreeStatus } from '#/renderer/types.ts'
-import type { DetailTab, RepoState } from '#/renderer/stores/repos/types.ts'
+import {
+  stripBranchWorktreeMetadata,
+  worktreeStatesFromBranches,
+} from '#/renderer/stores/repos/worktree-state.ts'
+import type { BranchSnapshotInfo, PullRequestInfo, WorktreeStatus } from '#/renderer/types.ts'
+import type { DetailTab, RepoBranchState, RepoState } from '#/renderer/stores/repos/types.ts'
 import type { CommitDetail } from '#/shared/rpc.ts'
 import {
   DEFAULT_DETAIL_COLLAPSED,
@@ -12,7 +16,7 @@ import {
 
 export type RpcTestHandler = (input: any) => unknown
 
-export function createBranch(name: string, options: Partial<BranchInfo> = {}): BranchInfo {
+export function createBranchSnapshot(name: string, options: Partial<BranchSnapshotInfo> = {}): BranchSnapshotInfo {
   return {
     name,
     isCurrent: false,
@@ -24,6 +28,10 @@ export function createBranch(name: string, options: Partial<BranchInfo> = {}): B
     lastCommitAuthor: '',
     ...options,
   }
+}
+
+export function createRepoBranch(name: string, options: Partial<RepoBranchState> = {}): RepoBranchState {
+  return stripBranchWorktreeMetadata([createBranchSnapshot(name, options)])[0]!
 }
 
 export function createPullRequest(number: number, options: Partial<PullRequestInfo> = {}): PullRequestInfo {
@@ -100,7 +108,8 @@ export function installGoblinTestBridge(handlers: Record<string, RpcTestHandler>
 export function seedRepoState(options: {
   id: string
   name?: string
-  branches?: BranchInfo[]
+  branches?: RepoBranchState[]
+  branchSnapshots?: BranchSnapshotInfo[]
   currentBranch?: string
   selectedBranch?: string | null
   detailTab?: DetailTab
@@ -108,18 +117,25 @@ export function seedRepoState(options: {
   instanceToken?: number
   status?: WorktreeStatus[]
   statusLoaded?: boolean
+  worktreesByPath?: RepoState['data']['worktreesByPath']
   remote?: Partial<RepoState['remote']>
 }): RepoState {
   const base = emptyRepo(options.id, options.name ?? 'repo')
+  const branchesWithSnapshotWorktreeMetadata = options.branchSnapshots ?? options.branches ?? base.data.branches
+  const branches = options.branches ?? stripBranchWorktreeMetadata(branchesWithSnapshotWorktreeMetadata)
+  const status = options.status ?? base.data.status
   const repo: RepoState = {
     ...base,
     instanceToken: options.instanceToken ?? base.instanceToken,
     data: {
       ...base.data,
-      branches: options.branches ?? base.data.branches,
+      branches,
       currentBranch: options.currentBranch ?? base.data.currentBranch,
-      status: options.status ?? base.data.status,
+      status,
       statusLoaded: options.statusLoaded ?? base.data.statusLoaded,
+      worktreesByPath:
+        options.worktreesByPath ??
+        worktreeStatesFromBranches(branchesWithSnapshotWorktreeMetadata, base.data.worktreesByPath, status),
     },
     ui: {
       ...base.ui,

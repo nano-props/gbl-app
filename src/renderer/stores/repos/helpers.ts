@@ -29,6 +29,7 @@ export function emptyRepo(id: string, name: string): RepoState {
       logsByBranch: {},
       status: [],
       statusLoaded: false,
+      worktreesByPath: {},
     },
     resources: emptyRepoResources(),
     ui: {

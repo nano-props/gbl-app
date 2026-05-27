@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
-import type { BranchInfo } from '#/renderer/types.ts'
+import type { BranchSnapshotInfo } from '#/renderer/types.ts'
 import {
   branch,
   flushRpc,
@@ -51,10 +51,10 @@ describe('repo lifecycle', () => {
     expect(calls.status).toEqual([REPO_A, REPO_B, REPO_A])
   })
   test('initial refresh results from a closed repo instance do not overwrite a reopened repo', async () => {
-    const snapshotResolvers: Array<(value: { branches: BranchInfo[]; current: string }) => void> = []
+    const snapshotResolvers: Array<(value: { branches: BranchSnapshotInfo[]; current: string }) => void> = []
     installGoblin({
       snapshot: () =>
-        new Promise<{ branches: BranchInfo[]; current: string }>((resolve) => {
+        new Promise<{ branches: BranchSnapshotInfo[]; current: string }>((resolve) => {
           snapshotResolvers.push(resolve)
         }),
     })

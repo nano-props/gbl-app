@@ -22,5 +22,5 @@ export function terminalDescriptor(base: TerminalSessionBase, terminalId: string
 
 export function isTerminalDescriptorLive(repos: ReposStore['repos'], descriptor: TerminalDescriptor): boolean {
   const repo = repos[descriptor.repoRoot]
-  return !!repo?.data.branches.some((branch) => branch.worktreePath === descriptor.worktreePath)
+  return !!repo?.data.branches.some((branch) => branch.worktree?.path === descriptor.worktreePath)
 }

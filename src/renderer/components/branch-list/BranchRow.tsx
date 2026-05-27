@@ -1,16 +1,16 @@
 import { type RefObject } from 'react'
 import { ArrowDown, ArrowUp, Check, FolderTree, GitBranch } from 'lucide-react'
 import { useT, type Lang } from '#/renderer/stores/i18n.ts'
-import type { RepoState } from '#/renderer/stores/repos/types.ts'
+import type { RepoBranchState, RepoState } from '#/renderer/stores/repos/types.ts'
 import { Badge } from '#/renderer/components/ui/badge.tsx'
 import { BranchActionsMenu } from '#/renderer/components/BranchActionsMenu.tsx'
 import { cn } from '#/renderer/lib/cn.ts'
 import { formatRelativeTime } from '#/renderer/lib/dates.ts'
-import type { BranchInfo } from '#/renderer/types.ts'
+import { getBranchWorktreeState } from '#/renderer/stores/repos/worktree-state.ts'
 
 interface BranchRowProps {
   repo: RepoState
-  branch: BranchInfo
+  branch: RepoBranchState
   selected: string | null
   current: string
   lang: Lang
@@ -52,15 +52,17 @@ export function BranchRow({
   const t = useT()
   const isSelected = branch.name === selected
   const isCurrent = branch.name === current
-  const hasWorktree = !!branch.worktreePath
+  const hasWorktree = !!branch.worktree?.path
   const isWorktree = hasWorktree && !isCurrent
+  const worktreeState = getBranchWorktreeState(repo, branch)
+  const worktreeDirty = worktreeState?.dirty ?? false
   const commitTime = formatRelativeTime(branch.lastCommitDate, lang)
   const commitMeta = branch.lastCommitAuthor ? `${branch.lastCommitAuthor} · ${commitTime}` : commitTime
   const ariaParts = [
     branch.name,
     isCurrent ? t('branch-status.current') : null,
     branch.isDefault ? t('branches.default') : null,
-    hasWorktree ? t(branch.worktreeDirty ? 'branches.dirty' : 'branches.worktree') : null,
+    hasWorktree ? t(worktreeDirty ? 'branches.dirty' : 'branches.worktree') : null,
     branch.trackingGone ? t('branches.gone') : null,
     branch.ahead > 0 ? t('branch-status.sync.ahead', { n: branch.ahead }) : null,
     branch.behind > 0 ? t('branch-status.sync.behind', { n: branch.behind }) : null,
@@ -86,7 +88,7 @@ export function BranchRow({
           {isCurrent ? (
             <Check size={14} className="text-success" />
           ) : isWorktree ? (
-            <FolderTree size={14} className={branch.worktreeDirty ? 'text-attention' : 'text-brand-text'} />
+            <FolderTree size={14} className={worktreeDirty ? 'text-attention' : 'text-brand-text'} />
           ) : (
             <GitBranch size={14} className={isSelected ? 'text-selected-muted-foreground' : 'text-muted-foreground'} />
           )}
@@ -107,7 +109,7 @@ export function BranchRow({
                   {t('branches.default')}
                 </Badge>
               )}
-              {hasWorktree && branch.worktreeDirty ? (
+              {hasWorktree && worktreeDirty ? (
                 <Badge variant="attention" className="gap-1 font-mono">
                   <FolderTree size={10} />
                   {t('branches.dirty')}

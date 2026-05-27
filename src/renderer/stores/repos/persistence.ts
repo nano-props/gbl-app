@@ -4,6 +4,10 @@ import type { ReposSet } from '#/renderer/stores/repos/types.ts'
 import { selectedBranchForBranchSet } from '#/renderer/stores/repos/branch-view-mode.ts'
 import { finishResourceSuccess } from '#/renderer/stores/repos/resources.ts'
 import type { CachedRepoState, RepoState } from '#/renderer/stores/repos/types.ts'
+import {
+  stripBranchWorktreeMetadata,
+  worktreeStatesFromBranches,
+} from '#/renderer/stores/repos/worktree-state.ts'
 
 const MAX_CACHE_AGE_MS = 14 * 24 * 60 * 60 * 1000
 const MAX_REPOS = 50
@@ -45,11 +49,11 @@ const BranchSchema = v.object({
   lastCommitMessage: v.string(),
   lastCommitDate: v.string(),
   lastCommitAuthor: v.string(),
-  worktreePath: v.optional(v.string()),
-  worktreeDirty: v.optional(v.boolean()),
-  worktreeIsPrimary: v.optional(v.boolean()),
-  worktreeChangeCount: v.optional(FiniteNumber),
-  worktreeLocked: v.optional(v.boolean()),
+  worktree: v.optional(
+    v.object({
+      path: v.string(),
+    }),
+  ),
   mergedToDefault: v.optional(v.boolean()),
   pullRequest: v.optional(PullRequestSchema),
 })
@@ -67,6 +71,15 @@ const WorktreeStatusSchema = v.object({
   entries: v.array(StatusEntrySchema),
 })
 
+const WorktreeStateSchema = v.object({
+  path: v.string(),
+  branch: v.optional(v.string()),
+  isMain: v.boolean(),
+  isDirty: v.optional(v.boolean()),
+  changeCount: v.optional(FiniteNumber),
+  isLocked: v.optional(v.boolean()),
+})
+
 const CachedRepoSchema = v.object({
   savedAt: FiniteNumber,
   name: v.string(),
@@ -75,6 +88,7 @@ const CachedRepoSchema = v.object({
     currentBranch: v.string(),
     status: v.array(WorktreeStatusSchema),
     statusLoaded: v.boolean(),
+    worktreesByPath: v.optional(v.record(v.string(), WorktreeStateSchema)),
   }),
   ui: v.object({
     selectedBranch: v.nullable(v.string()),
@@ -98,15 +112,17 @@ export function hydrateCachedRepo(repo: RepoState, cached: CachedRepoState | und
   }
   if (cached.data.branches.length > 0) finishResourceSuccess(resources.snapshot, cached.savedAt)
   if (cached.data.statusLoaded) finishResourceSuccess(resources.status, cached.savedAt)
+  const branches = stripBranchWorktreeMetadata(cached.data.branches)
   return {
     ...repo,
     name: cached.name || repo.name,
     data: {
       ...repo.data,
-      branches: cached.data.branches,
+      branches,
       currentBranch: cached.data.currentBranch,
       status: cached.data.status,
       statusLoaded: cached.data.statusLoaded,
+      worktreesByPath: cached.data.worktreesByPath,
     },
     resources,
     ui: {
@@ -148,10 +164,11 @@ function repoCacheEntry(repo: RepoState): CachedRepoState | null {
     savedAt: Date.now(),
     name: repo.name,
     data: {
-      branches: repo.data.branches,
+      branches: stripBranchWorktreeMetadata(repo.data.branches),
       currentBranch: repo.data.currentBranch,
       status: repo.data.status,
       statusLoaded: repo.data.statusLoaded,
+      worktreesByPath: worktreeStatesFromBranches(repo.data.branches, repo.data.worktreesByPath, repo.data.status),
     },
     ui: {
       selectedBranch: repo.ui.selectedBranch,
@@ -176,5 +193,19 @@ function isExpired(savedAt: number): boolean {
 
 function normalizeRepoCacheEntry(value: unknown): CachedRepoState | null {
   const parsed = v.safeParse(CachedRepoSchema, value)
-  return parsed.success ? parsed.output : null
+  if (!parsed.success) return null
+  const cached = parsed.output
+  const worktreesByPath = worktreeStatesFromBranches(
+    cached.data.branches,
+    cached.data.worktreesByPath ?? {},
+    cached.data.status,
+  )
+  return {
+    ...cached,
+    data: {
+      ...cached.data,
+      branches: stripBranchWorktreeMetadata(cached.data.branches),
+      worktreesByPath,
+    },
+  }
 }

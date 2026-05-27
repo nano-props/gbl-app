@@ -8,12 +8,12 @@ import {
   visibleBranches,
 } from '#/renderer/stores/repos/branch-view-mode.ts'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
-import { createBranch as branch } from '#/renderer/stores/repos/test-utils.ts'
-import type { BranchInfo } from '#/renderer/types.ts'
+import { createRepoBranch as branch } from '#/renderer/stores/repos/test-utils.ts'
+import type { BranchSnapshotInfo } from '#/renderer/types.ts'
 import type { BranchViewMode, RepoState } from '#/renderer/stores/repos/types.ts'
 
 interface RepoOverrides {
-  branches?: BranchInfo[]
+  branches?: BranchSnapshotInfo[]
   currentBranch?: string
   selectedBranch?: string | null
   branchViewMode?: BranchViewMode
@@ -37,8 +37,8 @@ function repo(overrides: RepoOverrides = {}): RepoState {
 }
 
 describe('branchMatchesViewMode', () => {
-  test('matches worktree and no-worktree view modes from worktreePath', () => {
-    const worktree = branch('feature/worktree', { worktreePath: '/tmp/feature-worktree' })
+  test('matches worktree and no-worktree view modes from branch worktree', () => {
+    const worktree = branch('feature/worktree', { worktree: { path: '/tmp/feature-worktree' } })
     const plain = branch('feature/plain')
 
     expect(branchMatchesViewMode(worktree, 'all')).toBe(true)
@@ -52,7 +52,7 @@ describe('branchMatchesViewMode', () => {
 
 describe('visibleBranches', () => {
   test('returns branches visible in the active repo view mode', () => {
-    const branches = [branch('main', { worktreePath: '/repo' }), branch('feature/plain')]
+    const branches = [branch('main', { worktree: { path: '/repo' } }), branch('feature/plain')]
 
     expect(visibleBranches({ branches, viewMode: 'all' }).map((b) => b.name)).toEqual(['main', 'feature/plain'])
     expect(visibleBranches({ branches, viewMode: 'worktrees' }).map((b) => b.name)).toEqual(['main'])
@@ -60,7 +60,7 @@ describe('visibleBranches', () => {
   })
 
   test('filters branches by the active search query', () => {
-    const branches = [branch('main', { worktreePath: '/repo' }), branch('feature/plain'), branch('fix/plain')]
+    const branches = [branch('main', { worktree: { path: '/repo' } }), branch('feature/plain'), branch('fix/plain')]
 
     expect(visibleBranches({ branches, viewMode: 'all', searchQuery: 'plain' }).map((b) => b.name)).toEqual([
       'feature/plain',
@@ -82,8 +82,8 @@ describe('branchMatchesSearchQuery', () => {
 
 describe('selectedBranchForViewMode', () => {
   const branches = [
-    branch('main', { worktreePath: '/repo' }),
-    branch('feature/worktree', { worktreePath: '/tmp/feature-worktree' }),
+    branch('main', { worktree: { path: '/repo' } }),
+    branch('feature/worktree', { worktree: { path: '/tmp/feature-worktree' } }),
     branch('feature/plain'),
   ]
 
@@ -120,7 +120,7 @@ describe('selectedBranchForViewMode', () => {
 
 describe('selectedBranchForBranchSet', () => {
   test('uses the same selection policy for non-store branch snapshots', () => {
-    const branches = [branch('main', { worktreePath: '/repo' }), branch('feature/plain')]
+    const branches = [branch('main', { worktree: { path: '/repo' } }), branch('feature/plain')]
 
     expect(
       selectedBranchForBranchSet({

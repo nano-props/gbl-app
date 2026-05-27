@@ -1,6 +1,6 @@
-import type { BranchInfo, PullRequestInfo } from '#/renderer/types.ts'
+import type { BranchSnapshotInfo, PullRequestInfo } from '#/renderer/types.ts'
 import {
-  createBranch,
+  createBranchSnapshot,
   createPullRequest,
   installGoblinTestBridge,
   resetReposStore,
@@ -12,8 +12,8 @@ export const REPO_ID = '/tmp/gbl-test-repo'
 export const rpcHandlers: Record<string, RpcTestHandler> = {}
 export const pullRequest = createPullRequest
 
-export function branch(name: string, pullRequest?: PullRequestInfo, options: Partial<BranchInfo> = {}): BranchInfo {
-  return createBranch(name, { ...options, ...(pullRequest ? { pullRequest } : {}) })
+export function branch(name: string, pullRequest?: PullRequestInfo, options: Partial<BranchSnapshotInfo> = {}): BranchSnapshotInfo {
+  return createBranchSnapshot(name, { ...options, ...(pullRequest ? { pullRequest } : {}) })
 }
 
 export function pullRequestWithHealth(number: number): PullRequestInfo {
@@ -24,10 +24,10 @@ export function pullRequestWithHealth(number: number): PullRequestInfo {
   })
 }
 
-export function seedRepo(branches: BranchInfo[], instanceToken = 1): number {
+export function seedRepo(branches: BranchSnapshotInfo[], instanceToken = 1): number {
   return seedRepoState({
     id: REPO_ID,
-    branches,
+    branchSnapshots: branches,
     instanceToken,
     remote: {
       remotes: ['origin'],

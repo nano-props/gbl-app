@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { getRepoWorkspacePresentation } from '#/renderer/components/repo-workspace/model.ts'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
 import { startResource } from '#/renderer/stores/repos/resources.ts'
-import { createBranch } from '#/renderer/stores/repos/test-utils.ts'
+import { createRepoBranch } from '#/renderer/stores/repos/test-utils.ts'
 
 describe('getRepoWorkspacePresentation', () => {
   test('reports missing repos without initial loading', () => {
@@ -24,7 +24,7 @@ describe('getRepoWorkspacePresentation', () => {
 
   test('keeps cached branch data visible during snapshot refreshes', () => {
     const repo = emptyRepo('/tmp/gbl-workspace-cached-loading', 'repo')
-    repo.data.branches = [createBranch('main')]
+    repo.data.branches = [createRepoBranch('main')]
     startResource(repo.resources.snapshot, { hasData: true })
 
     expect(getRepoWorkspacePresentation(repo)).toEqual({

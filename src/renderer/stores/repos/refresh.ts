@@ -10,6 +10,11 @@ import { persistRepoCache } from '#/renderer/stores/repos/persistence.ts'
 import { runLatestResourceOperation } from '#/renderer/stores/repos/resource-runner.ts'
 import { canStartRemoteFetch } from '#/renderer/stores/repos/sync-state.ts'
 import {
+  applyStatusToWorktreeStates,
+  stripBranchWorktreeMetadata,
+  worktreeStatesFromBranches,
+} from '#/renderer/stores/repos/worktree-state.ts'
+import {
   pruneRepoBranchLogOperations,
   pruneRepoBranchPullRequestOperations,
   repoOperationBusy,
@@ -260,15 +265,21 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
             // runs. If GitHub is unavailable, refreshPullRequests keeps this
             // metadata instead of making the row flicker to "no PR"; local-only
             // repos clear it because there is no PR source to refresh.
-            const branches = snap.branches.map((branch) => {
+            const branchesWithSnapshotWorktreeMetadata = snap.branches.map((branch) => {
               const pullRequest = branch.pullRequest ?? pullRequestsByBranch.get(branch.name)
               return pullRequest && branchPullRequestBelongsToBranch(branch, pullRequest)
                 ? { ...branch, pullRequest }
                 : branch
             })
+            const branches = stripBranchWorktreeMetadata(branchesWithSnapshotWorktreeMetadata)
             r.data.branches = branches
             r.data.currentBranch = snap.current
             r.data.logsByBranch = logsByBranch
+            r.data.worktreesByPath = worktreeStatesFromBranches(
+              branchesWithSnapshotWorktreeMetadata,
+              r.data.worktreesByPath,
+              r.data.status,
+            )
             r.resources.logsByBranch = Object.fromEntries(
               Object.entries(r.resources.logsByBranch).filter(([branch]) => validBranches.has(branch)),
             )
@@ -291,7 +302,7 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
             markRepoAvailable(r)
             if (
               r.ui.detailTab === 'terminal' &&
-              !branches.some((branch) => branch.name === selected && branch.worktreePath)
+              !branches.some((branch) => branch.name === selected && branch.worktree?.path)
             ) {
               r.ui.detailTab = 'status'
             }
@@ -303,7 +314,7 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
           pruneRepoBranchPullRequestOperations(id, validBranches)
           const branchNames = snap.branches.map((branch) => branch.name)
           const worktreePaths = snap.branches
-            .map((branch) => branch.worktreePath)
+            .map((branch) => branch.worktree?.path)
             .filter((p): p is string => typeof p === 'string' && p.length > 0)
           runSnapshotSuccessWorkflow(set, get, {
             id,
@@ -455,6 +466,7 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
         applyResult: (r, status) => {
           r.data.status = status
           r.data.statusLoaded = true
+          r.data.worktreesByPath = applyStatusToWorktreeStates(r.data.worktreesByPath, status)
         },
         onSuccess: (_status, ctx) => {
           const repoAfterStatus = get().repos[id]

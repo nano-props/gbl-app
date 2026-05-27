@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
-import type { BranchInfo } from '#/renderer/types.ts'
+import type { BranchSnapshotInfo } from '#/renderer/types.ts'
 import {
   branch,
   flushRpc,
@@ -38,6 +38,7 @@ describe('repo session hydration', () => {
             currentBranch: 'cached',
             status: [],
             statusLoaded: true,
+            worktreesByPath: {},
           },
           ui: {
             selectedBranch: 'cached',
@@ -47,10 +48,10 @@ describe('repo session hydration', () => {
         },
       },
     })
-    let resolveSnapshot!: (value: { branches: BranchInfo[]; current: string }) => void
+    let resolveSnapshot!: (value: { branches: BranchSnapshotInfo[]; current: string }) => void
     installGoblin({
       snapshot: () =>
-        new Promise<{ branches: BranchInfo[]; current: string }>((resolve) => {
+        new Promise<{ branches: BranchSnapshotInfo[]; current: string }>((resolve) => {
           resolveSnapshot = resolve
         }),
     })
@@ -87,6 +88,7 @@ describe('repo session hydration', () => {
             currentBranch: 'cached',
             status: [],
             statusLoaded: true,
+            worktreesByPath: {},
           },
           ui: {
             selectedBranch: 'cached',
@@ -102,7 +104,7 @@ describe('repo session hydration', () => {
         new Promise<{ ok: true; root: string; name: string }>((resolve) => {
           probes.set(path, resolve)
         }),
-      snapshot: () => new Promise<{ branches: BranchInfo[]; current: string }>(() => {}),
+      snapshot: () => new Promise<{ branches: BranchSnapshotInfo[]; current: string }>(() => {}),
     })
 
     const work = useReposStore.getState().hydrateSession([REPO_A, REPO_B], REPO_A)

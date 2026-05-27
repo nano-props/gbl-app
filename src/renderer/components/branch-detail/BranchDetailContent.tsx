@@ -37,7 +37,7 @@ export function BranchDetailContent({ repo, detail, detailId, contentId, layout 
   const { branch } = detail
   useEffect(() => {
     if (!branch) return
-    const nextTab = detailTabForWorktree(repo.ui.detailTab, !!branch.worktreePath)
+    const nextTab = detailTabForWorktree(repo.ui.detailTab, !!branch.worktree?.path)
     if (nextTab !== repo.ui.detailTab) setDetailTab(repo.id, nextTab)
   }, [branch, repo.id, repo.ui.detailTab, setDetailTab])
   if (!branch)
@@ -71,7 +71,7 @@ export function BranchDetailContent({ repo, detail, detailId, contentId, layout 
           appendLoading={detail.loading.logAppend}
         />
       )}
-      {repo.ui.detailTab === 'terminal' && branch.worktreePath && (
+      {repo.ui.detailTab === 'terminal' && branch.worktree?.path && (
         <BranchTerminalTab detailId={detailId} repoId={repo.id} branch={branch} />
       )}
     </div>
@@ -135,11 +135,11 @@ function BranchChangesTab({
 
   return (
     <BranchTabPanel detailId={detailId} tabId="changes" busy={statusLoading}>
-      {branch.worktreePath && statusLoading && !repo.data.statusLoaded ? (
+      {branch.worktree?.path && statusLoading && !repo.data.statusLoaded ? (
         <ListSkeleton rows={8} variant="status" />
-      ) : branch.worktreePath && !repo.data.statusLoaded && statusError ? (
+      ) : branch.worktree?.path && !repo.data.statusLoaded && statusError ? (
         <EmptyState title={t(statusError)} />
-      ) : branch.worktreePath ? (
+      ) : branch.worktree?.path ? (
         totalEntries > 0 ? (
           <div className="flex min-h-0 flex-1 flex-col">
             {statusStale && statusError && <StaleStatusNotice message={statusError} />}
@@ -228,10 +228,10 @@ function BranchTerminalTab({
   repoId: string
   branch: BranchDetailBranch
 }) {
-  if (!branch.worktreePath) return null
+  if (!branch.worktree?.path) return null
   return (
     <BranchTabPanel detailId={detailId} tabId="terminal">
-      <TerminalSlot repoRoot={repoId} branch={branch.name} worktreePath={branch.worktreePath} />
+      <TerminalSlot repoRoot={repoId} branch={branch.name} worktreePath={branch.worktree?.path} />
     </BranchTabPanel>
   )
 }

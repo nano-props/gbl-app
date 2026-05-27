@@ -29,7 +29,7 @@ import {
 } from '#/renderer/stores/repos/refresh-workflows.ts'
 
 function branchHasWorktree(repo: RepoState, branchName: string | null): boolean {
-  return !!branchName && repo.data.branches.some((branch) => branch.name === branchName && !!branch.worktreePath)
+  return !!branchName && repo.data.branches.some((branch) => branch.name === branchName && !!branch.worktree?.path)
 }
 
 function detailTabForSelection(repo: RepoState, tab: DetailTab, selectedBranch = repo.ui.selectedBranch): DetailTab {
@@ -236,7 +236,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
         const repo = s.repos[id]
         if (!repo || repo.ui.detailTab !== 'terminal') return s
         const branch = repo.data.branches.find((branch) => branch.name === repo.ui.selectedBranch)
-        if (branch?.worktreePath !== worktreePath) return s
+        if (branch?.worktree?.path !== worktreePath) return s
         changed = true
         token = repo.instanceToken
         const nextRepo = replaceRepo(repo, (r) => {
@@ -307,7 +307,7 @@ export function createSelectionActions(set: ReposSet, get: ReposGet) {
       const branch = repo.ui.selectedBranch
       if (!branch || branch === repo.data.currentBranch) return
       const branchInfo = repo.data.branches.find((b) => b.name === branch)
-      if (!branchInfo || branchInfo.worktreePath) return
+      if (!branchInfo || branchInfo.worktree?.path) return
       await get().runBranchAction(id, { kind: 'checkout', branch }, { token })
     },
 

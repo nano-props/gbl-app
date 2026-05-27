@@ -1,7 +1,7 @@
 import { initTRPC } from '@trpc/server'
 import * as v from 'valibot'
 import type {
-  BranchInfo,
+  BranchSnapshotInfo,
   ExecResult,
   LogEntry,
   PullRequestFetchMode,
@@ -109,7 +109,7 @@ export interface CommitDetail {
 }
 
 export interface RepoSnapshot {
-  branches: BranchInfo[]
+  branches: BranchSnapshotInfo[]
   current: string
   remote?: RepoRemoteInfo
 }

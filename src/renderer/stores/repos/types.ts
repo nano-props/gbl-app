@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand'
 import type {
-  BranchInfo,
+  BranchSnapshotInfo,
   BrowserRemoteProvider,
   ExecResult,
   LogEntry,
@@ -16,6 +16,10 @@ export type DetailTab = 'status' | 'changes' | 'commits' | 'terminal'
 export type BranchViewMode = 'all' | 'worktrees' | 'no-worktree'
 export type RepoWorkspaceLayout = WorkspaceLayout
 export type RepoDataSource = 'cache' | 'fresh'
+// Renderer branches keep only the worktree reference; metadata lives in worktreesByPath.
+export type RepoBranchState = Omit<BranchSnapshotInfo, 'worktree'> & {
+  worktree?: Pick<NonNullable<BranchSnapshotInfo['worktree']>, 'path'>
+}
 export type CommitDetailState =
   | { phase: 'idle' }
   | { phase: 'opening'; hash: string }
@@ -49,11 +53,21 @@ export type RepoEvent =
 export type OpenRepoResult = { ok: true; id: string } | { ok: false; message: string }
 
 export interface RepoDataState {
-  branches: BranchInfo[]
+  branches: RepoBranchState[]
   currentBranch: string
   logsByBranch: Record<string, BranchLogState>
   status: WorktreeStatus[]
   statusLoaded: boolean
+  worktreesByPath: Record<string, RepoWorktreeState>
+}
+
+export interface RepoWorktreeState {
+  path: string
+  branch?: string
+  isMain: boolean
+  isDirty?: boolean
+  changeCount?: number
+  isLocked?: boolean
 }
 
 export interface RepoUiState {
@@ -91,7 +105,7 @@ export type RepoAvailabilityState = { phase: 'available' } | { phase: 'unavailab
 export interface CachedRepoState {
   savedAt: number
   name: string
-  data: Pick<RepoDataState, 'branches' | 'currentBranch' | 'status' | 'statusLoaded'>
+  data: Pick<RepoDataState, 'branches' | 'currentBranch' | 'status' | 'statusLoaded' | 'worktreesByPath'>
   ui: Pick<RepoUiState, 'selectedBranch' | 'branchViewMode' | 'detailTab'>
 }
 

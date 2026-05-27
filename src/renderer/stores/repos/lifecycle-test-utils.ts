@@ -1,8 +1,8 @@
-import { createBranch, installGoblinTestBridge, resetReposStore } from '#/renderer/stores/repos/test-utils.ts'
+import { createBranchSnapshot, installGoblinTestBridge, resetReposStore } from '#/renderer/stores/repos/test-utils.ts'
 
 export const REPO_A = '/tmp/gbl-lifecycle-a'
 export const REPO_B = '/tmp/gbl-lifecycle-b'
-export const branch = createBranch
+export const branch = createBranchSnapshot
 
 export async function flushRpc(): Promise<void> {
   for (let i = 0; i < 5; i += 1) await Promise.resolve()

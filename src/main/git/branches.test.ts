@@ -13,12 +13,12 @@ import {
   markMergedToDefault,
   prioritizeDefaultBranch,
 } from '#/main/git/branches.ts'
-import type { BranchInfo } from '#/shared/git-types.ts'
+import type { BranchSnapshotInfo } from '#/shared/git-types.ts'
 
 let templateRepo: string | null = null
 let tmp: string | null = null
 
-function branch(name: string): BranchInfo {
+function branch(name: string): BranchSnapshotInfo {
   return {
     name,
     isCurrent: false,

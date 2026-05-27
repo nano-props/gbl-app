@@ -1,9 +1,9 @@
 // Git domain types shared by main (which produces them) and renderer
 // (which consumes them via IPC). Putting these in `src/shared/` keeps
 // main/renderer bundles independent — neither side has to import the
-// other's module graph just to know what a `BranchInfo` looks like.
+// other's module graph just to know what a `BranchSnapshotInfo` looks like.
 
-export interface BranchInfo {
+export interface BranchSnapshotInfo {
   name: string
   isCurrent: boolean
   isDefault?: boolean
@@ -15,13 +15,21 @@ export interface BranchInfo {
   lastCommitMessage: string
   lastCommitDate: string
   lastCommitAuthor: string
-  worktreePath?: string
-  worktreeDirty?: boolean
-  worktreeIsPrimary?: boolean
-  worktreeChangeCount?: number
-  worktreeLocked?: boolean
+  worktree?: BranchWorktreeSnapshot
   mergedToDefault?: boolean
   pullRequest?: PullRequestInfo
+}
+
+export interface BranchWorktreeSnapshot {
+  path: string
+  isPrimary?: boolean
+  isLocked?: boolean
+  summary?: BranchWorktreeSnapshotSummary
+}
+
+export interface BranchWorktreeSnapshotSummary {
+  dirty?: boolean
+  changeCount?: number
 }
 
 export interface PullRequestInfo {
@@ -47,7 +55,7 @@ export interface PullRequestInfo {
 }
 
 export function branchPullRequestBelongsToBranch(
-  branch: Pick<BranchInfo, 'name' | 'isDefault'>,
+  branch: Pick<BranchSnapshotInfo, 'name' | 'isDefault'>,
   pullRequest: PullRequestInfo,
 ): boolean {
   if (branch.isDefault === true) {

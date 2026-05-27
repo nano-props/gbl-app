@@ -21,13 +21,26 @@ import { WINDOW_BACKGROUND_BY_COLOR_THEME } from '#/shared/theme-tokens.ts'
 const DEFAULT_BOUNDS: WindowBounds = { width: 1200, height: 760 }
 
 let mainWindow: BrowserWindow | null = null
+let mainWindowCreation: Promise<BrowserWindow> | null = null
 
 export function getMainWindow(): BrowserWindow | null {
+  if (mainWindow && !mainWindow.isDestroyed()) return mainWindow
+  mainWindow = null
   return mainWindow
 }
 
+export function getOrCreateMainWindow(): Promise<BrowserWindow> {
+  const existing = getMainWindow()
+  if (existing) return Promise.resolve(existing)
+  mainWindowCreation ??= createMainWindow().finally(() => {
+    mainWindowCreation = null
+  })
+  return mainWindowCreation
+}
+
 export async function activateMainWindow(): Promise<BrowserWindow> {
-  const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : await createMainWindow()
+  await app.whenReady()
+  const win = await getOrCreateMainWindow()
   if (win.isMinimized()) win.restore()
   if (!win.isVisible()) win.show()
   if (process.platform === 'darwin') {
@@ -64,7 +77,7 @@ function clampToDisplay(bounds: WindowBounds): WindowBounds {
   return { x: bounds.x, y: bounds.y, width, height }
 }
 
-export async function createMainWindow(): Promise<BrowserWindow> {
+async function createMainWindow(): Promise<BrowserWindow> {
   const { resolved, colorTheme } = getTheme()
   // Match the renderer's body background so there's no white flash
   // before the bundle loads. Hex values mirror each theme's

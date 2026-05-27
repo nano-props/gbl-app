@@ -3,7 +3,7 @@
 // manual mirror copy.
 
 export type {
-  BranchInfo,
+  BranchSnapshotInfo,
   StatusEntry,
   WorktreeStatus,
   LogEntry,

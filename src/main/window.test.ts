@@ -1,43 +1,63 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import { BrowserWindow } from 'electron'
-import { createMainWindow } from '#/main/window.ts'
-import { openHttpExternal } from '#/main/external-url.ts'
 
-const webContentsOn = vi.fn()
-const setWindowOpenHandler = vi.fn()
-const windowOn = vi.fn()
-const loadURL = vi.fn()
+const mocks = vi.hoisted(() => {
+  const state = {
+    windows: [] as any[],
+    webContentsOn: vi.fn(),
+    setWindowOpenHandler: vi.fn(),
+    windowOn: vi.fn(),
+    loadURL: vi.fn(),
+    openHttpExternal: vi.fn(() => Promise.resolve(true)),
+    loadSettings: vi.fn(() => Promise.resolve({ windowBounds: null })),
+  }
+  const BrowserWindow = Object.assign(
+    vi.fn(function BrowserWindow() {
+      const win = {
+        webContents: {
+          id: 1,
+          on: state.webContentsOn,
+          setWindowOpenHandler: state.setWindowOpenHandler,
+          isDestroyed: () => false,
+          once: vi.fn(),
+        },
+        isDestroyed: () => false,
+        isVisible: () => true,
+        isMinimized: () => false,
+        isMaximized: () => false,
+        isFullScreen: () => false,
+        restore: vi.fn(),
+        show: vi.fn(),
+        focus: vi.fn(),
+        getNormalBounds: () => ({ x: 0, y: 0, width: 1200, height: 760 }),
+        loadURL: state.loadURL,
+        on: state.windowOn,
+      }
+      state.windows.push(win)
+      return win
+    }),
+    {
+      getAllWindows: () => state.windows,
+    },
+  )
+  return { ...state, BrowserWindow }
+})
 
 vi.mock('electron', () => ({
   app: {
     getAppPath: () => '/app',
     getPath: () => '/home/user',
+    whenReady: () => Promise.resolve(),
+    show: vi.fn(),
+    focus: vi.fn(),
   },
-  BrowserWindow: vi.fn(function BrowserWindow() {
-    return {
-      webContents: {
-        id: 1,
-        on: webContentsOn,
-        setWindowOpenHandler,
-        isDestroyed: () => false,
-        once: vi.fn(),
-      },
-      isDestroyed: () => false,
-      isMinimized: () => false,
-      isMaximized: () => false,
-      isFullScreen: () => false,
-      getNormalBounds: () => ({ x: 0, y: 0, width: 1200, height: 760 }),
-      loadURL,
-      on: windowOn,
-    }
-  }),
+  BrowserWindow: mocks.BrowserWindow,
   screen: {
     getDisplayMatching: () => ({ workArea: { x: 0, y: 0, width: 1440, height: 900 } }),
   },
 }))
 
 vi.mock('#/main/settings.ts', () => ({
-  loadSettings: vi.fn(() => ({ windowBounds: null })),
+  loadSettings: mocks.loadSettings,
   setWindowBounds: vi.fn(),
 }))
 
@@ -50,18 +70,22 @@ vi.mock('#/main/terminal.ts', () => ({
 }))
 
 vi.mock('#/main/external-url.ts', () => ({
-  openHttpExternal: vi.fn(() => Promise.resolve(true)),
+  openHttpExternal: mocks.openHttpExternal,
 }))
 
 describe('main window navigation boundaries', () => {
   beforeEach(() => {
+    vi.resetModules()
     vi.clearAllMocks()
+    mocks.windows.length = 0
+    mocks.loadSettings.mockReturnValue(Promise.resolve({ windowBounds: null }))
   })
 
   test('prevents renderer navigation away from the packaged app page', async () => {
-    await createMainWindow()
+    const { getOrCreateMainWindow } = await import('#/main/window.ts')
+    await getOrCreateMainWindow()
 
-    const willNavigate = webContentsOn.mock.calls.find(([eventName]) => eventName === 'will-navigate')?.[1]
+    const willNavigate = mocks.webContentsOn.mock.calls.find(([eventName]) => eventName === 'will-navigate')?.[1]
     expect(willNavigate).toBeTypeOf('function')
 
     const event = { preventDefault: vi.fn() }
@@ -71,13 +95,33 @@ describe('main window navigation boundaries', () => {
   })
 
   test('denies new windows and opens web links externally', async () => {
-    await createMainWindow()
+    const { getOrCreateMainWindow } = await import('#/main/window.ts')
+    await getOrCreateMainWindow()
 
-    const handler = setWindowOpenHandler.mock.calls[0]?.[0]
+    const handler = mocks.setWindowOpenHandler.mock.calls[0]?.[0]
     expect(handler).toBeTypeOf('function')
 
     expect(handler({ url: 'https://example.com/' })).toEqual({ action: 'deny' })
-    expect(openHttpExternal).toHaveBeenCalledWith('https://example.com/')
+    expect(mocks.openHttpExternal).toHaveBeenCalledWith('https://example.com/')
     expect(handler({ url: 'file:///tmp/other.html' })).toEqual({ action: 'deny' })
+  })
+
+  test('coalesces concurrent main window creation', async () => {
+    const { getOrCreateMainWindow } = await import('#/main/window.ts')
+    let resolveSettings: (settings: { windowBounds: null }) => void = () => {}
+    mocks.loadSettings.mockImplementationOnce(
+      () =>
+        new Promise<{ windowBounds: null }>((resolve) => {
+          resolveSettings = resolve
+        }),
+    )
+
+    const first = getOrCreateMainWindow()
+    const second = getOrCreateMainWindow()
+    resolveSettings({ windowBounds: null })
+    const [firstWindow, secondWindow] = await Promise.all([first, second])
+
+    expect(firstWindow).toBe(secondWindow)
+    expect(mocks.BrowserWindow).toHaveBeenCalledTimes(1)
   })
 })

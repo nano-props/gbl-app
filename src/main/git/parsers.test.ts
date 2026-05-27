@@ -73,17 +73,18 @@ describe('parseBranches', () => {
     const result = parseBranches(line, 'main', [
       { path: '/wt/feat', branch: 'feat', isBare: false, isPrimary: false, isDirty: true, changeCount: 3 },
     ])
-    expect(result[0]?.worktreePath).toBe('/wt/feat')
-    expect(result[0]?.worktreeDirty).toBe(true)
-    expect(result[0]?.worktreeIsPrimary).toBe(false)
-    expect(result[0]?.worktreeChangeCount).toBe(3)
+    expect(result[0]?.worktree?.path).toBe('/wt/feat')
+    expect(result[0]?.worktree?.summary?.dirty).toBe(true)
+    expect(result[0]?.worktree?.isPrimary).toBe(false)
+    expect(result[0]?.worktree?.summary?.changeCount).toBe(3)
   })
 
   test('attaches primary worktree marker when branch matches the main worktree', () => {
     const line = ['main', 'h', 's', 'd', 'a', '', ''].join(SEP)
     const [branch] = parseBranches(line, 'feature', [{ path: '/repo', branch: 'main', isBare: false, isPrimary: true }])
-    expect(branch?.worktreePath).toBe('/repo')
-    expect(branch?.worktreeIsPrimary).toBe(true)
+    expect(branch?.worktree?.path).toBe('/repo')
+    expect(branch?.worktree?.isPrimary).toBe(true)
+    expect(branch?.worktree).not.toHaveProperty('summary')
   })
 
   test('preserves SEP-free subjects with spaces and unicode', () => {

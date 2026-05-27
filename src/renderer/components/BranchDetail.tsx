@@ -35,6 +35,7 @@ function branchDetailRepoEqual(a: RepoState | undefined, b: RepoState | undefine
       a.data.logsByBranch === b.data.logsByBranch &&
       a.data.status === b.data.status &&
       a.data.statusLoaded === b.data.statusLoaded &&
+      a.data.worktreesByPath === b.data.worktreesByPath &&
       a.resources.status === b.resources.status &&
       a.resources.logsByBranch === b.resources.logsByBranch &&
       a.resources.pullRequests === b.resources.pullRequests &&

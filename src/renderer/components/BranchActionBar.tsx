@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import type { RepoState } from '#/renderer/stores/repos/types.ts'
+import type { RepoBranchState, RepoState } from '#/renderer/stores/repos/types.ts'
 import { AsyncButton } from '#/renderer/components/AsyncButton.tsx'
 import { BranchActionsDropdown } from '#/renderer/components/BranchActionsMenu.tsx'
 import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
@@ -11,11 +11,10 @@ import {
 } from '#/renderer/hooks/useBranchActionItems.ts'
 import { setBranchActionShortcutHandler } from '#/renderer/keyboard/branch-action-shortcuts.ts'
 import { cn } from '#/renderer/lib/cn.ts'
-import type { BranchInfo } from '#/renderer/types.ts'
 
 interface Props {
   repo: RepoState
-  branch: BranchInfo
+  branch: RepoBranchState
   variant?: BranchActionBarVariant
 }
 

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Trans } from 'react-i18next'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
-import type { RepoState } from '#/renderer/stores/repos/types.ts'
+import type { RepoBranchState, RepoState } from '#/renderer/stores/repos/types.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { ConfirmDialog } from '#/renderer/components/ConfirmDialog.tsx'
 import { ConfirmCheckbox } from '#/renderer/components/ConfirmCheckbox.tsx'
 import { tildify } from '#/renderer/lib/paths.ts'
-import type { BranchInfo, ExecResult } from '#/renderer/types.ts'
+import type { ExecResult } from '#/renderer/types.ts'
 import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
 import { rpc } from '#/renderer/rpc.ts'
 import {
@@ -17,6 +17,7 @@ import {
   type BranchActionItemId,
 } from '#/renderer/hooks/branch-action-state.ts'
 import { useAsyncPending } from '#/renderer/hooks/useAsyncPending.ts'
+import { getBranchWorktreeState } from '#/renderer/stores/repos/worktree-state.ts'
 
 export type { BranchActionItemId } from '#/renderer/hooks/branch-action-state.ts'
 
@@ -41,14 +42,14 @@ interface RemoveConfirm {
   path: string
 }
 
-export function getBranchActionCapabilities(repo: RepoState, branch: BranchInfo): BranchActionCapabilities {
+export function getBranchActionCapabilities(repo: RepoState, branch: RepoBranchState): BranchActionCapabilities {
   const isCurrent = branch.name === repo.data.currentBranch
-  const checkedOutInAnotherWorktree = !!branch.worktreePath && !isCurrent
-  const canRemoveWorktree = checkedOutInAnotherWorktree && !branch.worktreeIsPrimary
+  const checkedOutInAnotherWorktree = !!branch.worktree?.path && !isCurrent
   const isProtected = PROTECTED_BRANCHES.has(branch.name)
-  const isRegularBranch = !isCurrent && !branch.worktreePath && !isProtected
-  const changedStatus = branch.worktreePath ? repo.data.status.find((wt) => wt.path === branch.worktreePath) : null
-  const canCopyPatch = !!branch.worktreePath && (changedStatus?.entries.length ?? 0) > 0
+  const isRegularBranch = !isCurrent && !branch.worktree?.path && !isProtected
+  const worktreeState = getBranchWorktreeState(repo, branch)
+  const canRemoveWorktree = checkedOutInAnotherWorktree && !worktreeState?.isMain
+  const canCopyPatch = !!branch.worktree?.path && (worktreeState?.dirty ?? false)
   return {
     isCurrent,
     checkedOutInAnotherWorktree,
@@ -58,12 +59,12 @@ export function getBranchActionCapabilities(repo: RepoState, branch: BranchInfo)
     canPull: !!branch.tracking,
     canPush: repo.remote.hasRemotes === true,
     canOpenRemote: repo.remote.hasBrowserRemote === true || repo.remote.hasGitHubRemote === true,
-    canOpenTerminal: !!branch.worktreePath,
-    canOpenEditor: !!branch.worktreePath,
+    canOpenTerminal: !!branch.worktree?.path,
+    canOpenEditor: !!branch.worktree?.path,
   }
 }
 
-export function useBranchActions(repo: RepoState, branch: BranchInfo) {
+export function useBranchActions(repo: RepoState, branch: RepoBranchState) {
   const t = useT()
   const setLastResult = useReposStore((s) => s.setLastResult)
   const runBranchAction = useReposStore((s) => s.runBranchAction)
@@ -123,8 +124,8 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
   }
 
   function copyPatch() {
-    if (!branch.worktreePath) return
-    const worktreePath = branch.worktreePath
+    if (!branch.worktree?.path) return
+    const worktreePath = branch.worktree?.path
     return runUiAction('copyPatch', async () => {
       const result = await rpc.repo.patch.mutate({ cwd: repo.id, worktreePath })
       if (!result.ok) return { ok: false, message: result.message }
@@ -147,7 +148,7 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
       cancelBranchAction(repo.id, { token: repo.instanceToken })
       return
     }
-    return runRepoAction({ kind: 'pull', branch: branch.name, worktreePath: branch.worktreePath })
+    return runRepoAction({ kind: 'pull', branch: branch.name, worktreePath: branch.worktree?.path })
   }
 
   function push() {
@@ -164,14 +165,14 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
   }
 
   function openTerminal() {
-    if (!branch.worktreePath) return
-    const worktreePath = branch.worktreePath
+    if (!branch.worktree?.path) return
+    const worktreePath = branch.worktree?.path
     return runUiAction('terminal', () => rpc.repo.openTerminal.mutate({ path: worktreePath }))
   }
 
   function openEditor() {
-    if (!branch.worktreePath) return
-    const worktreePath = branch.worktreePath
+    if (!branch.worktree?.path) return
+    const worktreePath = branch.worktree?.path
     return runUiAction('editor', () => rpc.repo.openEditor.mutate({ path: worktreePath }))
   }
 
@@ -186,10 +187,10 @@ export function useBranchActions(repo: RepoState, branch: BranchInfo) {
   }
 
   function requestRemoveWorktree() {
-    if (branchActionBusy || hasPendingLocalAction() || !branch.worktreePath) return
+    if (branchActionBusy || hasPendingLocalAction() || !branch.worktree?.path) return
     setRemoveAlsoDeletes(!PROTECTED_BRANCHES.has(branch.name))
     setRemoveAlsoUpstream(false)
-    setRemoveConfirm({ branch: branch.name, path: branch.worktreePath })
+    setRemoveConfirm({ branch: branch.name, path: branch.worktree?.path })
   }
 
   function deleteBranch(target: string, force = false, alsoDeleteUpstream = false) {

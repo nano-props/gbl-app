@@ -1,31 +1,30 @@
-import type { BranchInfo } from '#/renderer/types.ts'
-import type { BranchViewMode, RepoState } from '#/renderer/stores/repos/types.ts'
+import type { BranchViewMode, RepoBranchState, RepoState } from '#/renderer/stores/repos/types.ts'
 
 interface BranchSelectionInput {
-  branches: BranchInfo[]
+  branches: RepoBranchState[]
   currentBranch: string
   selectedBranch: string | null
   viewMode: BranchViewMode
 }
 
 interface VisibleBranchesInput {
-  branches: BranchInfo[]
+  branches: RepoBranchState[]
   viewMode: BranchViewMode
   searchQuery?: string
 }
 
-export function branchMatchesViewMode(branch: BranchInfo, viewMode: BranchViewMode): boolean {
-  if (viewMode === 'worktrees') return !!branch.worktreePath
-  if (viewMode === 'no-worktree') return !branch.worktreePath
+export function branchMatchesViewMode(branch: RepoBranchState, viewMode: BranchViewMode): boolean {
+  if (viewMode === 'worktrees') return !!branch.worktree?.path
+  if (viewMode === 'no-worktree') return !branch.worktree?.path
   return true
 }
 
-export function branchMatchesSearchQuery(branch: BranchInfo, query: string): boolean {
+export function branchMatchesSearchQuery(branch: RepoBranchState, query: string): boolean {
   const needle = query.trim().toLowerCase()
   return needle.length === 0 || branch.name.toLowerCase().includes(needle)
 }
 
-export function visibleBranches({ branches, viewMode, searchQuery = '' }: VisibleBranchesInput): BranchInfo[] {
+export function visibleBranches({ branches, viewMode, searchQuery = '' }: VisibleBranchesInput): RepoBranchState[] {
   return branches.filter(
     (branch) => branchMatchesViewMode(branch, viewMode) && branchMatchesSearchQuery(branch, searchQuery),
   )
