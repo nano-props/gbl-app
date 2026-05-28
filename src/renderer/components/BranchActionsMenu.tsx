@@ -20,14 +20,22 @@ import { useAsyncPending } from '#/renderer/hooks/useAsyncPending.ts'
 interface Props {
   repo: RepoState
   branch: RepoBranchState
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function BranchActionsMenu({ repo, branch }: Props) {
+export function BranchActionsMenu({ repo, branch, open, onOpenChange }: Props) {
   const { patchItems, mainItems, destructiveItems, dialogs } = useBranchActionItems(repo, branch)
 
   return (
     <>
-      <BranchActionsDropdown patchItems={patchItems} mainItems={mainItems} destructiveItems={destructiveItems} />
+      <BranchActionsDropdown
+        patchItems={patchItems}
+        mainItems={mainItems}
+        destructiveItems={destructiveItems}
+        open={open}
+        onOpenChange={onOpenChange}
+      />
 
       {dialogs}
     </>
@@ -38,7 +46,12 @@ export function BranchActionsDropdown({
   patchItems,
   mainItems,
   destructiveItems,
-}: Pick<BranchActionItemGroups, 'patchItems' | 'mainItems' | 'destructiveItems'>) {
+  open,
+  onOpenChange,
+}: Pick<BranchActionItemGroups, 'patchItems' | 'mainItems' | 'destructiveItems'> & {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
   const t = useT()
   const { pending: pendingAction, run } = useAsyncPending<BranchActionItem['id']>()
   const visiblePatchItems = patchItems.filter((item) => item.visible)
@@ -53,7 +66,7 @@ export function BranchActionsDropdown({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"

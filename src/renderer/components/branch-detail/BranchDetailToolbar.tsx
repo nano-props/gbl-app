@@ -151,13 +151,13 @@ export function BranchDetailToolbar({
           })}
         </div>
       </div>
-      <div
-        aria-hidden="true"
-        className="min-w-2 flex-1 self-stretch"
-        onClick={
-          toggleDetailOnActionBarBlankClick && behavior.detailCollapseAllowed ? toggleDetailCollapsed : undefined
-        }
-      />
+      {behavior.detailCollapseAllowed && (
+        <div
+          aria-hidden="true"
+          className="min-w-2 flex-1 self-stretch"
+          onClick={toggleDetailOnActionBarBlankClick ? toggleDetailCollapsed : undefined}
+        />
+      )}
       {branchActions && <BranchActionControls actions={branchActions} variant={behavior.detailActionVariant} />}
     </Toolbar>
   )

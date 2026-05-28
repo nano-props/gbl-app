@@ -407,7 +407,7 @@ export const ja: Record<DictKey, string> = {
   'settings.lang.ja': '日本語',
   'settings.action-bar-blank-toggle': 'アクションバーの空白で詳細を折りたたむ/展開',
   'settings.action-bar-blank-toggle-hint':
-    'オンにすると、ブランチ操作ボタン手前の空白をクリックして詳細パネルを折りたたみ/展開できます。',
+    '上下レイアウトでのみ有効です。アクションバーの空白をクリックして詳細を表示/非表示にします。',
   'settings.group.general': '一般',
   'settings.group.apps': '外部アプリ',
   'settings.group.sync': '同期',

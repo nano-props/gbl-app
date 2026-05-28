@@ -7,7 +7,7 @@
 // name. We avoid tinting the whole row so selection, hover, and status
 // semantics don't compete for background colour.
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { useI18nStore, useT } from '#/renderer/stores/i18n.ts'
@@ -22,6 +22,8 @@ interface Props {
   variant?: 'list' | 'selected-strip'
 }
 
+type OpenActionMenu = { repoId: string; branch: string }
+
 export function BranchList({ repoId, showActions = true, variant = 'list' }: Props) {
   const t = useT()
   const lang = useI18nStore((s) => s.lang)
@@ -29,6 +31,7 @@ export function BranchList({ repoId, showActions = true, variant = 'list' }: Pro
   const setDetailTab = useReposStore((s) => s.setDetailTab)
   const setDetailCollapsed = useReposStore((s) => s.setDetailCollapsed)
   const selectedRef = useRef<HTMLLIElement | null>(null)
+  const [openActionMenu, setOpenActionMenu] = useState<OpenActionMenu | null>(null)
   const handleSelectBranch = useCallback(
     (branch: string) => {
       selectBranch(repoId, branch)
@@ -86,13 +89,31 @@ export function BranchList({ repoId, showActions = true, variant = 'list' }: Pro
     if (selectedEl && variant === 'list') selectedEl.scrollIntoView({ block: 'nearest' })
   }, [selected, variant])
 
-  if (!repo) return null
+  const selectedBranch =
+    repo && selected
+      ? (branches.find((branch) => branch.name === selected) ??
+        repo.data.branches.find((branch) => branch.name === selected))
+      : null
+  const renderedBranches = repo
+    ? variant === 'selected-strip'
+      ? selectedBranch
+        ? [selectedBranch]
+        : []
+      : branches
+    : []
 
-  const selectedBranch = selected
-    ? (branches.find((branch) => branch.name === selected) ??
-      repo.data.branches.find((branch) => branch.name === selected))
-    : null
-  const renderedBranches = variant === 'selected-strip' ? (selectedBranch ? [selectedBranch] : []) : branches
+  useEffect(() => {
+    if (!openActionMenu) return
+    if (
+      openActionMenu.repoId !== repoId ||
+      !showActions ||
+      !renderedBranches.some((branch) => branch.name === openActionMenu.branch)
+    ) {
+      setOpenActionMenu(null)
+    }
+  }, [openActionMenu, renderedBranches, repoId, showActions])
+
+  if (!repo) return null
 
   if (renderedBranches.length === 0) {
     return <EmptyState title={t(repo.data.branches.length === 0 ? 'branches.empty' : 'branches.filter-empty')} />
@@ -113,6 +134,16 @@ export function BranchList({ repoId, showActions = true, variant = 'list' }: Pro
             onOpenBranchStatus={handleOpenBranchStatus}
             selectedRef={selectedRef}
             showActions={showActions}
+            actionMenuOpen={openActionMenu?.repoId === repoId && openActionMenu.branch === branch.name}
+            onActionMenuOpenChange={(open) =>
+              setOpenActionMenu((current) =>
+                open
+                  ? { repoId, branch: branch.name }
+                  : current?.repoId === repoId && current.branch === branch.name
+                    ? null
+                    : current,
+              )
+            }
           />
         )
       })}

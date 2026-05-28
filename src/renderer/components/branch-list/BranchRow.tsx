@@ -18,6 +18,8 @@ interface BranchRowProps {
   onOpenBranchStatus: (branch: string) => void
   selectedRef: RefObject<HTMLLIElement | null>
   showActions?: boolean
+  actionMenuOpen?: boolean
+  onActionMenuOpenChange?: (open: boolean) => void
 }
 
 function Delta({ direction, count, label }: { direction: 'ahead' | 'behind'; count: number; label: string }) {
@@ -48,6 +50,8 @@ export function BranchRow({
   onOpenBranchStatus,
   selectedRef,
   showActions = true,
+  actionMenuOpen,
+  onActionMenuOpenChange,
 }: BranchRowProps) {
   const t = useT()
   const isSelected = branch.name === selected
@@ -159,7 +163,12 @@ export function BranchRow({
       {showActions && (
         <div className="pointer-events-none relative z-20 flex shrink-0 items-center py-2 pr-4">
           <div className="pointer-events-auto">
-            <BranchActionsMenu repo={repo} branch={branch} />
+            <BranchActionsMenu
+              repo={repo}
+              branch={branch}
+              open={actionMenuOpen}
+              onOpenChange={onActionMenuOpenChange}
+            />
           </div>
         </div>
       )}
