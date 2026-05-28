@@ -85,6 +85,27 @@ describe('repo runtime task scheduling', () => {
     expect(starts).toEqual(['first', 'latest'])
   })
 
+  test('rejects queued tasks after their queue timeout', async () => {
+    let releaseFirst!: () => void
+    const first = scheduleRepoTask(
+      REPO_ID,
+      'network',
+      () =>
+        new Promise<string>((resolve) => {
+          releaseFirst = () => resolve('first')
+        }),
+    )
+    const queued = scheduleRepoTask(REPO_ID, 'network', async () => 'queued', {
+      queuedTimeoutMs: 1,
+      queuedTimeoutMessage: 'queued timeout',
+    })
+
+    await expect(queued).rejects.toThrow('queued timeout')
+
+    releaseFirst()
+    await expect(first).resolves.toBe('first')
+  })
+
   test('dispose aborts active tasks and rejects queued tasks', async () => {
     let activeAborted = false
     const active = scheduleRepoTask(

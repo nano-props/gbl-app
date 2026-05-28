@@ -2,7 +2,6 @@ import { afterEach, describe, expect, test } from 'vitest'
 import {
   branchActionBusyItemId,
   branchActionDisplayPhase,
-  cancelableBranchActionItemId,
   isBranchActionBlocked,
 } from '#/renderer/hooks/branch-action-state.ts'
 import { emptyRepo } from '#/renderer/stores/repos/helpers.ts'
@@ -57,24 +56,6 @@ describe('branchActionDisplayPhase', () => {
     repo.resources.branchAction.actionPhase = null
 
     expect(branchActionDisplayPhase(repo, 'feature/a')).toBe('running')
-  })
-})
-
-describe('cancelableBranchActionItemId', () => {
-  test('returns pull and push actions while busy', () => {
-    const repo = emptyRepo(REPO_ID, 'repo')
-    startBranchActionResource(repo.resources.branchAction, 'pull', 'feature/a')
-    expect(cancelableBranchActionItemId(repo, 'feature/a')).toBe('pull')
-
-    startBranchActionResource(repo.resources.branchAction, 'push', 'feature/a', { actionPhase: 'queued' })
-    expect(cancelableBranchActionItemId(repo, 'feature/a')).toBe('push')
-  })
-
-  test('returns null for non-network branch actions', () => {
-    const repo = emptyRepo(REPO_ID, 'repo')
-    startBranchActionResource(repo.resources.branchAction, 'checkout', 'feature/a')
-
-    expect(cancelableBranchActionItemId(repo, 'feature/a')).toBeNull()
   })
 })
 

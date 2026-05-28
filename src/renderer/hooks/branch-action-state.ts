@@ -52,10 +52,3 @@ export function branchActionDisplayPhase(repo: RepoState, branchName: string): '
   if (!resourceBusy(action) || action.target !== branchName) return null
   return action.actionPhase ?? 'running'
 }
-
-export function cancelableBranchActionItemId(repo: RepoState, branchName: string): BranchActionItemId | null {
-  const action = repo.resources.branchAction
-  if (!resourceBusy(action) || action.target !== branchName) return null
-  if (action.kind !== 'pull' && action.kind !== 'push') return null
-  return action.kind
-}

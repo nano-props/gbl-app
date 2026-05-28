@@ -119,5 +119,5 @@ function BranchActionMenuItem({
 }
 
 export function branchActionMenuItemDisabled(item: BranchActionItem, busy: BranchActionItem['id'] | null): boolean {
-  return item.disabled || (busy !== null && (busy !== item.id || !item.cancelable))
+  return item.disabled || busy !== null
 }

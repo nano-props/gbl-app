@@ -14,7 +14,7 @@
 
 import { app, Menu, shell, dialog, type MenuItemConstructorOptions, BrowserWindow } from 'electron'
 import { promises as fs } from 'node:fs'
-import { getMainWindow } from '#/main/window.ts'
+import { activateMainWindow, getMainWindow } from '#/main/window.ts'
 import { applyLangPref, t } from '#/main/i18n/index.ts'
 import {
   clearRecentRepos,
@@ -66,8 +66,16 @@ const WORKSPACE_LAYOUT_MENU_OPTIONS = [
 let menuWorkspaceLayout: WorkspaceLayout | null = null
 
 function send(action: MenuAction): void {
-  const win = getMainWindow() ?? BrowserWindow.getFocusedWindow()
-  sendRpcEvent(win, { type: 'menu-action', action })
+  void sendMenuAction(action)
+}
+
+async function sendMenuAction(action: MenuAction): Promise<void> {
+  try {
+    const win = getMainWindow() ?? BrowserWindow.getFocusedWindow() ?? (await activateMainWindow())
+    sendRpcEvent(win, { type: 'menu-action', action })
+  } catch (err) {
+    console.warn('[menu] failed to send menu action', err)
+  }
 }
 
 function separator(): MenuItemConstructorOptions {

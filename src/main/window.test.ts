@@ -124,4 +124,18 @@ describe('main window navigation boundaries', () => {
     expect(firstWindow).toBe(secondWindow)
     expect(mocks.BrowserWindow).toHaveBeenCalledTimes(1)
   })
+
+  test('keeps the window singleton when app URL load fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.loadURL.mockRejectedValueOnce(new Error('load failed'))
+    const { getOrCreateMainWindow } = await import('#/main/window.ts')
+
+    const first = await getOrCreateMainWindow()
+    const second = await getOrCreateMainWindow()
+
+    expect(first).toBe(second)
+    expect(mocks.BrowserWindow).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith('[window] failed to load app URL', expect.any(Error))
+    warn.mockRestore()
+  })
 })

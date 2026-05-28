@@ -12,6 +12,7 @@ import {
   resetReposStore,
   seedRepoState,
 } from '#/renderer/stores/repos/test-utils.ts'
+import type { RepoBranchAction } from '#/renderer/stores/repos/branch-action-types.ts'
 import type { BranchViewMode } from '#/renderer/stores/repos/types.ts'
 
 const REPO_ID = '/tmp/gbl-branch-actions-test-repo'
@@ -229,6 +230,34 @@ describe('runBranchAction', () => {
     expect(checkoutCalls).toBe(0)
   })
 
+  test('blocks branch actions while a foreground fetch is running', async () => {
+    let pullCalls = 0
+    let resolveFetch!: (value: { ok: true; message: string }) => void
+    installGoblinTestBridge({
+      'repo.fetch': () =>
+        new Promise((resolve) => {
+          resolveFetch = () => resolve({ ok: true, message: 'ok' })
+        }),
+      'repo.pull': async () => {
+        pullCalls += 1
+        return { ok: true, message: 'ok' }
+      },
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
+      'repo.status': async () => [],
+      'repo.pullRequests': async () => [],
+    })
+
+    const syncWork = useReposStore.getState().syncAndRefresh(REPO_ID)
+    await flushAsyncWork()
+    const result = await useReposStore.getState().runBranchAction(REPO_ID, { kind: 'pull', branch: 'feature/a' })
+
+    expect(result).toEqual({ ok: false, message: 'error.network-op-in-progress' })
+    expect(pullCalls).toBe(0)
+
+    resolveFetch({ ok: true, message: 'ok' })
+    await syncWork
+  })
+
   test('tracks branch action resource state while the action is running', async () => {
     let release!: () => void
     installGoblinTestBridge({
@@ -312,6 +341,180 @@ describe('runBranchAction', () => {
     await Promise.all([fetchWork, pullWork])
   })
 
+  test('queues local branch actions behind an aborted background fetch', async () => {
+    let abortCalls = 0
+    let checkoutCalls = 0
+    let resolveFetch!: (value: { ok: false; message: string }) => void
+    let resolveCheckout!: (value: { ok: true; message: string }) => void
+    installGoblinTestBridge({
+      'repo.abort': async () => {
+        abortCalls += 1
+        return true
+      },
+      'repo.fetch': () =>
+        new Promise((resolve) => {
+          resolveFetch = () => resolve({ ok: false, message: 'cancelled' })
+        }),
+      'repo.checkout': () => {
+        checkoutCalls += 1
+        return new Promise((resolve) => {
+          resolveCheckout = () => resolve({ ok: true, message: 'ok' })
+        })
+      },
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
+      'repo.status': async () => [],
+      'repo.pullRequests': async () => [],
+    })
+
+    const fetchWork = useReposStore.getState().backgroundFetch(REPO_ID)
+    await flushAsyncWork()
+    const checkoutWork = useReposStore.getState().runBranchAction(REPO_ID, {
+      kind: 'checkout',
+      branch: 'feature/a',
+    })
+    await flushAsyncWork()
+
+    expect(abortCalls).toBe(1)
+    expect(checkoutCalls).toBe(0)
+    expect(useReposStore.getState().repos[REPO_ID]?.resources.branchAction).toMatchObject({
+      phase: 'loading',
+      kind: 'checkout',
+      target: 'feature/a',
+      actionPhase: 'queued',
+    })
+
+    resolveFetch({ ok: false, message: 'cancelled' })
+    await flushAsyncWork()
+
+    expect(checkoutCalls).toBe(1)
+    expect(useReposStore.getState().repos[REPO_ID]?.resources.branchAction.actionPhase).toBe('running')
+    resolveCheckout({ ok: true, message: 'ok' })
+    await Promise.all([fetchWork, checkoutWork])
+  })
+
+  test('does not run a queued local branch action after the repo is reopened', async () => {
+    let checkoutCalls = 0
+    let resolveStatus!: (value: never[]) => void
+    installGoblinTestBridge({
+      'repo.status': () =>
+        new Promise((resolve) => {
+          resolveStatus = () => resolve([])
+        }),
+      'repo.checkout': async () => {
+        checkoutCalls += 1
+        return { ok: true, message: 'ok' }
+      },
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
+      'repo.pullRequests': async () => [],
+    })
+
+    const statusWork = useReposStore.getState().refreshStatus(REPO_ID)
+    await flushAsyncWork()
+    const checkoutWork = useReposStore.getState().runBranchAction(REPO_ID, {
+      kind: 'checkout',
+      branch: 'feature/a',
+    })
+    await flushAsyncWork()
+
+    expect(useReposStore.getState().repos[REPO_ID]?.resources.branchAction).toMatchObject({
+      phase: 'loading',
+      kind: 'checkout',
+      target: 'feature/a',
+      actionPhase: 'queued',
+    })
+
+    seedRepoState({
+      id: REPO_ID,
+      instanceToken: 2,
+      branches: [createRepoBranch('feature/reopened')],
+      currentBranch: 'feature/reopened',
+    })
+
+    resolveStatus([])
+    await Promise.all([statusWork, checkoutWork])
+
+    const repo = useReposStore.getState().repos[REPO_ID]
+    expect(checkoutCalls).toBe(0)
+    expect(repo?.instanceToken).toBe(2)
+    expect(repo?.resources.branchAction).toMatchObject({
+      phase: 'idle',
+      kind: null,
+      target: null,
+      actionPhase: null,
+    })
+    expect(repo?.data.currentBranch).toBe('feature/reopened')
+  })
+
+  test('times out queued branch actions that wait too long for core refreshes', async () => {
+    let checkoutCalls = 0
+    installGoblinTestBridge({
+      'repo.status': () => new Promise(() => {}),
+      'repo.checkout': async () => {
+        checkoutCalls += 1
+        return { ok: true, message: 'ok' }
+      },
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
+      'repo.pullRequests': async () => [],
+    })
+
+    void useReposStore.getState().refreshStatus(REPO_ID)
+    await flushAsyncWork()
+    const result = await useReposStore.getState().runBranchAction(
+      REPO_ID,
+      {
+        kind: 'checkout',
+        branch: 'feature/a',
+      },
+      { waitTimeoutMs: 1 },
+    )
+
+    expect(result).toEqual({ ok: false, message: 'error.branch-action-wait-timeout' })
+    expect(checkoutCalls).toBe(0)
+    expect(useReposStore.getState().repos[REPO_ID]?.resources.branchAction).toMatchObject({
+      phase: 'idle',
+      kind: null,
+      target: null,
+      actionPhase: null,
+    })
+  })
+
+  test('times out queued network branch actions behind a background fetch', async () => {
+    let pullCalls = 0
+    let resolveFetch!: (value: { ok: false; message: string }) => void
+    installGoblinTestBridge({
+      'repo.abort': async () => true,
+      'repo.fetch': () =>
+        new Promise((resolve) => {
+          resolveFetch = () => resolve({ ok: false, message: 'cancelled' })
+        }),
+      'repo.pull': async () => {
+        pullCalls += 1
+        return { ok: true, message: 'should-not-run' }
+      },
+      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
+      'repo.status': async () => [],
+      'repo.pullRequests': async () => [],
+    })
+
+    const fetchWork = useReposStore.getState().backgroundFetch(REPO_ID)
+    await flushAsyncWork()
+    const result = await useReposStore
+      .getState()
+      .runBranchAction(REPO_ID, { kind: 'pull', branch: 'feature/a' }, { waitTimeoutMs: 1 })
+
+    expect(result).toEqual({ ok: false, message: 'error.branch-action-wait-timeout' })
+    expect(pullCalls).toBe(0)
+    expect(useReposStore.getState().repos[REPO_ID]?.resources.branchAction).toMatchObject({
+      phase: 'idle',
+      kind: null,
+      target: null,
+      actionPhase: null,
+    })
+
+    resolveFetch({ ok: false, message: 'cancelled' })
+    await fetchWork
+  })
+
   test('replaces an older queued branch network action with the latest one', async () => {
     let pullCalls = 0
     let pushCalls = 0
@@ -365,78 +568,6 @@ describe('runBranchAction', () => {
     expect(pushCalls).toBe(1)
     resolvePush({ ok: true, message: 'ok' })
     await Promise.all([fetchWork, pullWork, pushWork])
-  })
-
-  test('cancels a queued branch network action without running it', async () => {
-    let pullCalls = 0
-    let resolveFetch!: (value: { ok: false; message: string }) => void
-    installGoblinTestBridge({
-      'repo.abort': async () => true,
-      'repo.fetch': () =>
-        new Promise((resolve) => {
-          resolveFetch = () => resolve({ ok: false, message: 'cancelled' })
-        }),
-      'repo.pull': async () => {
-        pullCalls += 1
-        return { ok: true, message: 'should-not-run' }
-      },
-      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
-      'repo.status': async () => [],
-      'repo.pullRequests': async () => [],
-    })
-
-    const fetchWork = useReposStore.getState().backgroundFetch(REPO_ID)
-    await flushAsyncWork()
-    const pullWork = useReposStore.getState().runBranchAction(REPO_ID, { kind: 'pull', branch: 'feature/a' })
-
-    expect(repoOperation(REPO_ID, 'branchAction').phase).toBe('queued')
-    expect(useReposStore.getState().cancelBranchAction(REPO_ID, { token: 1 })).toBe(true)
-    await flushAsyncWork()
-
-    const repo = useReposStore.getState().repos[REPO_ID]
-    expect(repoOperation(REPO_ID, 'branchAction').phase).toBe('idle')
-    expect(repo?.resources.branchAction).toMatchObject({ phase: 'idle', kind: null, target: null, actionPhase: null })
-    expect(repo?.resources.fetch.phase).toBe('idle')
-    expect(pullCalls).toBe(0)
-
-    resolveFetch({ ok: false, message: 'cancelled' })
-    await Promise.all([fetchWork, pullWork])
-    expect(pullCalls).toBe(0)
-  })
-
-  test('requests abort for a running branch network action', async () => {
-    let abortCalls = 0
-    let resolvePull!: (value: { ok: false; message: string }) => void
-    installGoblinTestBridge({
-      'repo.abort': async () => {
-        abortCalls += 1
-        return true
-      },
-      'repo.pull': () =>
-        new Promise((resolve) => {
-          resolvePull = () => resolve({ ok: false, message: 'cancelled' })
-        }),
-      'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
-      'repo.status': async () => [],
-      'repo.pullRequests': async () => [],
-    })
-
-    const pullWork = useReposStore.getState().runBranchAction(REPO_ID, { kind: 'pull', branch: 'feature/a' })
-    await flushAsyncWork()
-
-    expect(repoOperation(REPO_ID, 'branchAction').phase).toBe('running')
-    expect(useReposStore.getState().cancelBranchAction(REPO_ID, { token: 1 })).toBe(true)
-    expect(abortCalls).toBe(1)
-
-    resolvePull({ ok: false, message: 'cancelled' })
-    await pullWork
-
-    expect(useReposStore.getState().repos[REPO_ID]?.resources.branchAction).toMatchObject({
-      phase: 'idle',
-      kind: null,
-      target: null,
-      actionPhase: null,
-    })
   })
 
   test('clears actionPhase after failed branch network actions', async () => {
@@ -540,6 +671,72 @@ describe('runBranchAction', () => {
     resolvePull({ ok: true, message: 'ok' })
     await Promise.all([statusWork, pullWork])
   })
+
+  test.each([
+    ['checkout', { kind: 'checkout', branch: 'feature/a' }, 'repo.checkout'],
+    [
+      'createWorktree',
+      {
+        kind: 'createWorktree',
+        worktreePath: '/tmp/gbl-branch-actions-test-worktree',
+        newBranch: 'feature/new',
+        baseBranch: 'feature/a',
+      },
+      'repo.createWorktree',
+    ],
+    ['deleteBranch', { kind: 'deleteBranch', branch: 'feature/a' }, 'repo.deleteBranch'],
+    [
+      'removeWorktree',
+      {
+        kind: 'removeWorktree',
+        branch: 'feature/a',
+        worktreePath: '/tmp/gbl-branch-actions-test-worktree',
+        alsoDeleteBranch: false,
+      },
+      'repo.removeWorktree',
+    ],
+  ] satisfies Array<[string, RepoBranchAction, string]>)(
+    'waits for core refresh reads before running queued %s actions',
+    async (_label, action, rpcPath) => {
+      let actionCalls = 0
+      let statusCalls = 0
+      let resolveStatus!: (value: never[]) => void
+      let resolveAction!: (value: { ok: true; message: string }) => void
+      installGoblinTestBridge({
+        [rpcPath]: () => {
+          actionCalls += 1
+          return new Promise((resolve) => {
+            resolveAction = () => resolve({ ok: true, message: 'ok' })
+          })
+        },
+        'repo.status': () => {
+          statusCalls += 1
+          if (statusCalls > 1) return []
+          return new Promise((resolve) => {
+            resolveStatus = () => resolve([])
+          })
+        },
+        'repo.snapshot': async () => ({ branches: [createBranchSnapshot('feature/a')], current: 'feature/a' }),
+        'repo.pullRequests': async () => [],
+      })
+
+      const statusWork = useReposStore.getState().refreshStatus(REPO_ID)
+      await flushAsyncWork()
+      const actionWork = useReposStore.getState().runBranchAction(REPO_ID, action)
+      await flushAsyncWork()
+
+      expect(actionCalls).toBe(0)
+      expect(useReposStore.getState().repos[REPO_ID]?.resources.branchAction.actionPhase).toBe('queued')
+
+      resolveStatus([])
+      await flushAsyncWork()
+
+      expect(actionCalls).toBe(1)
+      expect(useReposStore.getState().repos[REPO_ID]?.resources.branchAction.actionPhase).toBe('running')
+      resolveAction({ ok: true, message: 'ok' })
+      await Promise.all([statusWork, actionWork])
+    },
+  )
 
   test('tracks create worktree resource state while the action is running', async () => {
     let release!: () => void

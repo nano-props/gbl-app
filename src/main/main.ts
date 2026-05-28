@@ -9,16 +9,26 @@ import { wireTerminalIpc } from '#/main/terminal.ts'
 import { syncGlobalShortcuts, unregisterAppShortcuts } from '#/main/shortcuts.ts'
 
 function activateMainWindowFromEvent(): void {
-  void activateMainWindow().catch((err) => {
-    console.error('[window] failed to activate main window', err)
-  })
+  void activationBarrier
+    .then(() => {
+      if (isQuitting) return null
+      return activateMainWindow()
+    })
+    .catch((err) => {
+      console.error('[window] failed to activate main window', err)
+    })
 }
+
+let activationBarrier: Promise<void> = Promise.resolve()
+let isQuitting = false
 
 async function main(): Promise<void> {
   if (!app.requestSingleInstanceLock()) {
     app.quit()
     return
   }
+
+  activationBarrier = initializeMainProcess()
 
   app.on('second-instance', () => {
     activateMainWindowFromEvent()
@@ -33,10 +43,10 @@ async function main(): Promise<void> {
   })
 
   // Drain debounced settings writes before exit so the last theme pick,
-  // window resize, or session change isn't lost. `isQuitting` guards
-  // the second pass — app.exit fires before-quit again, and without
-  // the guard we'd loop.
-  let isQuitting = false
+  // window resize, or session change isn't lost. We exit explicitly
+  // after the flush: re-entering app.quit from before-quit is not
+  // reliable across Electron quit paths, and app.exit skips will-quit,
+  // so do will-quit cleanup here too.
   app.on('before-quit', async (event) => {
     if (isQuitting) return
     event.preventDefault()
@@ -45,10 +55,19 @@ async function main(): Promise<void> {
       const flushed = await flushSettings()
       if (!flushed) console.error('[settings] final flush failed before quit')
     } finally {
+      unregisterAppShortcuts()
       app.exit(0)
     }
   })
 
+  await activationBarrier
+  if (isQuitting) return
+  await activateMainWindow()
+  if (isQuitting) return
+  app.on('activate', activateMainWindowFromEvent)
+}
+
+async function initializeMainProcess(): Promise<void> {
   await app.whenReady()
 
   // Settings before theme — initTheme reads the persisted pref.
@@ -66,9 +85,6 @@ async function main(): Promise<void> {
 
   buildAppMenu()
   syncGlobalShortcuts(settings.globalShortcutDisabled, settings.globalShortcut)
-
-  await activateMainWindow()
-  app.on('activate', activateMainWindowFromEvent)
 }
 
 void main()

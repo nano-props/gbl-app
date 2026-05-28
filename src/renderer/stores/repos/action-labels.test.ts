@@ -29,15 +29,24 @@ describe('repoBranchActionLoadingLabel', () => {
     })
   })
 
-  test('returns short queued labels for network branch actions', () => {
+  test('returns queued labels for branch actions', () => {
+    expect(repoBranchActionLoadingLabel('checkout', 'queued')).toEqual({
+      labelKey: 'action.checkout-queued',
+    })
     expect(repoBranchActionLoadingLabel('pull', 'queued')).toEqual({
       labelKey: 'action.pull-queued',
     })
     expect(repoBranchActionLoadingLabel('push', 'queued')).toEqual({
       labelKey: 'action.push-queued',
     })
-    expect(repoBranchActionLoadingLabel('checkout', 'queued')).toEqual({
-      labelKey: 'action.checkout-loading',
+    expect(repoBranchActionLoadingLabel('createWorktree', 'queued')).toEqual({
+      labelKey: 'action.create-worktree-queued-title',
+    })
+    expect(repoBranchActionLoadingLabel('deleteBranch', 'queued')).toEqual({
+      labelKey: 'action.delete-branch-queued-title',
+    })
+    expect(repoBranchActionLoadingLabel('removeWorktree', 'queued')).toEqual({
+      labelKey: 'action.remove-worktree-queued-title',
     })
   })
 })

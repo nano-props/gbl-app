@@ -16,11 +16,7 @@ function item(overrides: Partial<BranchActionItem> = {}): BranchActionItem {
 }
 
 describe('branchActionMenuItemDisabled', () => {
-  test('keeps the current busy item clickable for cancellation', () => {
-    expect(branchActionMenuItemDisabled(item({ id: 'pull', busy: true, cancelable: true }), 'pull')).toBe(false)
-  })
-
-  test('keeps non-cancelable busy items disabled', () => {
+  test('keeps busy items disabled', () => {
     expect(branchActionMenuItemDisabled(item({ id: 'pull', busy: true }), 'pull')).toBe(true)
   })
 

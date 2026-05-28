@@ -19,4 +19,6 @@ export interface RunBranchActionOptions {
   token?: number
   deferResultMessages?: string[]
   refreshOnError?: boolean
+  /** Internal override for tests that exercise queued refresh wait timeouts. */
+  waitTimeoutMs?: number
 }

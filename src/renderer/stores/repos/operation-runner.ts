@@ -28,7 +28,10 @@ interface RepoOperationBaseOptions<T> {
   targets: [RepoOperationTarget, ...RepoOperationTarget[]]
   task: (signal: AbortSignal) => Promise<T>
   operationKey?: string
+  queuedTimeoutMs?: number
+  queuedTimeoutMessage?: string
   errorFromResult?: (result: T) => string | null
+  errorResult?: (message: string) => T
   onResult?: (result: T, ctx: RepoOperationContext) => void | Promise<void>
   onError?: (message: string, ctx: RepoOperationContext) => void | Promise<void>
   onStale?: (ctx: RepoOperationContext) => void | Promise<void>
@@ -85,6 +88,8 @@ async function runRepoOperation<T>(options: InternalRepoOperationOptions<T>): Pr
       priority: options.priority,
       replaceQueuedKey:
         options.policy === 'latest-wins' ? `${options.lane}:${options.operationKey ?? primary.key}` : undefined,
+      queuedTimeoutMs: options.queuedTimeoutMs,
+      queuedTimeoutMessage: options.queuedTimeoutMessage,
       onQueued: () => markRepoOperationTargets(options.id, operationId, options.targets, 'queued'),
       onStart: (wasQueued) => markRepoOperationTargets(options.id, operationId, options.targets, 'running', wasQueued),
     })
@@ -97,8 +102,12 @@ async function runRepoOperation<T>(options: InternalRepoOperationOptions<T>): Pr
     return result
   } catch (err) {
     error = err instanceof Error ? err.message : String(err)
-    if (ctx.isCurrent()) await options.onError?.(error, ctx)
-    else await handleStale()
+    if (ctx.isCurrent()) {
+      await options.onError?.(error, ctx)
+      if (options.rethrow) throw err
+      return options.errorResult?.(error) ?? null
+    }
+    await handleStale()
     if (options.rethrow) throw err
     return null
   } finally {

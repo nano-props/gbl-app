@@ -137,8 +137,6 @@ async function createMainWindow(): Promise<BrowserWindow> {
     })
     return { action: 'deny' }
   })
-  void win.loadURL(url.toString())
-
   // Persist bounds. We listen on both `resize` and `move` because the
   // user can do either independently. `getNormalBounds` returns the
   // pre-maximize size so a maximized window doesn't overwrite the
@@ -158,5 +156,10 @@ async function createMainWindow(): Promise<BrowserWindow> {
   })
 
   mainWindow = win
+  try {
+    await win.loadURL(url.toString())
+  } catch (err) {
+    console.warn('[window] failed to load app URL', err)
+  }
   return win
 }

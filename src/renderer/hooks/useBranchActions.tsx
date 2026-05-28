@@ -9,13 +9,7 @@ import { tildify } from '#/renderer/lib/paths.ts'
 import type { ExecResult } from '#/renderer/types.ts'
 import { PROTECTED_BRANCHES } from '#/shared/git-types.ts'
 import { rpc } from '#/renderer/rpc.ts'
-import {
-  branchActionDisplayPhase,
-  branchActionBusyItemId,
-  cancelableBranchActionItemId,
-  isBranchActionBlocked,
-  type BranchActionItemId,
-} from '#/renderer/hooks/branch-action-state.ts'
+import { branchActionBusyItemId, isBranchActionBlocked, type BranchActionItemId } from '#/renderer/hooks/branch-action-state.ts'
 import { useAsyncPending } from '#/renderer/hooks/useAsyncPending.ts'
 import { getBranchWorktreeState } from '#/renderer/stores/repos/worktree-state.ts'
 
@@ -84,11 +78,8 @@ export function useBranchActions(repo: RepoState, branch: RepoBranchState) {
   const t = useT()
   const setLastResult = useReposStore((s) => s.setLastResult)
   const runBranchAction = useReposStore((s) => s.runBranchAction)
-  const cancelBranchAction = useReposStore((s) => s.cancelBranchAction)
   const branchActionBusy = isBranchActionBlocked(repo)
   const branchBusyAction = branchActionBusyItemId(repo, branch.name)
-  const branchActionPhase = branchActionDisplayPhase(repo, branch.name)
-  const cancelableBranchAction = cancelableBranchActionItemId(repo, branch.name)
   const {
     pending: pendingLocalAction,
     hasPending: hasPendingLocalAction,
@@ -160,18 +151,10 @@ export function useBranchActions(repo: RepoState, branch: RepoBranchState) {
   }
 
   function pull() {
-    if (cancelableBranchAction === 'pull' && branchActionPhase !== null) {
-      cancelBranchAction(repo.id, { token: repo.instanceToken })
-      return
-    }
     return runRepoAction({ kind: 'pull', branch: branch.name, worktreePath: branch.worktree?.path })
   }
 
   function push() {
-    if (cancelableBranchAction === 'push' && branchActionPhase !== null) {
-      cancelBranchAction(repo.id, { token: repo.instanceToken })
-      return
-    }
     if (branchActionBusy || hasPendingLocalAction()) return
     if (PROTECTED_BRANCHES.has(branch.name)) {
       setPushConfirm(branch.name)

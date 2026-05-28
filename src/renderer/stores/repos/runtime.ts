@@ -30,6 +30,7 @@ interface QueuedRepoTask<T> {
   priority: number
   replaceKey?: string
   ctrl: AbortController
+  timeout?: ReturnType<typeof globalThis.setTimeout>
   onStart?: (wasQueued: boolean) => void
   resolve: (value: T) => void
   reject: (reason: unknown) => void
@@ -39,6 +40,8 @@ interface RepoLaneOptions {
   priority?: number
   // Includes the lane namespace because runRepoOperation builds it from lane + operationKey.
   replaceQueuedKey?: string
+  queuedTimeoutMs?: number
+  queuedTimeoutMessage?: string
   onQueued?: () => void
   onStart?: (wasQueued: boolean) => void
 }
@@ -65,6 +68,14 @@ class RepoLane {
       if (this.active < this.concurrency) this.start(queuedTask, false)
       else {
         options?.onQueued?.()
+        if (options?.queuedTimeoutMs !== undefined) {
+          queuedTask.timeout = globalThis.setTimeout(() => {
+            if (this.removeQueued(queuedTask as QueuedRepoTask<unknown>)) {
+              queuedTask.ctrl.abort(options.queuedTimeoutMessage)
+              queuedTask.reject(new Error(options.queuedTimeoutMessage ?? 'cancelled'))
+            }
+          }, options.queuedTimeoutMs)
+        }
         this.enqueue(queuedTask as QueuedRepoTask<unknown>)
       }
     })
@@ -75,12 +86,14 @@ class RepoLane {
     const queued = this.queued
     this.queued = []
     for (const task of queued) {
+      if (task.timeout) globalThis.clearTimeout(task.timeout)
       task.ctrl.abort()
       task.reject(new Error('cancelled'))
     }
   }
 
   private start<T>(queuedTask: QueuedRepoTask<T>, wasQueued: boolean): void {
+    if (queuedTask.timeout) globalThis.clearTimeout(queuedTask.timeout)
     this.active += 1
     this.activeControllers.add(queuedTask.ctrl)
     let work: Promise<T>
@@ -115,11 +128,20 @@ class RepoLane {
         continue
       }
       cancelled = true
+      if (task.timeout) globalThis.clearTimeout(task.timeout)
       task.ctrl.abort()
       task.reject(new Error('cancelled'))
     }
     this.queued = keep
     return cancelled
+  }
+
+  private removeQueued(task: QueuedRepoTask<unknown>): boolean {
+    const index = this.queued.indexOf(task)
+    if (index === -1) return false
+    this.queued.splice(index, 1)
+    if (task.timeout) globalThis.clearTimeout(task.timeout)
+    return true
   }
 
   private drain(): void {
@@ -293,10 +315,6 @@ export function scheduleRepoTask<T>(
   options?: RepoLaneOptions,
 ): Promise<T> {
   return getRuntime(repoId).queues[lane].add(task, options)
-}
-
-export function cancelQueuedRepoTask(repoId: string, lane: RepoTaskLane, replaceQueuedKey: string): boolean {
-  return runtimes.get(repoId)?.queues[lane].cancelQueued(replaceQueuedKey) ?? false
 }
 
 export function disposeRepoRuntime(repoId: string): void {

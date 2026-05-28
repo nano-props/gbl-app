@@ -15,9 +15,13 @@ const BRANCH_ACTION_LOADING_LABEL_KEYS: Record<RepoBranchActionKind, string> = {
   removeWorktree: 'action.remove-worktree-removing-title',
 }
 
-const BRANCH_ACTION_QUEUED_LABEL_KEYS: Partial<Record<RepoBranchActionKind, string>> = {
+const BRANCH_ACTION_QUEUED_LABEL_KEYS: Record<RepoBranchActionKind, string> = {
+  checkout: 'action.checkout-queued',
   pull: 'action.pull-queued',
   push: 'action.push-queued',
+  createWorktree: 'action.create-worktree-queued-title',
+  deleteBranch: 'action.delete-branch-queued-title',
+  removeWorktree: 'action.remove-worktree-queued-title',
 }
 
 export function repoBranchActionLoadingLabel(
