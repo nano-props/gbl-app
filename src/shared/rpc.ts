@@ -24,7 +24,15 @@ export type TerminalPref = 'auto' | 'ghostty' | 'terminal'
 export type EditorPref = 'auto' | 'vscode' | 'cursor' | 'windsurf'
 export type ResolvedTerminalApp = Exclude<TerminalPref, 'auto'>
 export type ResolvedEditorApp = Exclude<EditorPref, 'auto'>
+export type TerminalAppAvailability = Record<ResolvedTerminalApp, boolean>
+export type EditorAppAvailability = Record<ResolvedEditorApp, boolean>
 export type NetworkOpKind = 'user' | 'background'
+export interface GitHubCliState {
+  available: boolean
+  version: string | null
+  detectedAt: number
+}
+
 export interface ThemeState {
   pref: ThemePref
   resolved: ResolvedTheme
@@ -53,11 +61,7 @@ export interface SettingsSnapshot {
   globalShortcut: string
   globalShortcutRegistered: boolean
   terminalApp: TerminalPref
-  resolvedTerminalApp: ResolvedTerminalApp | null
-  terminalAvailable: boolean
   editorApp: EditorPref
-  resolvedEditorApp: ResolvedEditorApp | null
-  editorAvailable: boolean
   session: SessionState
   recentRepos: string[]
 }
@@ -71,12 +75,22 @@ export interface TerminalAppState {
   pref: TerminalPref
   resolved: ResolvedTerminalApp | null
   available: boolean
+  appAvailability: TerminalAppAvailability
+  detectedAt: number
 }
 
 export interface EditorAppState {
   pref: EditorPref
   resolved: ResolvedEditorApp | null
   available: boolean
+  appAvailability: EditorAppAvailability
+  detectedAt: number
+}
+
+export interface ExternalAppsSnapshot {
+  gh: GitHubCliState
+  terminal: TerminalAppState
+  editor: EditorAppState
 }
 
 export interface I18nPayload {
@@ -172,6 +186,7 @@ export type RpcEvent =
   | { type: 'swap-close-shortcuts-changed'; swapped: boolean }
   | { type: 'toggle-detail-on-action-bar-blank-click-changed'; enabled: boolean }
   | { type: 'global-shortcut-changed'; state: GlobalShortcutState }
+  | ({ type: 'github-cli-changed' } & GitHubCliState)
   | ({ type: 'terminal-app-changed' } & TerminalAppState)
   | ({ type: 'editor-app-changed' } & EditorAppState)
   | { type: 'settings-write-error'; message: string }
@@ -252,6 +267,10 @@ export interface AppRpcHandlers {
     saveSession: (input: { session: SessionState }) => Promise<void>
     addRecentRepo: (input: { repoPath: string }) => Promise<string[]>
     clearRecentRepos: () => Promise<void>
+  }
+  externalApps: {
+    get: () => Promise<ExternalAppsSnapshot>
+    refresh: () => Promise<ExternalAppsSnapshot>
   }
   i18n: {
     get: () => Promise<I18nPayload>
@@ -417,6 +436,10 @@ export function createAppRouter(handlers: AppRpcHandlers) {
         .input(v.object({ repoPath: v.string() }))
         .mutation(({ input }) => handlers.settings.addRecentRepo(input)),
       clearRecentRepos: p.input(EmptyInput).mutation(() => handlers.settings.clearRecentRepos()),
+    }),
+    externalApps: t.router({
+      get: p.input(EmptyInput).query(() => handlers.externalApps.get()),
+      refresh: p.input(EmptyInput).mutation(() => handlers.externalApps.refresh()),
     }),
     i18n: t.router({
       get: p.input(EmptyInput).query(() => handlers.i18n.get()),

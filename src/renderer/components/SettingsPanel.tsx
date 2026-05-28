@@ -1,23 +1,20 @@
 // Unified settings overlay using Goblin's desktop UI tokens.
 
-import { useRef, type ReactNode } from 'react'
+import { useRef, useState, type ComponentType, type ReactNode } from 'react'
 import {
   AppWindow,
-  Code2,
   ExternalLink,
-  GitBranch,
-  GitPullRequest,
   Hash,
   Info,
   Keyboard,
   Laptop,
   Moon,
-  PackageCheck,
+  RotateCw,
   Settings2,
+  Shield,
   SlidersHorizontal,
   Sun,
   Tag,
-  Terminal,
   type LucideIcon,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '#/renderer/components/ui/dialog.tsx'
@@ -26,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#
 import { Switch } from '#/renderer/components/ui/switch.tsx'
 import { Badge } from '#/renderer/components/ui/badge.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
+import { AppleTerminalIcon, CursorIcon, GhosttyIcon, VSCodeIcon, WindsurfIcon } from '#/renderer/components/ExternalAppIcon/index.tsx'
 import { GitHubMark } from '#/renderer/components/GitHubMark.tsx'
 import { ShortcutSettings } from '#/renderer/components/settings/ShortcutSettings.tsx'
 import { useThemeStore } from '#/renderer/stores/theme.ts'
@@ -38,13 +36,12 @@ import {
 } from '#/renderer/keyboard/help-shortcuts.ts'
 import { cn } from '#/renderer/lib/cn.ts'
 import { COLOR_THEMES } from '#/shared/color-theme.ts'
-import type { BadgeVariant } from '#/renderer/components/ui/badge.tsx'
 import type { EditorPref, LangPref, TerminalPref, ThemePref } from '#/shared/rpc.ts'
 import type { ColorTheme } from '#/shared/color-theme.ts'
 import { rpc } from '#/renderer/rpc.ts'
 import { SETTINGS_PANEL_CONTENT_ID } from '#/renderer/components/ui/ids.ts'
 
-export type SettingsPage = 'general' | 'apps' | 'sync' | 'dependencies' | 'shortcuts' | 'about'
+export type SettingsPage = 'general' | 'apps' | 'sync' | 'proxy' | 'shortcuts' | 'about'
 
 const appIconUrl = new URL('../../../assets/icon.png', import.meta.url).href
 
@@ -55,77 +52,54 @@ interface Props {
   onClose: () => void
 }
 
-interface DependencyItem {
-  Icon: LucideIcon
-  badgeVariant: BadgeVariant
-  badgeKey: string
+interface ExternalToolItem {
+  id: string
+  Icon: ComponentType<{ className?: string }>
   titleKey: string
   commandKey: string
-  bodyKey: string
+  detail?: string | null
 }
 
-const CORE_DEPENDENCIES: DependencyItem[] = [
+const GH_TOOL: ExternalToolItem = {
+  id: 'gh',
+  Icon: GitHubMark,
+  titleKey: 'settings.apps.tool.gh.title',
+  commandKey: 'settings.apps.tool.gh.command',
+}
+
+const TERMINAL_APPS: ExternalToolItem[] = [
   {
-    Icon: GitBranch,
-    badgeVariant: 'warning',
-    badgeKey: 'dependencies.required',
-    titleKey: 'dependencies.git.title',
-    commandKey: 'dependencies.git.command',
-    bodyKey: 'dependencies.git.body',
+    id: 'ghostty',
+    Icon: GhosttyIcon,
+    titleKey: 'settings.apps.tool.ghostty.title',
+    commandKey: 'settings.apps.tool.ghostty.command',
   },
   {
-    Icon: GitPullRequest,
-    badgeVariant: 'brand',
-    badgeKey: 'dependencies.optional',
-    titleKey: 'dependencies.gh.title',
-    commandKey: 'dependencies.gh.command',
-    bodyKey: 'dependencies.gh.body',
+    id: 'terminal',
+    Icon: AppleTerminalIcon,
+    titleKey: 'settings.apps.tool.terminal.title',
+    commandKey: 'settings.apps.tool.terminal.command',
   },
 ]
 
-const TERMINAL_DEPENDENCIES: DependencyItem[] = [
+const EDITOR_APPS: ExternalToolItem[] = [
   {
-    Icon: Terminal,
-    badgeVariant: 'brand',
-    badgeKey: 'dependencies.optional',
-    titleKey: 'dependencies.ghostty.title',
-    commandKey: 'dependencies.ghostty.command',
-    bodyKey: 'dependencies.ghostty.body',
+    id: 'vscode',
+    Icon: VSCodeIcon,
+    titleKey: 'settings.apps.tool.vscode.title',
+    commandKey: 'settings.apps.tool.vscode.command',
   },
   {
-    Icon: Terminal,
-    badgeVariant: 'brand',
-    badgeKey: 'dependencies.optional',
-    titleKey: 'dependencies.terminal.title',
-    commandKey: 'dependencies.terminal.command',
-    bodyKey: 'dependencies.terminal.body',
-  },
-]
-
-const EDITOR_DEPENDENCIES: DependencyItem[] = [
-  {
-    Icon: Code2,
-    badgeVariant: 'brand',
-    badgeKey: 'dependencies.optional',
-    titleKey: 'dependencies.vscode.title',
-    commandKey: 'dependencies.vscode.command',
-    bodyKey: 'dependencies.vscode.body',
+    id: 'cursor',
+    Icon: CursorIcon,
+    titleKey: 'settings.apps.tool.cursor.title',
+    commandKey: 'settings.apps.tool.cursor.command',
   },
   {
-    Icon: Code2,
-    badgeVariant: 'brand',
-    badgeKey: 'dependencies.optional',
-    titleKey: 'dependencies.cursor.title',
-    commandKey: 'dependencies.cursor.command',
-    bodyKey: 'dependencies.cursor.body',
-  },
-  {
-    Icon: Code2,
-    badgeVariant: 'brand',
-    badgeKey: 'dependencies.optional',
-    titleKey: 'dependencies.windsurf.title',
-    commandKey: 'dependencies.windsurf.command',
-    bodyKey: 'dependencies.windsurf.body',
+    id: 'windsurf',
+    Icon: WindsurfIcon,
+    titleKey: 'settings.apps.tool.windsurf.title',
+    commandKey: 'settings.apps.tool.windsurf.command',
   },
 ]
 
@@ -136,12 +110,7 @@ export function SettingsPanel({ open, page, onPageChange, onClose }: Props) {
     { page: 'general', label: t('settings.group.general'), title: t('settings.group.general'), Icon: Settings2 },
     { page: 'apps', label: t('settings.group.apps'), title: t('settings.group.apps'), Icon: AppWindow },
     { page: 'sync', label: t('settings.group.sync'), title: t('settings.group.sync'), Icon: SlidersHorizontal },
-    {
-      page: 'dependencies',
-      label: t('settings.nav.dependencies'),
-      title: t('dependencies.title'),
-      Icon: PackageCheck,
-    },
+    { page: 'proxy', label: t('settings.group.proxy'), title: t('settings.group.proxy'), Icon: Shield },
     { page: 'shortcuts', label: t('settings.nav.shortcuts'), title: t('settings.shortcuts'), Icon: Keyboard },
     { page: 'about', label: t('settings.about'), title: t('settings.about'), Icon: Info },
   ]
@@ -206,7 +175,7 @@ export function SettingsPanel({ open, page, onPageChange, onClose }: Props) {
                 {page === 'general' && <GeneralSettings />}
                 {page === 'apps' && <ExternalAppSettings />}
                 {page === 'sync' && <SyncSettings />}
-                {page === 'dependencies' && <DependenciesSettings />}
+                {page === 'proxy' && <ProxySettings />}
                 {page === 'shortcuts' && <KeyboardShortcutSettings />}
                 {page === 'about' && <AboutSettings />}
               </div>
@@ -309,10 +278,16 @@ function GeneralSettings() {
 
 function ExternalAppSettings() {
   const t = useT()
+  const ghAvailable = useSettingsStore((s) => s.ghAvailable)
+  const ghVersion = useSettingsStore((s) => s.ghVersion)
   const terminalApp = useSettingsStore((s) => s.terminalApp)
+  const terminalAppAvailability = useSettingsStore((s) => s.terminalAppAvailability)
   const setTerminalApp = useSettingsStore((s) => s.setTerminalApp)
   const editorApp = useSettingsStore((s) => s.editorApp)
+  const editorAppAvailability = useSettingsStore((s) => s.editorAppAvailability)
   const setEditorApp = useSettingsStore((s) => s.setEditorApp)
+  const refreshExternalApps = useSettingsStore((s) => s.refreshExternalApps)
+  const [refreshing, setRefreshing] = useState(false)
   const terminalOptions: { value: TerminalPref; labelKey: string }[] = [
     { value: 'auto', labelKey: 'settings.terminal.auto' },
     { value: 'ghostty', labelKey: 'settings.terminal.ghostty' },
@@ -328,35 +303,90 @@ function ExternalAppSettings() {
     void fn().catch((err) => console.warn(`[settings] ${label} update failed`, err))
   }
 
+  const handleRefresh = () => {
+    if (refreshing) return
+    setRefreshing(true)
+    void refreshExternalApps()
+      .catch((err) => {
+        console.warn('[settings] external app refresh failed', err)
+      })
+      .finally(() => {
+        setRefreshing(false)
+      })
+  }
+
   return (
-    <SettingsGroup label={t('settings.group.apps')}>
-      <SettingsList>
-        <SettingsRow
-          controlId="settings-terminal"
-          label={t('settings.terminal')}
-          control={
-            <SettingsSelect
-              id="settings-terminal"
-              value={terminalApp}
-              options={terminalOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-              onChange={(v) => save(() => setTerminalApp(v), 'terminal')}
-            />
-          }
+    <>
+      <SettingsGroup label={t('settings.group.apps')}>
+        <SettingsList>
+          <SettingsRow
+            controlId="settings-terminal"
+            label={t('settings.terminal')}
+            control={
+              <SettingsSelect
+                id="settings-terminal"
+                value={terminalApp}
+                options={terminalOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                onChange={(v) => save(() => setTerminalApp(v), 'terminal')}
+              />
+            }
+          />
+          <SettingsRow
+            controlId="settings-editor"
+            label={t('settings.editor')}
+            control={
+              <SettingsSelect
+                id="settings-editor"
+                value={editorApp}
+                options={editorOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                onChange={(v) => save(() => setEditorApp(v), 'editor')}
+              />
+            }
+          />
+        </SettingsList>
+      </SettingsGroup>
+      <SettingsGroup
+        label={t('settings.apps.detection')}
+        hint={t('settings.apps.detection-hint')}
+        action={
+          <Button
+            type="button"
+            data-interactive
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RotateCw className={cn('size-3', refreshing && 'animate-spin')} />
+            {t('settings.apps.redetect')}
+          </Button>
+        }
+      >
+        <DetectionList items={[{ ...GH_TOOL, available: ghAvailable, detail: ghVersion }]} />
+      </SettingsGroup>
+      <SettingsGroup label={t('settings.apps.group.terminals')}>
+        <DetectionList
+          items={TERMINAL_APPS.map((item) => ({
+            ...item,
+            available: item.id === 'ghostty' ? terminalAppAvailability.ghostty : terminalAppAvailability.terminal,
+          }))}
         />
-        <SettingsRow
-          controlId="settings-editor"
-          label={t('settings.editor')}
-          control={
-            <SettingsSelect
-              id="settings-editor"
-              value={editorApp}
-              options={editorOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-              onChange={(v) => save(() => setEditorApp(v), 'editor')}
-            />
-          }
+      </SettingsGroup>
+      <SettingsGroup label={t('settings.apps.group.editors')}>
+        <DetectionList
+          items={EDITOR_APPS.map((item) => ({
+            ...item,
+            available:
+              item.id === 'vscode'
+                ? editorAppAvailability.vscode
+                : item.id === 'cursor'
+                  ? editorAppAvailability.cursor
+                  : editorAppAvailability.windsurf,
+          }))}
         />
-      </SettingsList>
-    </SettingsGroup>
+      </SettingsGroup>
+    </>
   )
 }
 
@@ -395,6 +425,61 @@ function SyncSettings() {
         />
       </SettingsList>
     </SettingsGroup>
+  )
+}
+
+function ProxySettings() {
+  const t = useT()
+  return (
+    <>
+      <SettingsGroup label={t('settings.proxy.ssh-title')} hint={t('settings.proxy.ssh-body')}>
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[var(--shadow-inset-highlight)]">
+          <div className="px-4 py-3">
+            <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] leading-snug text-muted-foreground">
+              {t('settings.proxy.ssh-example')}
+            </pre>
+          </div>
+        </div>
+      </SettingsGroup>
+      <SettingsGroup
+        label={
+          <span className="inline-flex items-center gap-1.5">
+            <span>{t('settings.proxy.http-title')}</span>
+            <Badge variant="outline" className="border-border/60 text-muted-foreground/75">
+              {t('settings.proxy.external-badge')}
+            </Badge>
+          </span>
+        }
+        hint={t('settings.proxy.http-body')}
+      >
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[var(--shadow-inset-highlight)]">
+          <div className="px-4 py-3">
+            <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] leading-snug text-muted-foreground">
+              {t('settings.proxy.http-example')}
+            </pre>
+          </div>
+        </div>
+      </SettingsGroup>
+      <SettingsGroup
+        label={
+          <span className="inline-flex items-center gap-1.5">
+            <span>{t('settings.proxy.gh-title')}</span>
+            <Badge variant="outline" className="border-border/60 text-muted-foreground/75">
+              {t('settings.proxy.external-badge')}
+            </Badge>
+          </span>
+        }
+        hint={t('settings.proxy.gh-body')}
+      >
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[var(--shadow-inset-highlight)]">
+          <div className="px-4 py-3">
+            <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] leading-snug text-muted-foreground">
+              {t('settings.proxy.gh-example')}
+            </pre>
+          </div>
+        </div>
+      </SettingsGroup>
+    </>
   )
 }
 
@@ -457,22 +542,6 @@ function AboutSettings() {
   )
 }
 
-function DependenciesSettings() {
-  const t = useT()
-  return (
-    <>
-      <p className="px-3 text-xs leading-snug text-muted-foreground">{t('dependencies.intro')}</p>
-      <DependencyList items={CORE_DEPENDENCIES} />
-      <SettingsGroup label={t('dependencies.group.terminals')} hint={t('dependencies.group.terminals-hint')}>
-        <DependencyList items={TERMINAL_DEPENDENCIES} />
-      </SettingsGroup>
-      <SettingsGroup label={t('dependencies.group.editors')} hint={t('dependencies.group.editors-hint')}>
-        <DependencyList items={EDITOR_DEPENDENCIES} />
-      </SettingsGroup>
-    </>
-  )
-}
-
 function KeyboardShortcutSettings() {
   const t = useT()
   const globalShortcut = useSettingsStore((s) => s.globalShortcut)
@@ -489,13 +558,26 @@ function KeyboardShortcutSettings() {
   )
 }
 
-function SettingsGroup({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function SettingsGroup({
+  label,
+  hint,
+  action,
+  children,
+}: {
+  label: ReactNode
+  hint?: string
+  action?: ReactNode
+  children: ReactNode
+}) {
   return (
-    <fieldset className="space-y-1.5">
-      <legend className="px-3 text-[11px] font-medium text-muted-foreground">{label}</legend>
+    <section className="space-y-1.5">
+      <div className="flex items-center justify-between gap-3 px-3">
+        <h2 className="text-[11px] font-medium text-muted-foreground">{label}</h2>
+        {action}
+      </div>
       {hint && <div className="px-3 text-[11px] leading-snug text-muted-foreground/80">{hint}</div>}
       {children}
-    </fieldset>
+    </section>
   )
 }
 
@@ -562,32 +644,41 @@ function SettingsSelect<T extends string | number>({ id, value, options, onChang
   )
 }
 
-function DependencyList({ items }: { items: DependencyItem[] }) {
+function DetectionStatusBadge({ available }: { available: boolean }) {
+  const t = useT()
+  return (
+    <Badge variant={available ? 'success' : 'outline'}>
+      {available ? t('settings.apps.status.detected') : t('settings.apps.status.not-detected')}
+    </Badge>
+  )
+}
+
+function DetectionList({ items }: { items: Array<ExternalToolItem & { available: boolean }> }) {
   return (
     <ul className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[var(--shadow-inset-highlight)]">
       {items.map((item) => (
-        <DependencyRow key={item.titleKey} item={item} />
+        <DetectionRow key={item.titleKey} item={item} />
       ))}
     </ul>
   )
 }
 
-function DependencyRow({ item }: { item: DependencyItem }) {
+function DetectionRow({ item }: { item: ExternalToolItem & { available: boolean } }) {
   const t = useT()
   const Icon = item.Icon
   return (
     <li className="flex min-h-14 items-center gap-3 px-4 py-2.5 [&+&]:border-t [&+&]:border-separator">
       <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-        <Icon size={16} />
+        <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="truncate text-sm font-medium text-foreground">{t(item.titleKey)}</span>
           <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{t(item.commandKey)}</span>
         </div>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">{t(item.bodyKey)}</p>
+        {item.detail ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.detail}</p> : null}
       </div>
-      <Badge variant={item.badgeVariant}>{t(item.badgeKey)}</Badge>
+      <DetectionStatusBadge available={item.available} />
     </li>
   )
 }

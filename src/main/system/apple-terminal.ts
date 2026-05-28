@@ -1,6 +1,7 @@
 import { execa } from 'execa'
 import { statSync } from 'node:fs'
 import path from 'node:path'
+import { hasApplication } from '#/main/system/launch-services.ts'
 
 const OPEN_TIMEOUT_MS = 10_000
 
@@ -31,4 +32,8 @@ export async function openInAppleTerminal(p: string): Promise<{ ok: boolean; mes
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : String(err) }
   }
+}
+
+export function isAppleTerminalInstalled(signal?: AbortSignal): Promise<boolean> {
+  return hasApplication('Terminal', signal)
 }

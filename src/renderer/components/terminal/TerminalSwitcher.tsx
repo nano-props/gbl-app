@@ -44,6 +44,7 @@ export function TerminalSwitcher({
       </div>
       <ScrollArea
         className="goblin-terminal-switcher__list"
+        scrollbarMode="compact"
         viewportClassName="goblin-terminal-switcher__viewport [&>div]:!block"
       >
         {sessions.length === 0 ? (
@@ -77,7 +78,11 @@ export function TerminalSwitcher({
                   size="icon-sm"
                   variant="ghost"
                   className="goblin-terminal-switcher__close"
-                  onClick={() => onClose(session.key)}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onClose(session.key)
+                  }}
                   title={t('terminal.close')}
                   aria-label={t('terminal.close')}
                 >

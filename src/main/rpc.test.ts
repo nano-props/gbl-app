@@ -10,7 +10,12 @@ import { getBranchPullRequest } from '#/main/git/pull-requests.ts'
 import { openHttpsExternal } from '#/main/external-url.ts'
 import { registerTrustedAppPath, registerTrustedWebContents } from '#/main/ipc/trusted-webcontents.ts'
 import { wireRpcIpc } from '#/main/rpc.ts'
-import type { RpcResponse } from '#/shared/rpc.ts'
+import { broadcastRpcEvent } from '#/main/events.ts'
+import { setTerminalApp, setEditorApp } from '#/main/settings.ts'
+import { getTerminalActionAvailability, getTerminalAppAvailability, resolveTerminalApp } from '#/main/system/terminals.ts'
+import { getEditorAppAvailability, resolveEditorApp } from '#/main/system/editors.ts'
+import { probeGitHubCli } from '#/main/system/github-cli.ts'
+import type { EditorAppState, ExternalAppsSnapshot, RpcResponse } from '#/shared/rpc.ts'
 
 const ipcHandlers = new Map<string, (_event: unknown, input: any) => Promise<unknown>>()
 
@@ -114,6 +119,9 @@ vi.mock('#/main/settings.ts', () => ({
     colorTheme: 'default',
     fetchIntervalSec: 120,
     shortcutsDisabled: false,
+    globalShortcutDisabled: false,
+    swapCloseShortcuts: false,
+    toggleDetailOnActionBarBlankClick: false,
     globalShortcut: '',
     terminalApp: 'auto',
     editorApp: 'auto',
@@ -133,7 +141,10 @@ vi.mock('#/main/settings.ts', () => ({
   setFetchInterval: vi.fn(),
   setGlobalShortcut: vi.fn(),
   setSession: vi.fn(),
+  setGlobalShortcutDisabled: vi.fn(),
   setShortcutsDisabled: vi.fn(),
+  setSwapCloseShortcuts: vi.fn(),
+  setToggleDetailOnActionBarBlankClick: vi.fn(),
   setTerminalApp: vi.fn(),
 }))
 
@@ -155,13 +166,26 @@ vi.mock('#/main/i18n/index.ts', () => ({
 }))
 
 vi.mock('#/main/system/terminals.ts', () => ({
-  getResolvedTerminalApp: vi.fn(() => null),
+  getResolvedTerminalApp: vi.fn(() => Promise.resolve(null)),
+  getTerminalActionAvailability: vi.fn(() => ({ ghostty: false, terminal: true })),
+  getTerminalAppAvailability: vi.fn(() => Promise.resolve({ ghostty: false, terminal: true })),
   openInPreferredTerminal: vi.fn(),
+  resolveTerminalApp: vi.fn((_pref, availability) => (availability.ghostty ? 'ghostty' : availability.terminal ? 'terminal' : null)),
 }))
 
 vi.mock('#/main/system/editors.ts', () => ({
   getResolvedEditorApp: vi.fn(() => null),
+  getEditorAppAvailability: vi.fn(() => ({ vscode: false, cursor: false, windsurf: false })),
   openInPreferredEditor: vi.fn(),
+  resolveEditorApp: vi.fn((_pref, availability) =>
+    availability.vscode ? 'vscode' : availability.cursor ? 'cursor' : availability.windsurf ? 'windsurf' : null,
+  ),
+}))
+
+vi.mock('#/main/system/github-cli.ts', () => ({
+  probeGitHubCli: vi.fn((_signal?: AbortSignal, detectedAt = 0) =>
+    Promise.resolve({ available: false, version: null, detectedAt }),
+  ),
 }))
 
 vi.mock('#/main/events.ts', () => ({
@@ -368,5 +392,315 @@ describe('main repo rpc cancellation', () => {
 
     expect(aborted).toBe(true)
     await expect(snapshot).resolves.toEqual({ ok: true, data: null })
+  })
+
+  test('returns persistable settings without external app detection in settings.get', async () => {
+    vi.mocked(probeGitHubCli).mockImplementation(async (_signal, detectedAt = 0) => ({
+      available: true,
+      version: 'gh version 2.80.0 (2026-05-01)',
+      detectedAt,
+    }))
+    vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: true, terminal: true })
+    vi.mocked(resolveTerminalApp).mockReturnValue('ghostty')
+    vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: false, cursor: true, windsurf: false })
+    vi.mocked(resolveEditorApp).mockReturnValue('cursor')
+
+    const result = await invokeRpc('settings.get')
+
+    expect(result).toEqual({
+      ok: true,
+      data: expect.objectContaining({
+        terminalApp: 'auto',
+        editorApp: 'auto',
+      }),
+    })
+    expect(probeGitHubCli).not.toHaveBeenCalled()
+  })
+
+  test('returns external app detection from externalApps.get', async () => {
+    vi.mocked(probeGitHubCli).mockImplementation(async (_signal, detectedAt = 0) => ({
+      available: true,
+      version: 'gh version 2.80.0 (2026-05-01)',
+      detectedAt,
+    }))
+    vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: true, terminal: true })
+    vi.mocked(resolveTerminalApp).mockReturnValue('ghostty')
+    vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: false, cursor: true, windsurf: false })
+    vi.mocked(resolveEditorApp).mockReturnValue('cursor')
+
+    const result = await invokeRpc('externalApps.get')
+
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        gh: { available: true, version: 'gh version 2.80.0 (2026-05-01)', detectedAt: expect.any(Number) },
+        terminal: {
+          pref: 'auto',
+          resolved: 'ghostty',
+          available: true,
+          appAvailability: { ghostty: true, terminal: true },
+          detectedAt: expect.any(Number),
+        },
+        editor: {
+          pref: 'auto',
+          resolved: 'cursor',
+          available: true,
+          appAvailability: { vscode: false, cursor: true, windsurf: false },
+          detectedAt: expect.any(Number),
+        },
+      },
+    })
+  })
+
+  test('assigns monotonic detectedAt values across external app snapshots in the same millisecond', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000)
+    vi.mocked(probeGitHubCli).mockImplementation(async (_signal, detectedAt = 0) => ({
+      available: true,
+      version: 'gh version 2.80.0 (2026-05-01)',
+      detectedAt,
+    }))
+    vi.mocked(getTerminalActionAvailability).mockReturnValue({ ghostty: false, terminal: true })
+    vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: false, terminal: false })
+    vi.mocked(resolveTerminalApp).mockReturnValue('terminal')
+    vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: true, cursor: false, windsurf: false })
+    vi.mocked(resolveEditorApp).mockReturnValue('vscode')
+
+    try {
+      const first = await invokeRpc('externalApps.get')
+      const second = await invokeRpc('externalApps.refresh')
+
+      expect(first).toEqual({
+        ok: true,
+        data: {
+          gh: { available: true, version: 'gh version 2.80.0 (2026-05-01)', detectedAt: expect.any(Number) },
+          terminal: {
+            pref: 'auto',
+            resolved: 'terminal',
+            available: true,
+            appAvailability: { ghostty: false, terminal: false },
+            detectedAt: expect.any(Number),
+          },
+          editor: {
+            pref: 'auto',
+            resolved: 'vscode',
+            available: true,
+            appAvailability: { vscode: true, cursor: false, windsurf: false },
+            detectedAt: expect.any(Number),
+          },
+        },
+      })
+      expect(second).toEqual({
+        ok: true,
+        data: {
+          gh: { available: true, version: 'gh version 2.80.0 (2026-05-01)', detectedAt: expect.any(Number) },
+          terminal: {
+            pref: 'auto',
+            resolved: 'terminal',
+            available: true,
+            appAvailability: { ghostty: false, terminal: false },
+            detectedAt: expect.any(Number),
+          },
+          editor: {
+            pref: 'auto',
+            resolved: 'vscode',
+            available: true,
+            appAvailability: { vscode: true, cursor: false, windsurf: false },
+            detectedAt: expect.any(Number),
+          },
+        },
+      })
+
+      if (!first.ok || !second.ok) throw new Error('expected successful RPC responses')
+      const firstData = first.data as ExternalAppsSnapshot
+      const secondData = second.data as ExternalAppsSnapshot
+      expect(firstData.gh.detectedAt).toBe(firstData.terminal.detectedAt)
+      expect(firstData.terminal.detectedAt).toBe(firstData.editor.detectedAt)
+      expect(secondData.gh.detectedAt).toBe(secondData.terminal.detectedAt)
+      expect(secondData.terminal.detectedAt).toBe(secondData.editor.detectedAt)
+      expect(secondData.gh.detectedAt).toBeGreaterThan(firstData.gh.detectedAt)
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  test('broadcasts terminal app detection when the preference changes', async () => {
+    vi.mocked(setTerminalApp).mockResolvedValue('ghostty')
+    vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: true, terminal: true })
+    vi.mocked(resolveTerminalApp).mockReturnValue('ghostty')
+
+    const result = await invokeRpc('settings.setTerminalApp', { pref: 'ghostty' })
+
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        pref: 'ghostty',
+        resolved: 'ghostty',
+        available: true,
+        appAvailability: { ghostty: true, terminal: true },
+        detectedAt: expect.any(Number),
+      },
+    })
+    expect(broadcastRpcEvent).toHaveBeenCalledWith({
+      type: 'terminal-app-changed',
+      pref: 'ghostty',
+      resolved: 'ghostty',
+      available: true,
+      appAvailability: { ghostty: true, terminal: true },
+      detectedAt: expect.any(Number),
+    })
+    expect(probeGitHubCli).not.toHaveBeenCalled()
+  })
+
+  test('keeps Terminal.app available for actions even when detection reports unavailable', async () => {
+    vi.mocked(setTerminalApp).mockResolvedValue('terminal')
+    vi.mocked(getTerminalActionAvailability).mockReturnValue({ ghostty: false, terminal: true })
+    vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: false, terminal: false })
+    vi.mocked(resolveTerminalApp).mockReturnValue('terminal')
+
+    const result = await invokeRpc('settings.setTerminalApp', { pref: 'terminal' })
+
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        pref: 'terminal',
+        resolved: 'terminal',
+        available: true,
+        appAvailability: { ghostty: false, terminal: false },
+        detectedAt: expect.any(Number),
+      },
+    })
+    expect(broadcastRpcEvent).toHaveBeenCalledWith({
+      type: 'terminal-app-changed',
+      pref: 'terminal',
+      resolved: 'terminal',
+      available: true,
+      appAvailability: { ghostty: false, terminal: false },
+      detectedAt: expect.any(Number),
+    })
+  })
+
+  test('broadcasts editor app detection when the preference changes', async () => {
+    vi.mocked(setEditorApp).mockResolvedValue('cursor')
+    vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: false, cursor: true, windsurf: false })
+    vi.mocked(resolveEditorApp).mockReturnValue('cursor')
+
+    const result = await invokeRpc('settings.setEditorApp', { pref: 'cursor' })
+
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        pref: 'cursor',
+        resolved: 'cursor',
+        available: true,
+        appAvailability: { vscode: false, cursor: true, windsurf: false },
+        detectedAt: expect.any(Number),
+      },
+    })
+    expect(broadcastRpcEvent).toHaveBeenCalledWith({
+      type: 'editor-app-changed',
+      pref: 'cursor',
+      resolved: 'cursor',
+      available: true,
+      appAvailability: { vscode: false, cursor: true, windsurf: false },
+      detectedAt: expect.any(Number),
+    })
+    expect(probeGitHubCli).not.toHaveBeenCalled()
+  })
+
+  test('assigns monotonic detectedAt values to repeated editor preference changes in the same millisecond', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(2_000)
+    vi.mocked(setEditorApp).mockResolvedValue('cursor')
+    vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: false, cursor: true, windsurf: false })
+    vi.mocked(resolveEditorApp).mockReturnValue('cursor')
+
+    try {
+      const first = await invokeRpc('settings.setEditorApp', { pref: 'cursor' })
+      const second = await invokeRpc('settings.setEditorApp', { pref: 'cursor' })
+
+      expect(first).toEqual({
+        ok: true,
+        data: {
+          pref: 'cursor',
+          resolved: 'cursor',
+          available: true,
+          appAvailability: { vscode: false, cursor: true, windsurf: false },
+          detectedAt: expect.any(Number),
+        },
+      })
+      expect(second).toEqual({
+        ok: true,
+        data: {
+          pref: 'cursor',
+          resolved: 'cursor',
+          available: true,
+          appAvailability: { vscode: false, cursor: true, windsurf: false },
+          detectedAt: expect.any(Number),
+        },
+      })
+
+      if (!first.ok || !second.ok) throw new Error('expected successful RPC responses')
+      const firstData = first.data as EditorAppState
+      const secondData = second.data as EditorAppState
+      expect(secondData.detectedAt).toBeGreaterThan(firstData.detectedAt)
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  test('refreshes and broadcasts external app detection', async () => {
+    vi.mocked(probeGitHubCli).mockImplementation(async (_signal, detectedAt = 0) => ({
+      available: true,
+      version: 'gh version 2.80.0 (2026-05-01)',
+      detectedAt,
+    }))
+    vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: false, terminal: true })
+    vi.mocked(resolveTerminalApp).mockReturnValue('terminal')
+    vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: true, cursor: false, windsurf: false })
+    vi.mocked(resolveEditorApp).mockReturnValue('vscode')
+
+    const result = await invokeRpc('externalApps.refresh')
+
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        gh: { available: true, version: 'gh version 2.80.0 (2026-05-01)', detectedAt: expect.any(Number) },
+        terminal: {
+          pref: 'auto',
+          resolved: 'terminal',
+          available: true,
+          appAvailability: { ghostty: false, terminal: true },
+          detectedAt: expect.any(Number),
+        },
+        editor: {
+          pref: 'auto',
+          resolved: 'vscode',
+          available: true,
+          appAvailability: { vscode: true, cursor: false, windsurf: false },
+          detectedAt: expect.any(Number),
+        },
+      },
+    })
+    expect(broadcastRpcEvent).toHaveBeenCalledWith({
+      type: 'github-cli-changed',
+      available: true,
+      version: 'gh version 2.80.0 (2026-05-01)',
+      detectedAt: expect.any(Number),
+    })
+    expect(broadcastRpcEvent).toHaveBeenCalledWith({
+      type: 'terminal-app-changed',
+      pref: 'auto',
+      resolved: 'terminal',
+      available: true,
+      appAvailability: { ghostty: false, terminal: true },
+      detectedAt: expect.any(Number),
+    })
+    expect(broadcastRpcEvent).toHaveBeenCalledWith({
+      type: 'editor-app-changed',
+      pref: 'auto',
+      resolved: 'vscode',
+      available: true,
+      appAvailability: { vscode: true, cursor: false, windsurf: false },
+      detectedAt: expect.any(Number),
+    })
   })
 })

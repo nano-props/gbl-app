@@ -3,9 +3,11 @@ import { ScrollArea as ScrollAreaPrimitive } from 'radix-ui'
 import { cn } from '#/renderer/lib/cn.ts'
 
 type Orientation = 'vertical' | 'horizontal' | 'both'
+type ScrollbarMode = 'default' | 'compact'
 
 interface ScrollAreaProps extends ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   orientation?: Orientation
+  scrollbarMode?: ScrollbarMode
   className?: string
   viewportClassName?: string
   viewportRef?: Ref<HTMLDivElement>
@@ -19,6 +21,7 @@ export const ScrollArea = forwardRef<ComponentRef<typeof ScrollAreaPrimitive.Roo
       viewportRef,
       children,
       orientation = 'vertical',
+      scrollbarMode = 'default',
       type = 'hover',
       scrollHideDelay = 800,
       ...props
@@ -36,8 +39,12 @@ export const ScrollArea = forwardRef<ComponentRef<typeof ScrollAreaPrimitive.Roo
         <ScrollAreaPrimitive.Viewport ref={viewportRef} className={cn('h-full w-full', viewportClassName)}>
           {children}
         </ScrollAreaPrimitive.Viewport>
-        {(orientation === 'vertical' || orientation === 'both') && <ScrollBar orientation="vertical" />}
-        {(orientation === 'horizontal' || orientation === 'both') && <ScrollBar orientation="horizontal" />}
+        {(orientation === 'vertical' || orientation === 'both') && (
+          <ScrollBar orientation="vertical" mode={scrollbarMode} />
+        )}
+        {(orientation === 'horizontal' || orientation === 'both') && (
+          <ScrollBar orientation="horizontal" mode={scrollbarMode} />
+        )}
         <ScrollAreaPrimitive.Corner className="bg-transparent" />
       </ScrollAreaPrimitive.Root>
     )
@@ -46,10 +53,11 @@ export const ScrollArea = forwardRef<ComponentRef<typeof ScrollAreaPrimitive.Roo
 
 interface ScrollBarProps extends ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar> {
   orientation?: 'vertical' | 'horizontal'
+  mode?: ScrollbarMode
 }
 
 export const ScrollBar = forwardRef<ComponentRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>, ScrollBarProps>(
-  function ScrollBar({ className, orientation = 'vertical', ...props }, ref) {
+  function ScrollBar({ className, orientation = 'vertical', mode = 'default', ...props }, ref) {
     return (
       <ScrollAreaPrimitive.Scrollbar
         ref={ref}
@@ -67,7 +75,8 @@ export const ScrollBar = forwardRef<ComponentRef<typeof ScrollAreaPrimitive.Scro
             'relative flex-1 rounded-full bg-muted-foreground/40 transition-[background-color,width,height] duration-150 ease-out hover:bg-muted-foreground/70 active:bg-muted-foreground/80',
             orientation === 'vertical' && 'mx-auto w-1 hover:w-1.5',
             orientation === 'horizontal' && 'my-auto h-1 hover:h-1.5',
-            'before:absolute before:left-1/2 before:top-1/2 before:min-h-11 before:min-w-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""]',
+            mode === 'default' &&
+              'before:absolute before:left-1/2 before:top-1/2 before:min-h-11 before:min-w-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""]',
           )}
         />
       </ScrollAreaPrimitive.Scrollbar>

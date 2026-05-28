@@ -151,6 +151,11 @@
 }
 
 .goblin-terminal-switcher__list {
+  /* compact vertical scrollbar track is 8px wide (w-2), and icon-sm
+     close buttons are 24px (size-6); 32px keeps the text clear of the
+     button while letting the button sit as far right as the track allows. */
+  --goblin-terminal-switcher-close-offset: 8px;
+  --goblin-terminal-switcher-close-space: 32px;
   max-height: min(160px, calc(100vh - 10rem));
   border-radius: 0 0 7px 7px;
 }
@@ -160,9 +165,7 @@
 }
 
 .goblin-terminal-switcher__row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  position: relative;
   min-height: 32px;
   transition:
     background-color 100ms ease,
@@ -185,17 +188,21 @@
 .goblin-terminal-switcher__select,
 .goblin-terminal-switcher__empty {
   display: flex;
+  width: 100%;
   min-width: 0;
-  flex: 1;
   align-items: center;
   gap: 7px;
   border: 0;
   background: transparent;
-  padding: 6px 6px 6px 8px;
+  padding: 6px 8px;
   color: inherit;
   font-size: 13px;
   text-align: left;
   cursor: pointer;
+}
+
+.goblin-terminal-switcher__select {
+  padding-right: var(--goblin-terminal-switcher-close-space);
 }
 
 .goblin-terminal-switcher__empty:hover {
@@ -210,16 +217,26 @@
 }
 
 .goblin-terminal-switcher__close {
-  flex: 0 0 auto;
-  margin-right: 4px;
+  position: absolute;
+  top: 50%;
+  right: var(--goblin-terminal-switcher-close-offset);
+  transform: translateY(-50%);
   color: var(--color-muted-foreground);
   opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
   transition: opacity 100ms ease;
+}
+
+.goblin-terminal-switcher__row--active .goblin-terminal-switcher__close {
+  color: var(--color-selected-foreground);
 }
 
 .goblin-terminal-switcher__row:hover .goblin-terminal-switcher__close,
 .goblin-terminal-switcher__row:focus-within .goblin-terminal-switcher__close {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .goblin-terminal-slot__search-input {

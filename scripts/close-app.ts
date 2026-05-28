@@ -20,7 +20,7 @@ async function isRunning(): Promise<boolean> {
   return r.exitCode === 0
 }
 
-async function main(): Promise<void> {
+export async function closeRunningApp(): Promise<void> {
   if (process.platform !== 'darwin') return
   if (!(await isRunning())) return
 
@@ -44,4 +44,4 @@ async function main(): Promise<void> {
   }
 }
 
-await main()
+if (import.meta.main) await closeRunningApp()

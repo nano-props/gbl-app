@@ -7,11 +7,11 @@ import {
   GITHUB_API_INTERVAL_CAP,
   GITHUB_API_INTERVAL_MS,
 } from '#/main/github/queue.ts'
+import { buildGitHubCliPath } from '#/main/system/github-cli.ts'
 
 export const GITHUB_API_TIMEOUT_MS = 17_000
 export { GITHUB_API_CONCURRENCY, GITHUB_API_INTERVAL_CAP, GITHUB_API_INTERVAL_MS }
 
-const GH_PATH = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin'].join(':')
 const TOKEN_CACHE_TTL_MS = 30_000
 const TOKEN_MISS_CACHE_TTL_MS = 5_000
 const tokenCache = new Map<string, { expiresAt: number; token: string | null }>()
@@ -67,7 +67,7 @@ function gh(cwd: string, args: string[], signal?: AbortSignal): Promise<string> 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     GH_PROMPT_DISABLED: '1',
-    PATH: [process.env.PATH, GH_PATH].filter(Boolean).join(':'),
+    PATH: buildGitHubCliPath(),
   }
   for (const key of TOKEN_ENV_KEYS) delete env[key]
   return execa('gh', args, {

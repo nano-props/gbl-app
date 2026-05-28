@@ -2,17 +2,22 @@
 // which has its own dedicated store because of the broadcast machinery
 // around dark/light flips).
 //
-// Hydrate at boot pulls the full snapshot via IPC; setters write
-// through to main, which broadcasts changes so any other window we
-// eventually open stays in sync.
+// Hydrate at boot pulls the persistable settings snapshot plus a
+// separate external-app snapshot via IPC; setters write through to
+// main, which broadcasts changes so any other window we eventually
+// open stays in sync.
 
 import { create } from 'zustand'
 import type {
+  EditorAppAvailability,
   EditorPref,
+  ExternalAppsSnapshot,
+  GitHubCliState,
   GlobalShortcutState,
   ResolvedEditorApp,
   ResolvedTerminalApp,
   SessionState,
+  TerminalAppAvailability,
   TerminalPref,
 } from '#/shared/rpc.ts'
 import { DEFAULT_GLOBAL_SHORTCUT } from '#/shared/accelerator.ts'
@@ -27,17 +32,23 @@ interface SettingsStore {
   toggleDetailOnActionBarBlankClick: boolean
   globalShortcut: string
   globalShortcutRegistered: boolean
+  ghAvailable: boolean
+  ghVersion: string | null
   terminalApp: TerminalPref
   resolvedTerminalApp: ResolvedTerminalApp | null
   terminalAvailable: boolean
+  terminalAppAvailability: TerminalAppAvailability
   editorApp: EditorPref
   resolvedEditorApp: ResolvedEditorApp | null
   editorAvailable: boolean
+  editorAppAvailability: EditorAppAvailability
+  externalAppsDetectedAt: number
   /** Saved session from previous run — consumed once by App.tsx during
    *  hydration, then irrelevant. We keep it in state for diagnostics. */
   savedSession: SessionState
 
   hydrate: () => Promise<SessionState>
+  hydrateExternalApps: () => Promise<void>
   setFetchInterval: (sec: number) => Promise<void>
   setShortcutsDisabled: (disabled: boolean) => Promise<void>
   setGlobalShortcutDisabled: (disabled: boolean) => Promise<void>
@@ -46,7 +57,29 @@ interface SettingsStore {
   setGlobalShortcut: (accelerator: string) => Promise<GlobalShortcutState>
   setTerminalApp: (pref: TerminalPref) => Promise<void>
   setEditorApp: (pref: EditorPref) => Promise<void>
+  refreshExternalApps: () => Promise<void>
 }
+
+type ExternalAppsStoreState = Pick<
+  SettingsStore,
+  | 'ghAvailable'
+  | 'ghVersion'
+  | 'terminalApp'
+  | 'resolvedTerminalApp'
+  | 'terminalAvailable'
+  | 'terminalAppAvailability'
+  | 'editorApp'
+  | 'resolvedEditorApp'
+  | 'editorAvailable'
+  | 'editorAppAvailability'
+>
+
+type TerminalAppStoreState = Pick<
+  SettingsStore,
+  'terminalApp' | 'resolvedTerminalApp' | 'terminalAvailable' | 'terminalAppAvailability'
+>
+
+type EditorAppStoreState = Pick<SettingsStore, 'editorApp' | 'resolvedEditorApp' | 'editorAvailable' | 'editorAppAvailability'>
 
 let unsubscribers: Array<() => void> = []
 let hydrateVersion = 0
@@ -60,6 +93,94 @@ function clearSubscriptions(subscriptions: Array<() => void>): void {
   for (const unsubscribe of subscriptions) unsubscribe()
 }
 
+function sameTerminalAppAvailability(a: TerminalAppAvailability, b: TerminalAppAvailability): boolean {
+  return a.ghostty === b.ghostty && a.terminal === b.terminal
+}
+
+function sameEditorAppAvailability(a: EditorAppAvailability, b: EditorAppAvailability): boolean {
+  return a.vscode === b.vscode && a.cursor === b.cursor && a.windsurf === b.windsurf
+}
+
+function applyGitHubCliState(state: GitHubCliState): Pick<SettingsStore, 'ghAvailable' | 'ghVersion'> {
+  return { ghAvailable: state.available, ghVersion: state.version }
+}
+
+function sameGitHubCliState(s: SettingsStore, next: Pick<SettingsStore, 'ghAvailable' | 'ghVersion'>): boolean {
+  return s.ghAvailable === next.ghAvailable && s.ghVersion === next.ghVersion
+}
+
+function applyTerminalAppState(state: {
+  pref: TerminalPref
+  resolved: ResolvedTerminalApp | null
+  available: boolean
+  appAvailability: TerminalAppAvailability
+}): TerminalAppStoreState {
+  return {
+    terminalApp: state.pref,
+    resolvedTerminalApp: state.resolved,
+    terminalAvailable: state.available,
+    terminalAppAvailability: state.appAvailability,
+  }
+}
+
+function applyEditorAppState(state: {
+  pref: EditorPref
+  resolved: ResolvedEditorApp | null
+  available: boolean
+  appAvailability: EditorAppAvailability
+}): EditorAppStoreState {
+  return {
+    editorApp: state.pref,
+    resolvedEditorApp: state.resolved,
+    editorAvailable: state.available,
+    editorAppAvailability: state.appAvailability,
+  }
+}
+
+function applyExternalAppsSnapshot(state: ExternalAppsSnapshot): ExternalAppsStoreState {
+  return {
+    ...applyGitHubCliState(state.gh),
+    ...applyTerminalAppState(state.terminal),
+    ...applyEditorAppState(state.editor),
+  }
+}
+
+function sameTerminalAppState(s: SettingsStore, next: TerminalAppStoreState): boolean {
+  return s.terminalApp === next.terminalApp &&
+    s.resolvedTerminalApp === next.resolvedTerminalApp &&
+    s.terminalAvailable === next.terminalAvailable &&
+    sameTerminalAppAvailability(s.terminalAppAvailability, next.terminalAppAvailability)
+}
+
+function sameEditorAppState(s: SettingsStore, next: EditorAppStoreState): boolean {
+  return s.editorApp === next.editorApp &&
+    s.resolvedEditorApp === next.resolvedEditorApp &&
+    s.editorAvailable === next.editorAvailable &&
+    sameEditorAppAvailability(s.editorAppAvailability, next.editorAppAvailability)
+}
+
+function sameExternalAppsState(s: SettingsStore, next: ExternalAppsStoreState): boolean {
+  return sameGitHubCliState(s, next) && sameTerminalAppState(s, next) && sameEditorAppState(s, next)
+}
+
+function getExternalAppsDetectedAt(state: ExternalAppsSnapshot): number {
+  return Math.max(state.gh.detectedAt, state.terminal.detectedAt, state.editor.detectedAt)
+}
+
+function shouldIgnoreExternalAppsUpdate(currentDetectedAt: number, nextDetectedAt: number): boolean {
+  return nextDetectedAt < currentDetectedAt
+}
+
+function mergeDetectedExternalAppsState<T extends object>(
+  s: SettingsStore,
+  next: T,
+  detectedAt: number,
+  same: (current: SettingsStore, candidate: T) => boolean,
+): SettingsStore | (T & { externalAppsDetectedAt: number }) {
+  if (shouldIgnoreExternalAppsUpdate(s.externalAppsDetectedAt, detectedAt)) return s
+  return same(s, next) && s.externalAppsDetectedAt === detectedAt ? s : { ...next, externalAppsDetectedAt: detectedAt }
+}
+
 export const useSettingsStore = create<SettingsStore>((set) => ({
   fetchIntervalSec: 120,
   shortcutsDisabled: false,
@@ -68,12 +189,17 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   toggleDetailOnActionBarBlankClick: false,
   globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
   globalShortcutRegistered: false,
+  ghAvailable: false,
+  ghVersion: null,
   terminalApp: 'auto',
   resolvedTerminalApp: null,
-  terminalAvailable: true,
+  terminalAvailable: false,
+  terminalAppAvailability: { ghostty: false, terminal: false },
   editorApp: 'auto',
   resolvedEditorApp: null,
   editorAvailable: false,
+  editorAppAvailability: { vscode: false, cursor: false, windsurf: false },
+  externalAppsDetectedAt: 0,
   savedSession: {
     openRepos: [],
     activeRepo: null,
@@ -96,11 +222,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       globalShortcut: snap.globalShortcut,
       globalShortcutRegistered: snap.globalShortcutRegistered,
       terminalApp: snap.terminalApp,
-      resolvedTerminalApp: snap.resolvedTerminalApp,
-      terminalAvailable: snap.terminalAvailable,
       editorApp: snap.editorApp,
-      resolvedEditorApp: snap.resolvedEditorApp,
-      editorAvailable: snap.editorAvailable,
       savedSession: snap.session,
     })
     const nextUnsubscribers: Array<() => void> = []
@@ -133,23 +255,21 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
               : { globalShortcut: accelerator, globalShortcutRegistered: registered },
           )
         }),
+        onRpcEventType('github-cli-changed', (event) => {
+          set((s) => {
+            const next = applyGitHubCliState(event)
+            return mergeDetectedExternalAppsState(s, next, event.detectedAt, sameGitHubCliState)
+          })
+        }),
         onRpcEventType('terminal-app-changed', (event) => {
-          set((s) =>
-            s.terminalApp === event.pref &&
-            s.resolvedTerminalApp === event.resolved &&
-            s.terminalAvailable === event.available
-              ? s
-              : { terminalApp: event.pref, resolvedTerminalApp: event.resolved, terminalAvailable: event.available },
-          )
+          set((s) => {
+            return mergeDetectedExternalAppsState(s, applyTerminalAppState(event), event.detectedAt, sameTerminalAppState)
+          })
         }),
         onRpcEventType('editor-app-changed', (event) => {
-          set((s) =>
-            s.editorApp === event.pref &&
-            s.resolvedEditorApp === event.resolved &&
-            s.editorAvailable === event.available
-              ? s
-              : { editorApp: event.pref, resolvedEditorApp: event.resolved, editorAvailable: event.available },
-          )
+          set((s) => {
+            return mergeDetectedExternalAppsState(s, applyEditorAppState(event), event.detectedAt, sameEditorAppState)
+          })
         }),
       )
     } catch (err) {
@@ -163,6 +283,14 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     clearSettingsSubscriptions()
     unsubscribers = nextUnsubscribers
     return snap.session
+  },
+
+  async hydrateExternalApps() {
+    const state = await rpc.externalApps.get.query()
+    const detectedAt = getExternalAppsDetectedAt(state)
+    set((s) => {
+      return mergeDetectedExternalAppsState(s, applyExternalAppsSnapshot(state), detectedAt, sameExternalAppsState)
+    })
   },
 
   async setFetchInterval(sec) {
@@ -205,21 +333,23 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
 
   async setTerminalApp(pref) {
     const state = await rpc.settings.setTerminalApp.mutate({ pref })
-    set((s) =>
-      s.terminalApp === state.pref &&
-      s.resolvedTerminalApp === state.resolved &&
-      s.terminalAvailable === state.available
-        ? s
-        : { terminalApp: state.pref, resolvedTerminalApp: state.resolved, terminalAvailable: state.available },
-    )
+    set((s) => {
+      return mergeDetectedExternalAppsState(s, applyTerminalAppState(state), state.detectedAt, sameTerminalAppState)
+    })
   },
 
   async setEditorApp(pref) {
     const state = await rpc.settings.setEditorApp.mutate({ pref })
-    set((s) =>
-      s.editorApp === state.pref && s.resolvedEditorApp === state.resolved && s.editorAvailable === state.available
-        ? s
-        : { editorApp: state.pref, resolvedEditorApp: state.resolved, editorAvailable: state.available },
-    )
+    set((s) => {
+      return mergeDetectedExternalAppsState(s, applyEditorAppState(state), state.detectedAt, sameEditorAppState)
+    })
+  },
+
+  async refreshExternalApps() {
+    const state = await rpc.externalApps.refresh.mutate()
+    const detectedAt = getExternalAppsDetectedAt(state)
+    set((s) => {
+      return mergeDetectedExternalAppsState(s, applyExternalAppsSnapshot(state), detectedAt, sameExternalAppsState)
+    })
   },
 }))

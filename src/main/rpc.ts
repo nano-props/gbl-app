@@ -5,13 +5,11 @@ import { TRPCError } from '@trpc/server'
 import {
   createAppRouter,
   type AppRpcHandlers,
+  type ExternalAppsSnapshot,
   type NetworkOpKind,
   type RpcRequest,
   type RpcResponse,
   type SessionState,
-  type SettingsSnapshot,
-  type TerminalAppState,
-  type EditorAppState,
   type EditorPref,
   type TerminalPref,
 } from '#/shared/rpc.ts'
@@ -89,8 +87,9 @@ import {
 import { isGlobalShortcutRegistered, replaceGlobalShortcut, syncGlobalShortcuts } from '#/main/shortcuts.ts'
 import { buildAppMenu, setMenuWorkspaceLayout } from '#/main/menu.ts'
 import { applyLangPref, getCurrentLang, getDictionary } from '#/main/i18n/index.ts'
-import { getResolvedTerminalApp, openInPreferredTerminal } from '#/main/system/terminals.ts'
-import { getResolvedEditorApp, openInPreferredEditor } from '#/main/system/editors.ts'
+import { openInPreferredTerminal } from '#/main/system/terminals.ts'
+import { openInPreferredEditor } from '#/main/system/editors.ts'
+import { probeEditorApps, probeExternalApps, probeTerminalApps } from '#/main/system/external-apps.ts'
 import { broadcastRpcEvent } from '#/main/events.ts'
 import { closeWorktreeSession } from '#/main/terminal.ts'
 import { openHttpExternal, openHttpsExternal } from '#/main/external-url.ts'
@@ -127,9 +126,6 @@ const activeRpcControllers = new Map<string, AbortController>()
 const rpcSignalStorage = new AsyncLocalStorage<AbortSignal>()
 
 let wired = false
-
-type TerminalAppSnapshot = Pick<SettingsSnapshot, 'terminalApp' | 'resolvedTerminalApp' | 'terminalAvailable'>
-type EditorAppSnapshot = Pick<SettingsSnapshot, 'editorApp' | 'resolvedEditorApp' | 'editorAvailable'>
 
 export function wireRpcIpc(): void {
   if (wired) return
@@ -234,32 +230,15 @@ function toRpcError(err: unknown): Extract<RpcResponse, { ok: false }>['error'] 
   return { message: String(err) }
 }
 
-function terminalAppState(pref: TerminalPref): TerminalAppState {
-  const resolved = getResolvedTerminalApp(pref)
-  return { pref, resolved, available: resolved !== null }
+async function externalAppsState(terminalPref: TerminalPref, editorPref: EditorPref): Promise<ExternalAppsSnapshot> {
+  const state = await probeExternalApps(terminalPref, editorPref, currentRpcSignal())
+  return { gh: state.gh, terminal: state.terminals, editor: state.editors }
 }
 
-function editorAppState(pref: EditorPref): EditorAppState {
-  const resolved = getResolvedEditorApp(pref)
-  return { pref, resolved, available: resolved !== null }
-}
-
-function terminalAppSnapshot(pref: TerminalPref): TerminalAppSnapshot {
-  const state = terminalAppState(pref)
-  return {
-    terminalApp: state.pref,
-    resolvedTerminalApp: state.resolved,
-    terminalAvailable: state.available,
-  }
-}
-
-function editorAppSnapshot(pref: EditorPref): EditorAppSnapshot {
-  const state = editorAppState(pref)
-  return {
-    editorApp: state.pref,
-    resolvedEditorApp: state.resolved,
-    editorAvailable: state.available,
-  }
+function broadcastExternalAppsState(state: ExternalAppsSnapshot): void {
+  broadcastRpcEvent({ type: 'github-cli-changed', ...state.gh })
+  broadcastRpcEvent({ type: 'terminal-app-changed', ...state.terminal })
+  broadcastRpcEvent({ type: 'editor-app-changed', ...state.editor })
 }
 
 function createRpcHandlers(): AppRpcHandlers {
@@ -452,7 +431,7 @@ function createRpcHandlers(): AppRpcHandlers {
       },
       openEditor: async ({ path: p }) => {
         if (!isValidAbsolutePath(p)) return { ok: false, message: 'error.invalid-path' }
-        return openInPreferredEditor(p, getEditorApp()) ?? { ok: false, message: 'error.editor-not-installed' }
+        return openInPreferredEditor(p, getEditorApp())
       },
     },
     theme: {
@@ -476,8 +455,8 @@ function createRpcHandlers(): AppRpcHandlers {
           toggleDetailOnActionBarBlankClick: s.toggleDetailOnActionBarBlankClick,
           globalShortcut: s.globalShortcut,
           globalShortcutRegistered: isGlobalShortcutRegistered(),
-          ...terminalAppSnapshot(s.terminalApp),
-          ...editorAppSnapshot(s.editorApp),
+          terminalApp: s.terminalApp,
+          editorApp: s.editorApp,
           session: s.session,
           recentRepos: s.recentRepos,
         }
@@ -526,13 +505,13 @@ function createRpcHandlers(): AppRpcHandlers {
       },
       setTerminalApp: async ({ pref }) => {
         const saved = await setTerminalApp(pref)
-        const payload = terminalAppState(saved)
+        const payload = await probeTerminalApps(saved, currentRpcSignal())
         broadcastRpcEvent({ type: 'terminal-app-changed', ...payload })
         return payload
       },
       setEditorApp: async ({ pref }) => {
         const saved = await setEditorApp(pref)
-        const payload = editorAppState(saved)
+        const payload = probeEditorApps(saved)
         broadcastRpcEvent({ type: 'editor-app-changed', ...payload })
         return payload
       },
@@ -547,6 +526,18 @@ function createRpcHandlers(): AppRpcHandlers {
       clearRecentRepos: async () => {
         await clearRecentRepos()
         buildAppMenu()
+      },
+    },
+    externalApps: {
+      get: async () => {
+        const s = await loadSettings()
+        return externalAppsState(s.terminalApp, s.editorApp)
+      },
+      refresh: async () => {
+        const s = await loadSettings()
+        const state = await externalAppsState(s.terminalApp, s.editorApp)
+        broadcastExternalAppsState(state)
+        return state
       },
     },
     i18n: {

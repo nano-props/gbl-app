@@ -16,12 +16,12 @@ export function useAppBootstrap() {
     if (hydratedRef.current) return
     hydratedRef.current = true
     void (async () => {
+      const externalAppsHydrate = useSettingsStore
+        .getState()
+        .hydrateExternalApps()
+        .catch((err) => console.warn('[bootstrap] external apps hydrate failed', err))
       try {
-        await Promise.all([
-          useThemeStore.getState().hydrate(),
-          useSettingsStore.getState().hydrate(),
-          useI18nStore.getState().hydrate(),
-        ])
+        await Promise.all([useThemeStore.getState().hydrate(), useSettingsStore.getState().hydrate(), useI18nStore.getState().hydrate()])
         const session = useSettingsStore.getState().savedSession
         const { hydrateSession, setDetailCollapsed, setDetailFocusMode, setWorkspaceLayout, setDetailPaneSizes } =
           useReposStore.getState()
@@ -34,6 +34,7 @@ export function useAppBootstrap() {
         setDetailCollapsed(session.detailCollapsed)
         setDetailPaneSizes(session.detailPaneSizes)
         await hydrateSession(session.openRepos, session.activeRepo)
+        await externalAppsHydrate
       } catch (err) {
         console.warn('[bootstrap] failed', err)
         useReposStore.setState({ sessionReady: true })

@@ -4,8 +4,9 @@
 //
 // Boots in this order:
 //   1. theme.hydrate()       — pulls main's resolved theme + subscribes
-//   2. settings.hydrate()    — fetch interval + saved session
-//   3. repos.hydrateSession  — re-opens the repos that were open last run
+//   2. settings.hydrate()    — persistable settings + saved session
+//   3. settings.hydrateExternalApps() — external app snapshot
+//   4. repos.hydrateSession  — re-opens the repos that were open last run
 //
 // After hydration, side-effects run for the lifetime of the app:
 //   - background fetch loop (active repo only, debounced by interval)

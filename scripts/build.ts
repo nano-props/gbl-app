@@ -11,6 +11,7 @@ import { chmodSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
+import { closeRunningApp } from './close-app.ts'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 process.chdir(repoRoot)
@@ -93,10 +94,9 @@ if (shouldInstall) {
 
   console.log(`Installing ${APP_NAME}.app to ~/Applications...`)
 
-  // Imported for side-effects: the module's top-level await quits a
-  // running Goblin.app (and no-ops on non-macOS). Relative path because
+  // Close a running Goblin.app before replacing it. Relative path because
   // scripts/ sits outside src/ and isn't covered by the `#/` alias.
-  await import('./close-app.ts')
+  await closeRunningApp()
 
   const appsDir = path.join(os.homedir(), 'Applications')
   mkdirSync(appsDir, { recursive: true })

@@ -8,7 +8,7 @@
 // 3. Add the new id to EditorPref in shared/rpc.ts
 // 4. Add i18n keys for the settings picker and dependencies overlay
 
-import type { EditorPref, ResolvedEditorApp } from '#/shared/rpc.ts'
+import type { EditorAppAvailability, EditorPref, ResolvedEditorApp } from '#/shared/rpc.ts'
 import { isVSCodeInstalled, openInVSCode } from '#/main/system/vscode.ts'
 import { isCursorInstalled, openInCursor } from '#/main/system/cursor.ts'
 import { isWindsurfInstalled, openInWindsurf } from '#/main/system/windsurf.ts'
@@ -33,14 +33,12 @@ const backends: Record<ResolvedEditorApp, EditorBackend> = {
 /** Auto-detection priority — first installed editor wins. */
 const AUTO_PRIORITY: ResolvedEditorApp[] = ['vscode', 'cursor', 'windsurf']
 
-function resolveEditorApp(pref: EditorPref): ResolvedEditorApp | null {
+export function resolveEditorApp(pref: EditorPref, availability: EditorAppAvailability): ResolvedEditorApp | null {
   if (pref !== 'auto') {
-    const backend = backends[pref]
-    return backend.isInstalled() ? pref : null
+    return availability[pref] ? pref : null
   }
   for (const id of AUTO_PRIORITY) {
-    const backend = backends[id]
-    if (backend.isInstalled()) return id
+    if (availability[id]) return id
   }
   return null
 }
@@ -50,11 +48,19 @@ function resolveEditorApp(pref: EditorPref): ResolvedEditorApp | null {
 export function openInPreferredEditor(
   path: string,
   pref: EditorPref,
-): Promise<{ ok: boolean; message: string }> | null {
-  const resolved = resolveEditorApp(pref)
-  return resolved ? backends[resolved].open(path) : null
+): Promise<{ ok: boolean; message: string }> {
+  const resolved = resolveEditorApp(pref, getEditorAppAvailability())
+  return resolved ? backends[resolved].open(path) : Promise.resolve({ ok: false, message: 'error.editor-not-installed' })
 }
 
 export function getResolvedEditorApp(pref: EditorPref): ResolvedEditorApp | null {
-  return resolveEditorApp(pref)
+  return resolveEditorApp(pref, getEditorAppAvailability())
+}
+
+export function getEditorAppAvailability(): EditorAppAvailability {
+  return {
+    vscode: backends.vscode.isInstalled(),
+    cursor: backends.cursor.isInstalled(),
+    windsurf: backends.windsurf.isInstalled(),
+  }
 }
