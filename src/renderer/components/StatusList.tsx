@@ -29,7 +29,7 @@ function statusCodeClass(entry: StatusEntry, column: 'x' | 'y'): string {
 function StatusCode({ entry }: { entry: StatusEntry }) {
   return (
     <span
-      className="inline-grid w-[2ch] shrink-0 grid-cols-[1ch_1ch] font-mono text-xs font-semibold leading-none"
+      className="inline-grid w-[2ch] shrink-0 grid-cols-[1ch_1ch] font-mono text-sm leading-none"
       aria-label={`${entry.x}${entry.y}`}
     >
       <span className={statusCodeClass(entry, 'x')}>{entry.x === ' ' ? '\u00a0' : entry.x}</span>
@@ -52,11 +52,11 @@ export function StatusList({
   }
 
   return dirtyWorktrees.map((wt) => (
-    <ul key={wt.path}>
+    <ul key={wt.path} className="py-1.5 tracking-wider" style={{ fontFamily: "'JetBrains Mono', var(--font-mono)" }}>
       {wt.entries.map((entry) => (
         <li
           key={`${wt.path}-${entry.path}`}
-          className="grid grid-cols-[2ch_minmax(0,1fr)] items-center gap-3 px-4 py-1.5"
+          className="grid grid-cols-[2ch_minmax(0,1fr)] items-center gap-3 px-1.5"
         >
           <StatusCode entry={entry} />
           <FilePathText path={entry.path} />
