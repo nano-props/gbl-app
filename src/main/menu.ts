@@ -27,6 +27,7 @@ import {
 import { broadcastRpcEvent, sendRpcEvent } from '#/main/events.ts'
 import { getTheme, setThemePref } from '#/main/theme.ts'
 import { normalizeWorkspaceLayout, type WorkspaceLayout } from '#/shared/workspace-layout.ts'
+import { tildifyPath } from '#/shared/paths.ts'
 import type { LangPref, MenuAction, ThemePref } from '#/shared/rpc.ts'
 
 interface AppMenuState {
@@ -191,10 +192,11 @@ function createFileMenu(state: AppMenuState): MenuItemConstructorOptions {
 }
 
 function createRecentReposMenu(recentRepos: string[]): MenuItemConstructorOptions[] {
+  const home = app.getPath('home')
   return recentRepos.length > 0
     ? [
         ...recentRepos.map((repoPath) => ({
-          label: tildify(repoPath),
+          label: tildifyPath(repoPath, home),
           click: () => send({ type: 'open-recent-repo', path: repoPath }),
         })),
         separator(),
@@ -374,10 +376,4 @@ function reportOpenDataFolderError(err: unknown): void {
   const message = err instanceof Error ? err.message : String(err)
   console.warn('[menu] failed to open data folder', err)
   dialog.showErrorBox(t('menu.file.open-data-folder'), message)
-}
-
-function tildify(p: string): string {
-  const home = app.getPath('home')
-  if (!home || p === home) return p === home ? '~' : p
-  return p.startsWith(home + '/') ? `~${p.slice(home.length)}` : p
 }

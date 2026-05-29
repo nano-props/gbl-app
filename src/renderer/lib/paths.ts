@@ -1,4 +1,7 @@
 import { goblin } from '#/renderer/rpc.ts'
+import { tildifyPath, untildifyPath } from '#/shared/paths.ts'
+
+export { tildifyPath, untildifyPath } from '#/shared/paths.ts'
 
 /** Last segment of a path. Tolerant of either separator so worktree
  *  paths and repo roots render correctly on both POSIX and Windows. */
@@ -40,22 +43,8 @@ export function defaultWorktreePath(repoId: string, branch: string): string {
   return parent ? joinPath(parent, `${name}-${slug}`) : `${name}-${slug}`
 }
 
-export function tildifyPath(path: string, home: string): string {
-  if (!home) return path
-  if (path === home) return '~'
-  if (path.startsWith(home + '/') || path.startsWith(home + '\\')) return '~' + path.slice(home.length)
-  return path
-}
-
 export function tildify(path: string): string {
   return tildifyPath(path, goblin.homeDir)
-}
-
-export function untildifyPath(path: string, home: string): string {
-  if (!home) return path
-  if (path === '~') return home
-  if (path.startsWith('~/') || path.startsWith('~\\')) return home + path.slice(1)
-  return path
 }
 
 export function untildify(path: string): string {

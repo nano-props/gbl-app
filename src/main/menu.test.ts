@@ -4,11 +4,13 @@ const mocks = vi.hoisted(() => {
   const template: any[] = []
   const win = { isDestroyed: () => false, webContents: { isDestroyed: () => false, send: vi.fn() } }
   return {
+    appGetPath: vi.fn<(name: string) => string>((name: string) => (name === 'home' ? '/home/user' : '/data')),
     template,
     win,
     activateMainWindow: vi.fn(() => Promise.resolve(win)),
     getFocusedWindow: vi.fn((): any => null),
     getMainWindow: vi.fn((): any => null),
+    getRecentRepos: vi.fn<() => string[]>(() => []),
     sendRpcEvent: vi.fn(),
     buildFromTemplate: vi.fn((nextTemplate: any[]) => {
       template.splice(0, template.length, ...nextTemplate)
@@ -21,7 +23,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('electron', () => ({
   app: {
     name: 'Goblin',
-    getPath: vi.fn((name: string) => (name === 'home' ? '/home/user' : '/data')),
+    getPath: mocks.appGetPath,
   },
   BrowserWindow: {
     getFocusedWindow: mocks.getFocusedWindow,
@@ -51,7 +53,7 @@ vi.mock('#/main/i18n/index.ts', () => ({
 vi.mock('#/main/settings.ts', () => ({
   clearRecentRepos: vi.fn(),
   getLangPref: vi.fn(() => 'auto'),
-  getRecentRepos: vi.fn(() => []),
+  getRecentRepos: mocks.getRecentRepos,
   getSession: vi.fn(() => ({
     openRepos: [],
     activeRepo: null,
@@ -79,6 +81,8 @@ describe('app menu actions', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mocks.template.length = 0
+    mocks.appGetPath.mockImplementation((name: string) => (name === 'home' ? '/home/user' : '/data'))
+    mocks.getRecentRepos.mockReturnValue([])
     mocks.getMainWindow.mockReturnValue(null)
     mocks.getFocusedWindow.mockReturnValue(null)
     mocks.activateMainWindow.mockResolvedValue(mocks.win)
@@ -116,6 +120,18 @@ describe('app menu actions', () => {
     await Promise.resolve()
 
     expect(mocks.sendRpcEvent).toHaveBeenCalledWith(mocks.win, { type: 'menu-action', action: 'open-repo-path' })
+  })
+
+  test('tildifies Windows home paths in the recent repos menu', async () => {
+    mocks.appGetPath.mockImplementation((name: string) => (name === 'home' ? 'C:\\Users\\user' : '/data'))
+    mocks.getRecentRepos.mockReturnValue(['C:\\Users\\user\\Developer\\repo'])
+    const { buildAppMenu } = await import('#/main/menu.ts')
+
+    buildAppMenu()
+
+    const fileMenu = mocks.template.find((entry) => entry.label === 'menu.file')
+    const recentMenu = fileMenu?.submenu?.find((entry: any) => entry.label === 'menu.file.open-recent')
+    expect(recentMenu?.submenu?.[0]?.label).toBe('~\\Developer\\repo')
   })
 })
 

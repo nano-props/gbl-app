@@ -122,6 +122,7 @@ export function SettingsPanel({ open, page, onPageChange, onClose }: Props) {
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         id={SETTINGS_PANEL_CONTENT_ID}
+        aria-describedby={undefined}
         showCloseButton
         className="h-[560px] max-h-[calc(100vh-2rem)] gap-0 overflow-hidden rounded-xl border bg-card p-0 shadow-lg sm:max-w-[760px]"
         onOpenAutoFocus={(event) => {
