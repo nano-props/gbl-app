@@ -200,7 +200,6 @@ export const ja: Record<DictKey, string> = {
   'branch-status.pr.created-by': '{author} が {time} に作成',
 
   // ---- Log list ----------------------------------------------------------
-  'log.showing-branch': 'コミット',
   'log.empty': '表示できるコミットがありません。',
   'log.empty-for-branch': '{branch} に表示できるコミットがありません。',
   'log.load-more': 'さらに読み込む',
@@ -440,7 +439,6 @@ export const ja: Record<DictKey, string> = {
   'settings.proxy.ssh-example':
     'Host example\n  HostName github.com\n  User git\n  ProxyCommand nc -x 127.0.0.1:1080 %h %p',
   'settings.shortcuts': 'キーボードショートカット',
-  'settings.shortcuts-hint': 'ショートカットをオフ、または Goblin の呼び出しキーを変更します。',
   'settings.shortcuts-disable-app': 'アプリのショートカットを無効化',
   'settings.shortcuts-disable-global': 'グローバルショートカットを無効化',
   'settings.swap-close-shortcuts': '閉じるショートカットを入れ替え（⌘W ↔ ⌘⇧W）',

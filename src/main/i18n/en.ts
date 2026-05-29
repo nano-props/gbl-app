@@ -202,7 +202,6 @@ export const en = {
   'branch-status.pr.created-by': '{author} created {time}',
 
   // ---- Log list -----------------------------------------------------------
-  'log.showing-branch': 'Commits',
   'log.empty': 'No commits to show.',
   'log.empty-for-branch': 'No commits to show for {branch}.',
   'log.load-more': 'Load more',
@@ -441,7 +440,6 @@ export const en = {
   'settings.proxy.ssh-example':
     'Host example\n  HostName github.com\n  User git\n  ProxyCommand nc -x 127.0.0.1:1080 %h %p',
   'settings.shortcuts': 'Keyboard shortcuts',
-  'settings.shortcuts-hint': 'Turn off shortcuts or change the wake shortcut.',
   'settings.shortcuts-disable-app': 'Disable app shortcuts',
   'settings.shortcuts-disable-global': 'Disable global shortcut',
   'settings.swap-close-shortcuts': 'Swap close shortcuts (⌘W ↔ ⌘⇧W)',

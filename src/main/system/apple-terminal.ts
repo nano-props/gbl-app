@@ -1,9 +1,12 @@
 import { execa } from 'execa'
 import { statSync } from 'node:fs'
 import path from 'node:path'
-import { hasApplication } from '#/main/system/launch-services.ts'
 
 const OPEN_TIMEOUT_MS = 10_000
+export const TERMINAL_APP_CANDIDATES = [
+  '/System/Applications/Utilities/Terminal.app',
+  '/Applications/Utilities/Terminal.app',
+]
 
 function isUsableDirectory(p: string): boolean {
   if (!path.isAbsolute(p) || p.includes('\0')) return false
@@ -34,6 +37,10 @@ export async function openInAppleTerminal(p: string): Promise<{ ok: boolean; mes
   }
 }
 
-export function isAppleTerminalInstalled(signal?: AbortSignal): Promise<boolean> {
-  return hasApplication('Terminal', signal)
+export function hasAppleTerminalAtKnownPaths(candidates: readonly string[] = TERMINAL_APP_CANDIDATES): boolean {
+  return candidates.some((candidate) => isUsableDirectory(candidate))
+}
+
+export async function isAppleTerminalInstalled(_signal?: AbortSignal): Promise<boolean> {
+  return hasAppleTerminalAtKnownPaths()
 }

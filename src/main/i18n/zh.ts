@@ -102,7 +102,7 @@ export const zh: Record<DictKey, string> = {
   'tab.branch-detail': '分支详情',
   'tab.status': '状态',
   'tab.changes': '变更',
-  'tab.log': '提交',
+  'tab.log': '历史',
   'tab.terminal': '终端',
   'tab.fetching': '同步',
   'tab.fetching-title': '后台同步进行中',
@@ -190,7 +190,6 @@ export const zh: Record<DictKey, string> = {
   'branch-status.pr.created-by': '{author} 于 {time}创建',
 
   // ---- Log list ----------------------------------------------------------
-  'log.showing-branch': '提交',
   'log.empty': '暂无提交可显示。',
   'log.empty-for-branch': '{branch} 暂无提交可显示。',
   'log.load-more': '加载更多',
@@ -424,7 +423,6 @@ export const zh: Record<DictKey, string> = {
   'settings.proxy.ssh-example':
     'Host example\n  HostName github.com\n  User git\n  ProxyCommand nc -x 127.0.0.1:1080 %h %p',
   'settings.shortcuts': '键盘快捷键',
-  'settings.shortcuts-hint': '关闭快捷键，或更换唤起 Goblin 的组合键。',
   'settings.shortcuts-disable-app': '禁用应用快捷键',
   'settings.shortcuts-disable-global': '禁用全局快捷键',
   'settings.swap-close-shortcuts': '交换关闭快捷键（⌘W ↔ ⌘⇧W）',

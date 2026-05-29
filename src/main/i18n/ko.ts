@@ -193,7 +193,6 @@ export const ko: Record<DictKey, string> = {
   'branch-status.pr.created-by': '{author} 님이 {time}에 생성',
 
   // ---- Log list ----------------------------------------------------------
-  'log.showing-branch': '커밋',
   'log.empty': '표시할 커밋이 없습니다.',
   'log.empty-for-branch': '{branch} 에 표시할 커밋이 없습니다.',
   'log.load-more': '더 보기',
@@ -433,7 +432,6 @@ export const ko: Record<DictKey, string> = {
   'settings.proxy.ssh-example':
     'Host example\n  HostName github.com\n  User git\n  ProxyCommand nc -x 127.0.0.1:1080 %h %p',
   'settings.shortcuts': '키보드 단축키',
-  'settings.shortcuts-hint': '단축키를 끄거나 Goblin 호출 단축키를 바꿉니다.',
   'settings.shortcuts-disable-app': '앱 단축키 비활성화',
   'settings.shortcuts-disable-global': '전역 단축키 비활성화',
   'settings.swap-close-shortcuts': '닫기 단축키 교체 (⌘W ↔ ⌘⇧W)',
