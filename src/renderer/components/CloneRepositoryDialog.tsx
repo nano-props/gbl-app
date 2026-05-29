@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from '#/renderer/components/ui/dialog.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
+import { DialogError } from '#/renderer/components/ui/dialog-error.tsx'
+import { FormDialog } from '#/renderer/components/ui/form-dialog.tsx'
 import { Field, FieldDescription, FieldError, FieldLabel } from '#/renderer/components/ui/field.tsx'
 import { Input } from '#/renderer/components/ui/input.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
@@ -120,25 +117,22 @@ export function CloneRepositoryDialog({ open, onClose, onClone }: Props) {
   }
 
   return (
-    <Dialog
+    <FormDialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) void handleCancel()
+        if (!nextOpen && !pending) void handleCancel()
       }}
+      showCloseButton={!pending}
+      title={t('repo-tabs.clone-title')}
+      description={t('repo-tabs.clone-description')}
     >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('repo-tabs.clone-title')}</DialogTitle>
-          <DialogDescription>{t('repo-tabs.clone-description')}</DialogDescription>
-        </DialogHeader>
-
-        <form
-          className="space-y-0"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void handleSubmit()
-          }}
-        >
+      <form
+        className="space-y-0"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void handleSubmit()
+        }}
+      >
           <Field>
             <FieldLabel htmlFor="clone-url">{t('repo-tabs.clone-url-label')}</FieldLabel>
             <Input
@@ -210,9 +204,9 @@ export function CloneRepositoryDialog({ open, onClose, onClone }: Props) {
           </Field>
 
           {error && (
-            <div className="mt-3 rounded-md border border-danger-border bg-danger-surface px-3 py-2 text-xs text-danger">
+            <DialogError>
               {error}
-            </div>
+            </DialogError>
           )}
 
           <DialogFooter className="pt-4">
@@ -223,9 +217,8 @@ export function CloneRepositoryDialog({ open, onClose, onClone }: Props) {
               {pending ? t('repo-tabs.clone-cloning') : t('repo-tabs.clone-confirm')}
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      </form>
+    </FormDialog>
   )
 }
 

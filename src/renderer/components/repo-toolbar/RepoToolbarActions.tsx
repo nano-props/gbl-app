@@ -17,6 +17,7 @@ import { Tip } from '#/renderer/components/Tip.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import { CreateWorktreeDialog, type CreateWorktreeRequest } from '#/renderer/components/CreateWorktreeDialog.tsx'
 import { RepoActivityControl } from '#/renderer/components/repo-activity/RepoActivityControl.tsx'
+import type { ExecResult } from '#/shared/git-types.ts'
 
 interface Props {
   repoId: string
@@ -62,12 +63,12 @@ function CreateWorktreeAction({ repoId }: Props) {
     setCreateOpen(false)
   }, [repoId])
 
-  async function handleCreateWorktree(request: CreateWorktreeRequest) {
-    if (!repo) return
+  async function handleCreateWorktree(request: CreateWorktreeRequest): Promise<ExecResult | null> {
+    if (!repo) return null
     const targetRepoId = repo.id
     const token = repo.instanceToken
-    if (branchActionBusy) return
-    await runBranchAction(
+    if (branchActionBusy) return null
+    return runBranchAction(
       targetRepoId,
       {
         kind: 'createWorktree',
@@ -101,14 +102,12 @@ function CreateWorktreeAction({ repoId }: Props) {
           </Button>
         </span>
       </Tip>
-      {createOpen && (
-        <CreateWorktreeDialogConnected
-          repoId={repoId}
-          open={createOpen}
-          onClose={() => setCreateOpen(false)}
-          onCreate={handleCreateWorktree}
-        />
-      )}
+      <CreateWorktreeDialogConnected
+        repoId={repoId}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreate={handleCreateWorktree}
+      />
     </>
   )
 }
@@ -121,7 +120,7 @@ function CreateWorktreeDialogConnected({
 }: Props & {
   open: boolean
   onClose: () => void
-  onCreate: (request: CreateWorktreeRequest) => void | Promise<void>
+  onCreate: (request: CreateWorktreeRequest) => ExecResult | null | Promise<ExecResult | null>
 }) {
   const repo = useReposStore((s) => s.repos[repoId])
   if (!repo) return null
