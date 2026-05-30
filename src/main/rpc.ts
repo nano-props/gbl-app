@@ -6,6 +6,7 @@ import {
   createAppRouter,
   type AppRpcHandlers,
   type ExternalAppsSnapshot,
+  type GitHubCliState,
   type NetworkOpKind,
   type RpcRequest,
   type RpcResponse,
@@ -80,7 +81,6 @@ import {
   setEditorApp,
   getEditorApp,
 } from '#/main/settings.ts'
-import { getCredentialsManager } from '#/main/security/credentials.ts'
 import {
   effectiveDetailCollapsed,
   normalizeDetailPaneSizes,
@@ -92,6 +92,7 @@ import { applyLangPref, getCurrentLang, getDictionary } from '#/main/i18n/index.
 import { openInPreferredTerminal } from '#/main/system/terminals.ts'
 import { openInPreferredEditor } from '#/main/system/editors.ts'
 import { probeEditorApps, probeExternalApps, probeTerminalApps } from '#/main/system/external-apps.ts'
+import { probeGitHubCli } from '#/main/system/github-cli.ts'
 import { broadcastRpcEvent } from '#/main/events.ts'
 import { closeWorktreeSession } from '#/main/terminal.ts'
 import { openHttpExternal, openHttpsExternal } from '#/main/external-url.ts'
@@ -241,6 +242,14 @@ async function externalAppsState(terminalPref: TerminalPref, editorPref: EditorP
 function broadcastExternalAppsState(state: ExternalAppsSnapshot): void {
   broadcastRpcEvent({ type: 'terminal-app-changed', ...state.terminal })
   broadcastRpcEvent({ type: 'editor-app-changed', ...state.editor })
+}
+
+async function githubCliState(hosts?: string[]): Promise<GitHubCliState> {
+  return probeGitHubCli(currentRpcSignal(), hosts)
+}
+
+function broadcastGitHubCliState(state: GitHubCliState): void {
+  broadcastRpcEvent({ type: 'github-cli-changed', state })
 }
 
 function createRpcHandlers(): AppRpcHandlers {
@@ -550,22 +559,11 @@ function createRpcHandlers(): AppRpcHandlers {
         return state
       },
     },
-    credentials: {
-      get: async () => {
-        const credentialsManager = getCredentialsManager()
-        return credentialsManager.snapshot()
-      },
-      set: async ({ token }) => {
-        if (token.trim().length === 0) throw new TRPCError({ code: 'BAD_REQUEST', message: 'GitHub token cannot be empty' })
-        const credentialsManager = getCredentialsManager()
-        const state = await credentialsManager.setGitHubToken(token)
-        broadcastRpcEvent({ type: 'github-credentials-changed', state })
-        return state
-      },
-      clear: async () => {
-        const credentialsManager = getCredentialsManager()
-        const state = await credentialsManager.clearGitHubToken()
-        broadcastRpcEvent({ type: 'github-credentials-changed', state })
+    githubCli: {
+      get: async (input) => githubCliState(input?.hosts),
+      refresh: async (input) => {
+        const state = await probeGitHubCli(currentRpcSignal(), input?.hosts, { force: true })
+        broadcastGitHubCliState(state)
         return state
       },
     },

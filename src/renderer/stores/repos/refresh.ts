@@ -64,11 +64,13 @@ function mergePullRequest(
   mode: PullRequestFetchMode,
 ): PullRequestInfo {
   const existing = previous.pullRequest
-  if (mode === 'full' || !existing || existing.number !== next.number || existing.url !== next.url) return next
+  const preserveExistingDetails =
+    mode !== 'full' && !!existing && existing.number === next.number && existing.url === next.url
+  if (!preserveExistingDetails) return next
   return {
     ...next,
     checks: existing.checks ?? next.checks,
-    reviewDecision: existing.reviewDecision !== undefined ? existing.reviewDecision : next.reviewDecision,
+    reviewDecision: existing.reviewDecision === undefined ? next.reviewDecision : existing.reviewDecision,
     mergeable: existing.mergeable ?? next.mergeable,
   }
 }

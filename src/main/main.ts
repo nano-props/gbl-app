@@ -8,7 +8,6 @@ import { wireRpcIpc } from '#/main/rpc.ts'
 import { wireTerminalIpc } from '#/main/terminal.ts'
 import { syncGlobalShortcuts, unregisterAppShortcuts } from '#/main/shortcuts.ts'
 import { enqueueExternalOpenPath } from '#/main/external-open.ts'
-import { getCredentialsManager } from '#/main/security/credentials.ts'
 
 function activateMainWindowFromEvent(): void {
   void activationBarrier
@@ -79,8 +78,6 @@ async function initializeMainProcess(): Promise<void> {
   await app.whenReady()
 
   const settings = await loadSettings()
-  const credentialsManager = getCredentialsManager()
-  await credentialsManager.load()
   await initTheme()
 
   // Resolve language BEFORE buildMenu — every menu label runs through

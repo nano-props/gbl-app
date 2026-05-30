@@ -11,24 +11,23 @@ const toastMocks = vi.hoisted(() => ({
   error: vi.fn(),
 }))
 
-vi.mock('sonner', () => ({
-  toast: {
-    success: toastMocks.success,
-    error: toastMocks.error,
-  },
-}))
-
-let container: HTMLDivElement | null = null
-let root: Root | null = null
-const reactActEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
-const testWindow = window as unknown as { goblin?: unknown }
-const sendTestNotification = vi.fn(async () => true)
-const invokeRpc = vi.fn(async ({ path, input }: { path: string; input?: unknown }) => {
-  if (path === 'credentials.set') {
-    return { githubTokenConfigured: true, secureStorageAvailable: true }
-  }
-  if (path === 'credentials.clear') {
-    return { githubTokenConfigured: false, secureStorageAvailable: true }
+function defaultRpcResult(path: string, input?: unknown) {
+  if (path === 'githubCli.get' || path === 'githubCli.refresh') {
+    const requestedHosts = (input as { hosts?: string[] } | undefined)?.hosts
+    const hosts = (requestedHosts && requestedHosts.length > 0 ? requestedHosts : ['github.example.com']).reduce<Record<string, unknown>>(
+      (acc, host) => {
+        acc[host] = {
+          host,
+          authenticated: true,
+          activeLogin: 'tester',
+          logins: ['tester'],
+          tokenSource: 'keyring',
+        }
+        return acc
+      },
+      {},
+    )
+    return { available: true, version: 'gh version 2.93.0', detectedAt: 0, hosts }
   }
   if (path === 'settings.get') {
     return {
@@ -53,9 +52,6 @@ const invokeRpc = vi.fn(async ({ path, input }: { path: string; input?: unknown 
       recentRepos: [],
     }
   }
-  if (path === 'credentials.get') {
-    return { githubTokenConfigured: false, secureStorageAvailable: true }
-  }
   if (path === 'externalApps.get' || path === 'externalApps.refresh') {
     return {
       terminal: {
@@ -76,7 +72,21 @@ const invokeRpc = vi.fn(async ({ path, input }: { path: string; input?: unknown 
   }
   if (path === 'settings.setTerminalApp' || path === 'settings.setEditorApp') return input ?? null
   return null
-})
+}
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: toastMocks.success,
+    error: toastMocks.error,
+  },
+}))
+
+let container: HTMLDivElement | null = null
+let root: Root | null = null
+const reactActEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+const testWindow = window as unknown as { goblin?: unknown }
+const sendTestNotification = vi.fn(async () => true)
+const invokeRpc = vi.fn(async ({ path, input }: { path: string; input?: unknown }) => defaultRpcResult(path, input))
 
 beforeEach(() => {
   reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true
@@ -84,6 +94,7 @@ beforeEach(() => {
   toastMocks.success.mockClear()
   toastMocks.error.mockClear()
   invokeRpc.mockClear()
+  invokeRpc.mockImplementation(async ({ path, input }: { path: string; input?: unknown }) => defaultRpcResult(path, input))
   testWindow.goblin = {
     homeDir: '/Users/tester',
     pathForFile: () => '',
@@ -105,8 +116,9 @@ beforeEach(() => {
     },
   }
   useSettingsStore.setState({
-    githubTokenConfigured: false,
-    secureStorageAvailable: true,
+    githubCliAvailable: true,
+    githubCliVersion: 'gh version 2.93.0',
+    githubCliHosts: {},
   })
 })
 
@@ -124,7 +136,7 @@ afterEach(() => {
 
 describe('SettingsPanel', () => {
   test('can trigger a test terminal notification from settings', async () => {
-    render(<SettingsPanel open page="general" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsPanel open page="general" onPageChange={() => {}} onClose={() => {}} />)
 
     await act(async () => {
       buttonByText('settings.terminal-notifications-test-button').click()
@@ -137,7 +149,7 @@ describe('SettingsPanel', () => {
 
   test('shows an error toast when the test notification is blocked', async () => {
     sendTestNotification.mockResolvedValueOnce(false)
-    render(<SettingsPanel open page="general" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsPanel open page="general" onPageChange={() => {}} onClose={() => {}} />)
 
     await act(async () => {
       buttonByText('settings.terminal-notifications-test-button').click()
@@ -150,126 +162,68 @@ describe('SettingsPanel', () => {
     )
   })
 
-  test('shows a plain GitHub token input with a visibility toggle', async () => {
+  test('shows GitHub CLI availability and version', async () => {
     useSettingsStore.setState({
-      githubTokenConfigured: true,
-      secureStorageAvailable: true,
+      githubCliAvailable: true,
+      githubCliVersion: 'gh version 2.93.0',
     })
-    render(<SettingsPanel open page="apps" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsPanel open page="github" onPageChange={() => {}} onClose={() => {}} />)
 
-    const input = document.body.querySelector('#settings-github-token')
-    if (!(input instanceof HTMLInputElement)) throw new Error('Missing GitHub token input')
-    expect(document.body.textContent?.includes('settings.github.save')).toBe(false)
-
-    await act(async () => {
-      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-      if (!setValue) throw new Error('Missing input value setter')
-      setValue.call(input, 'ghp_test')
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-    })
-
-    const showButton = document.body.querySelector('button[aria-label="settings.github.show-token"]')
-    if (!(showButton instanceof HTMLButtonElement)) throw new Error('Missing token visibility button')
-
-    expect(showButton.disabled).toBe(false)
-
-    await act(async () => {
-      showButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
-      showButton.click()
-    })
-
-    expect(input.type).toBe('text')
-
-    await act(async () => {
-      input.dispatchEvent(new FocusEvent('blur', { bubbles: true }))
-      await Promise.resolve()
-    })
-
-    expect(input.value).toBe('ghp_test')
+    expect(document.body.textContent).toContain('settings.github.status-available')
+    expect(document.body.textContent).toContain('gh version 2.93.0')
+    expect(document.body.textContent).toContain('github.example.com')
+    expect(document.body.textContent).toContain('settings.github.auth-signed-in')
   })
 
-  test('commits a dirty GitHub token when leaving the apps tab', async () => {
-    render(<SettingsPanel open page="apps" onPageChange={() => {}} onClose={() => {}} />)
-
-    const input = document.body.querySelector('#settings-github-token')
-    if (!(input instanceof HTMLInputElement)) throw new Error('Missing GitHub token input')
+  test('refreshes GitHub CLI detection from settings', async () => {
+    await render(<SettingsPanel open page="github" onPageChange={() => {}} onClose={() => {}} />)
 
     await act(async () => {
-      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-      if (!setValue) throw new Error('Missing input value setter')
-      setValue.call(input, 'ghp_test')
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-    })
-
-    await act(async () => {
-      root!.render(<SettingsPanel open page="general" onPageChange={() => {}} onClose={() => {}} />)
+      buttonByText('settings.github.refresh').click()
       await Promise.resolve()
     })
 
     expect(invokeRpc).toHaveBeenCalledWith(expect.objectContaining({
-      path: 'credentials.set',
-      input: { token: 'ghp_test' },
+      path: 'githubCli.refresh',
+      input: undefined,
     }))
   })
 
-  test('shows a clear action when a GitHub token is configured', async () => {
+  test('shows unavailable GitHub CLI status when gh is missing', async () => {
+    invokeRpc.mockImplementation(async ({ path, input }: { path: string; input?: unknown }) => {
+      if (path === 'githubCli.get' || path === 'githubCli.refresh') {
+        const requestedHosts = (input as { hosts?: string[] } | undefined)?.hosts
+        const hosts = (requestedHosts && requestedHosts.length > 0 ? requestedHosts : []).reduce<Record<string, unknown>>(
+          (acc, host) => {
+            acc[host] = { host, authenticated: false, activeLogin: null, logins: [], tokenSource: null }
+            return acc
+          },
+          {},
+        )
+        return { available: false, version: null, detectedAt: 0, hosts }
+      }
+      return defaultRpcResult(path, input)
+    })
     useSettingsStore.setState({
-      githubTokenConfigured: true,
-      secureStorageAvailable: true,
+      githubCliAvailable: false,
+      githubCliVersion: null,
+      githubCliHosts: {},
     })
-    render(<SettingsPanel open page="apps" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsPanel open page="github" onPageChange={() => {}} onClose={() => {}} />)
 
-    await act(async () => {
-      buttonByText('settings.github.clear').click()
-      await Promise.resolve()
-    })
-
-    expect(invokeRpc).toHaveBeenCalledWith(expect.objectContaining({
-      path: 'credentials.clear',
-    }))
-  })
-
-  test('does not save a dirty token when clearing an existing token', async () => {
-    useSettingsStore.setState({
-      githubTokenConfigured: true,
-      secureStorageAvailable: true,
-    })
-    render(<SettingsPanel open page="apps" onPageChange={() => {}} onClose={() => {}} />)
-
-    const input = document.body.querySelector('#settings-github-token')
-    if (!(input instanceof HTMLInputElement)) throw new Error('Missing GitHub token input')
-
-    await act(async () => {
-      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-      if (!setValue) throw new Error('Missing input value setter')
-      setValue.call(input, 'ghp_new_value')
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-    })
-
-    const clearButton = buttonByText('settings.github.clear')
-    await act(async () => {
-      clearButton.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
-      input.dispatchEvent(new FocusEvent('blur', { bubbles: true }))
-      clearButton.click()
-      await Promise.resolve()
-    })
-
-    expect(invokeRpc).not.toHaveBeenCalledWith(expect.objectContaining({
-      path: 'credentials.set',
-      input: { token: 'ghp_new_value' },
-    }))
-    expect(invokeRpc).toHaveBeenCalledWith(expect.objectContaining({
-      path: 'credentials.clear',
-    }))
+    expect(document.body.textContent).toContain('settings.github.status-unavailable')
+    expect(document.body.textContent).toContain('settings.github.hint-missing')
   })
 })
 
-function render(element: React.ReactNode) {
+async function render(element: React.ReactNode) {
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
-  act(() => {
+  await act(async () => {
     root!.render(element)
+    await Promise.resolve()
+    await Promise.resolve()
   })
 }
 

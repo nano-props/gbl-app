@@ -10,7 +10,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-describe('GitHub API queue', () => {
+describe('GitHub API request queue', () => {
   test('uses conservative default limits', () => {
     expect(GITHUB_API_CONCURRENCY).toBe(3)
     expect(GITHUB_API_INTERVAL_CAP).toBe(10)

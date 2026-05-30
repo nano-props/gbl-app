@@ -77,6 +77,11 @@ function repoFresh(get: ReposGet, id: string, token: number): boolean {
   return !!repo && repo.instanceToken === token
 }
 
+function pullRequestRefreshFailed(get: ReposGet, id: string, token: number): boolean {
+  const repo = get().repos[id]
+  return !!repo && repo.instanceToken === token && repo.resources.pullRequests.error !== null
+}
+
 async function refreshSelectedPullRequest(get: ReposGet, id: string, token: number): Promise<void> {
   const repo = get().repos[id]
   if (!repo || repo.instanceToken !== token || !repo.ui.selectedBranch) return
@@ -89,8 +94,10 @@ async function refreshPullRequestsAfterSnapshot(
 ): Promise<void> {
   if (!options.isSnapshotCurrent() || !repoFresh(get, options.id, options.token)) return
   await get().refreshPullRequests(options.id, options.branchNames, { token: options.token, mode: 'summary' })
+  if (pullRequestRefreshFailed(get, options.id, options.token)) return
   if (!options.isSnapshotCurrent() || !repoFresh(get, options.id, options.token)) return
   await refreshSelectedPullRequest(get, options.id, options.token)
+  if (pullRequestRefreshFailed(get, options.id, options.token)) return
   if (!options.isSnapshotCurrent() || !repoFresh(get, options.id, options.token)) return
   await get().refreshPullRequests(options.id, options.branchNames, {
     token: options.token,

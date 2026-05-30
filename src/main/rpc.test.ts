@@ -6,7 +6,7 @@ import { getWorkingStatus } from '#/main/git/status.ts'
 import { getWorktreePatch } from '#/main/git/patch.ts'
 import { resolveKnownWorktree, resolveRemovableWorktree } from '#/main/git/guards.ts'
 import { getBrowserRemoteUrl, getNewPullRequestUrl, pullBranch } from '#/main/git/remote.ts'
-import { getBranchPullRequest } from '#/main/git/pull-requests.ts'
+import { getBranchPullRequest, getBranchPullRequests } from '#/main/git/pull-requests.ts'
 import { openHttpsExternal } from '#/main/external-url.ts'
 import { registerTrustedAppPath, registerTrustedWebContents } from '#/main/ipc/trusted-webcontents.ts'
 import { wireRpcIpc } from '#/main/rpc.ts'
@@ -187,11 +187,17 @@ vi.mock('#/main/events.ts', () => ({
   broadcastRpcEvent: vi.fn(),
 }))
 
-vi.mock('#/main/security/credentials.ts', () => ({
-  getCredentialsManager: vi.fn(() => ({
-    snapshot: () => ({ githubTokenConfigured: false, secureStorageAvailable: true }),
-    setGitHubToken: vi.fn(async () => ({ githubTokenConfigured: true, secureStorageAvailable: true })),
-    clearGitHubToken: vi.fn(async () => ({ githubTokenConfigured: false, secureStorageAvailable: true })),
+vi.mock('#/main/system/github-cli.ts', () => ({
+  probeGitHubCli: vi.fn(async (_signal?: AbortSignal, hosts?: string[]) => ({
+    available: true,
+    version: 'gh version 2.93.0',
+    detectedAt: 0,
+    hosts: Object.fromEntries(
+      (hosts ?? ['github.com']).map((host) => [
+        host,
+        { host, authenticated: true, activeLogin: 'tester', logins: ['tester'], tokenSource: 'keyring' },
+      ]),
+    ),
   })),
 }))
 
@@ -395,6 +401,21 @@ describe('main repo rpc cancellation', () => {
 
     expect(aborted).toBe(true)
     await expect(snapshot).resolves.toEqual({ ok: true, data: null })
+  })
+
+  test('propagates pull request refresh errors', async () => {
+    vi.mocked(getBranchPullRequests).mockRejectedValueOnce(new Error('GoblinPullRequests failed on github.com: UNAUTHORIZED HTTP 401 (non-retryable) - Bad credentials'))
+
+    const result = await invokeRpc('repo.pullRequests', { cwd: '/repo', branches: ['feature/a'], options: { mode: 'full' } })
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        name: 'TRPCError',
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'GoblinPullRequests failed on github.com: UNAUTHORIZED HTTP 401 (non-retryable) - Bad credentials',
+      },
+    })
   })
 
   test('returns persistable settings without external app detection in settings.get', async () => {

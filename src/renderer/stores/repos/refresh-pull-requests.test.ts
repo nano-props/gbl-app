@@ -337,6 +337,48 @@ describe('refreshPullRequests', () => {
     ])
   })
 
+  test('snapshot refresh stops pull request backfill after the first refresh error', async () => {
+    const token = seedRepo([branch('feature/a')])
+    const calls: Array<{ branches?: string[]; mode?: string }> = []
+    rpcHandlers['repo.snapshot'] = async () => ({
+      branches: [branch('feature/a'), branch('feature/b')],
+      current: 'feature/a',
+    })
+    rpcHandlers['repo.pullRequests'] = async ({
+      branches,
+      options,
+    }: {
+      branches?: string[]
+      options?: { mode?: string }
+    }) => {
+      calls.push({ branches, mode: options?.mode })
+      throw new Error('GitHub CLI is not signed in to github.com')
+    }
+
+    await useReposStore.getState().refreshSnapshot(REPO_ID, { token })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(calls).toEqual([{ branches: ['feature/a', 'feature/b'], mode: 'summary' }])
+    expect(useReposStore.getState().repos[REPO_ID]?.events).toEqual([
+      expect.objectContaining({ kind: 'error', message: 'GitHub CLI is not signed in to github.com' }),
+    ])
+  })
+
+  test('snapshot refresh unavailable pull request lookups do not enqueue repo error events', async () => {
+    const token = seedRepo([branch('feature/a')])
+    rpcHandlers['repo.snapshot'] = async () => ({
+      branches: [branch('feature/a'), branch('feature/b')],
+      current: 'feature/a',
+    })
+    rpcHandlers['repo.pullRequests'] = async () => null
+
+    await useReposStore.getState().refreshSnapshot(REPO_ID, { token })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(useReposStore.getState().repos[REPO_ID]?.events).toEqual([])
+    expect(useReposStore.getState().repos[REPO_ID]?.resources.pullRequests.error).toBeNull()
+  })
+
   test('ignores stale pull request lookups for the same repo instance', async () => {
     const token = seedRepo([branch('feature/a')])
     let resolveFirst!: (value: { branch: string; pullRequest: PullRequestInfo }[]) => void

@@ -67,9 +67,19 @@ export interface GlobalShortcutState {
   registered: boolean
 }
 
-export interface CredentialsSnapshot {
-  githubTokenConfigured: boolean
-  secureStorageAvailable: boolean
+export interface GitHubCliState {
+  available: boolean
+  version: string | null
+  detectedAt: number
+  hosts: Record<string, GitHubCliHostState>
+}
+
+export interface GitHubCliHostState {
+  host: string
+  authenticated: boolean
+  activeLogin: string | null
+  logins: string[]
+  tokenSource: string | null
 }
 
 export interface TerminalAppState {
@@ -190,7 +200,7 @@ export type RpcEvent =
   | { type: 'global-shortcut-changed'; state: GlobalShortcutState }
   | ({ type: 'terminal-app-changed' } & TerminalAppState)
   | ({ type: 'editor-app-changed' } & EditorAppState)
-  | { type: 'github-credentials-changed'; state: CredentialsSnapshot }
+  | { type: 'github-cli-changed'; state: GitHubCliState }
   | { type: 'settings-write-error'; message: string }
   | { type: 'external-open-enqueued' }
   | { type: 'menu-action'; action: MenuAction }
@@ -278,10 +288,9 @@ export interface AppRpcHandlers {
     get: () => Promise<ExternalAppsSnapshot>
     refresh: () => Promise<ExternalAppsSnapshot>
   }
-  credentials: {
-    get: () => Promise<CredentialsSnapshot>
-    set: (input: { token: string }) => Promise<CredentialsSnapshot>
-    clear: () => Promise<CredentialsSnapshot>
+  githubCli: {
+    get: (input?: { hosts?: string[] }) => Promise<GitHubCliState>
+    refresh: (input?: { hosts?: string[] }) => Promise<GitHubCliState>
   }
   i18n: {
     get: () => Promise<I18nPayload>
@@ -456,12 +465,13 @@ export function createAppRouter(handlers: AppRpcHandlers) {
       get: p.input(EmptyInput).query(() => handlers.externalApps.get()),
       refresh: p.input(EmptyInput).mutation(() => handlers.externalApps.refresh()),
     }),
-    credentials: t.router({
-      get: p.input(EmptyInput).query(() => handlers.credentials.get()),
-      set: p
-        .input(v.object({ token: v.string() }))
-        .mutation(({ input }) => handlers.credentials.set(input)),
-      clear: p.input(EmptyInput).mutation(() => handlers.credentials.clear()),
+    githubCli: t.router({
+      get: p
+        .input(v.optional(v.object({ hosts: v.optional(v.array(v.string())) })))
+        .query(({ input }) => handlers.githubCli.get(input)),
+      refresh: p
+        .input(v.optional(v.object({ hosts: v.optional(v.array(v.string())) })))
+        .mutation(({ input }) => handlers.githubCli.refresh(input)),
     }),
     i18n: t.router({
       get: p.input(EmptyInput).query(() => handlers.i18n.get()),

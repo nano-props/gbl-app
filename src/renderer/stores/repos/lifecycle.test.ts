@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from 'vitest'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { BranchSnapshotInfo } from '#/renderer/types.ts'
 import {
-  branch,
+  branchSnapshot,
   flushRpc,
   installGoblin,
   REPO_A,
@@ -65,13 +65,13 @@ describe('repo lifecycle', () => {
     await useReposStore.getState().openRepo(REPO_A)
     const secondToken = useReposStore.getState().repos[REPO_A]?.instanceToken
 
-    snapshotResolvers[1]?.({ branches: [branch('fresh')], current: 'fresh' })
+    snapshotResolvers[1]?.({ branches: [branchSnapshot('fresh')], current: 'fresh' })
     await flushRpc()
 
     expect(secondToken).not.toBe(firstToken)
     expect(useReposStore.getState().repos[REPO_A]?.data.currentBranch).toBe('fresh')
 
-    snapshotResolvers[0]?.({ branches: [branch('stale')], current: 'stale' })
+    snapshotResolvers[0]?.({ branches: [branchSnapshot('stale')], current: 'stale' })
     await flushRpc()
 
     expect(useReposStore.getState().repos[REPO_A]?.data.currentBranch).toBe('fresh')

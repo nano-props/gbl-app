@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from 'vitest'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import type { BranchSnapshotInfo } from '#/renderer/types.ts'
 import {
-  branch,
+  branchSnapshot,
   flushRpc,
   installGoblin,
   REPO_A,
@@ -34,7 +34,7 @@ describe('repo session hydration', () => {
           savedAt,
           name: 'cached-a',
           data: {
-            branches: [branch('cached')],
+            branches: [branchSnapshot('cached')],
             currentBranch: 'cached',
             status: [],
             statusLoaded: true,
@@ -66,7 +66,7 @@ describe('repo session hydration', () => {
     expect(cachedRepo?.resources.snapshot.phase).toBe('refreshing')
     expect(cachedRepo?.cache.savedAt).toBe(savedAt)
 
-    resolveSnapshot({ branches: [branch('fresh')], current: 'fresh' })
+    resolveSnapshot({ branches: [branchSnapshot('fresh')], current: 'fresh' })
     await flushRpc()
 
     const freshRepo = useReposStore.getState().repos[REPO_A]
@@ -84,7 +84,7 @@ describe('repo session hydration', () => {
           savedAt,
           name: 'cached-a',
           data: {
-            branches: [branch('cached')],
+            branches: [branchSnapshot('cached')],
             currentBranch: 'cached',
             status: [],
             statusLoaded: true,

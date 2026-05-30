@@ -9,11 +9,12 @@
 
 import { create } from 'zustand'
 import type {
-  CredentialsSnapshot,
   EditorAppAvailability,
   EditorPref,
   ExternalAppsSnapshot,
   GlobalShortcutState,
+  GitHubCliHostState,
+  GitHubCliState,
   ResolvedEditorApp,
   ResolvedTerminalApp,
   SessionState,
@@ -45,8 +46,9 @@ interface SettingsStore {
   /** Saved session from previous run — consumed once by App.tsx during
    *  hydration, then irrelevant. We keep it in state for diagnostics. */
   savedSession: SessionState
-  githubTokenConfigured: boolean
-  secureStorageAvailable: boolean
+  githubCliAvailable: boolean
+  githubCliVersion: string | null
+  githubCliHosts: Record<string, GitHubCliHostState>
 
   hydrate: () => Promise<SessionState>
   hydrateExternalApps: () => Promise<void>
@@ -59,8 +61,7 @@ interface SettingsStore {
   setGlobalShortcut: (accelerator: string) => Promise<GlobalShortcutState>
   setTerminalApp: (pref: TerminalPref) => Promise<void>
   setEditorApp: (pref: EditorPref) => Promise<void>
-  setGitHubToken: (token: string) => Promise<void>
-  clearGitHubToken: () => Promise<void>
+  refreshGitHubCli: (hosts?: string[]) => Promise<void>
   refreshExternalApps: () => Promise<void>
 }
 
@@ -103,10 +104,13 @@ function sameEditorAppAvailability(a: EditorAppAvailability, b: EditorAppAvailab
   return a.vscode === b.vscode && a.cursor === b.cursor && a.windsurf === b.windsurf
 }
 
-function applyCredentialsState(state: CredentialsSnapshot): Pick<SettingsStore, 'githubTokenConfigured' | 'secureStorageAvailable'> {
+function applyGitHubCliState(
+  state: GitHubCliState,
+): Pick<SettingsStore, 'githubCliAvailable' | 'githubCliVersion' | 'githubCliHosts'> {
   return {
-    githubTokenConfigured: state.githubTokenConfigured,
-    secureStorageAvailable: state.secureStorageAvailable,
+    githubCliAvailable: state.available,
+    githubCliVersion: state.version,
+    githubCliHosts: state.hosts,
   }
 }
 
@@ -207,13 +211,14 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     workspaceLayout: DEFAULT_WORKSPACE_LAYOUT,
     detailPaneSizes: DEFAULT_DETAIL_PANE_SIZES,
   },
-  githubTokenConfigured: false,
-  secureStorageAvailable: false,
+  githubCliAvailable: false,
+  githubCliVersion: null,
+  githubCliHosts: {},
 
   async hydrate() {
     const version = ++hydrateVersion
     const snap = await rpc.settings.get.query()
-    const credentialsSnap = await rpc.credentials.get.query()
+    const githubCliSnap = await rpc.githubCli.get.query()
     if (version !== hydrateVersion) return snap.session
     set({
       fetchIntervalSec: snap.fetchIntervalSec,
@@ -227,7 +232,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       terminalApp: snap.terminalApp,
       editorApp: snap.editorApp,
       savedSession: snap.session,
-      ...applyCredentialsState(credentialsSnap),
+      ...applyGitHubCliState(githubCliSnap),
     })
     const nextUnsubscribers: Array<() => void> = []
     try {
@@ -274,11 +279,12 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
             return mergeDetectedExternalAppsState(s, applyEditorAppState(event), event.detectedAt, sameEditorAppState)
           })
         }),
-        onRpcEventType('github-credentials-changed', (event) => {
+        onRpcEventType('github-cli-changed', (event) => {
           set((s) => {
-            const next = applyCredentialsState(event.state)
-            return s.githubTokenConfigured === next.githubTokenConfigured &&
-                s.secureStorageAvailable === next.secureStorageAvailable
+            const next = applyGitHubCliState(event.state)
+            return s.githubCliAvailable === next.githubCliAvailable &&
+                s.githubCliVersion === next.githubCliVersion &&
+                s.githubCliHosts === next.githubCliHosts
               ? s
               : next
           })
@@ -362,23 +368,13 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     })
   },
 
-  async setGitHubToken(token) {
-    const state = await rpc.credentials.set.mutate({ token })
+  async refreshGitHubCli(hosts) {
+    const state = await rpc.githubCli.refresh.mutate(hosts && hosts.length > 0 ? { hosts } : undefined)
     set((s) => {
-      const next = applyCredentialsState(state)
-      return s.githubTokenConfigured === next.githubTokenConfigured &&
-          s.secureStorageAvailable === next.secureStorageAvailable
-        ? s
-        : next
-    })
-  },
-
-  async clearGitHubToken() {
-    const state = await rpc.credentials.clear.mutate()
-    set((s) => {
-      const next = applyCredentialsState(state)
-      return s.githubTokenConfigured === next.githubTokenConfigured &&
-          s.secureStorageAvailable === next.secureStorageAvailable
+      const next = applyGitHubCliState(state)
+      return s.githubCliAvailable === next.githubCliAvailable &&
+          s.githubCliVersion === next.githubCliVersion &&
+          s.githubCliHosts === next.githubCliHosts
         ? s
         : next
     })

@@ -56,8 +56,9 @@ function resetSettingsStore(): void {
     editorAvailable: false,
     editorAppAvailability: { vscode: false, cursor: false, windsurf: false },
     externalAppsDetectedAt: 0,
-    githubTokenConfigured: false,
-    secureStorageAvailable: true,
+    githubCliAvailable: false,
+    githubCliVersion: null,
+    githubCliHosts: {},
     savedSession: {
       openRepos: [],
       activeRepo: null,
@@ -167,7 +168,7 @@ describe('settings store external app hydration', () => {
         },
         recentRepos: [],
       }),
-      'credentials.get': () => ({ githubTokenConfigured: false, secureStorageAvailable: true }),
+      'githubCli.get': () => ({ available: false, version: null, detectedAt: 0, hosts: {} }),
       'externalApps.refresh': () => ({
         terminal: {
           pref: 'auto',
@@ -229,7 +230,7 @@ describe('settings store external app hydration', () => {
         },
         recentRepos: [],
       }),
-      'credentials.get': () => ({ githubTokenConfigured: false, secureStorageAvailable: true }),
+      'githubCli.get': () => ({ available: false, version: null, detectedAt: 0, hosts: {} }),
     })
 
     await useSettingsStore.getState().hydrate()

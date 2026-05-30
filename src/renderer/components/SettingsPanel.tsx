@@ -16,7 +16,6 @@ import {
   SlidersHorizontal,
   Sun,
   Tag,
-  type LucideIcon,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '#/renderer/components/ui/dialog.tsx'
 import { ScrollArea } from '#/renderer/components/ui/scroll-area.tsx'
@@ -24,7 +23,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#
 import { Switch } from '#/renderer/components/ui/switch.tsx'
 import { Badge } from '#/renderer/components/ui/badge.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
-import { SecretInput } from '#/renderer/components/ui/secret-input.tsx'
 import { AppleTerminalIcon, CursorIcon, GhosttyIcon, VSCodeIcon, WindsurfIcon } from '#/renderer/components/ExternalAppIcon/index.tsx'
 import { GitHubMark } from '#/renderer/components/GitHubMark.tsx'
 import { ShortcutSettings } from '#/renderer/components/settings/ShortcutSettings.tsx'
@@ -44,9 +42,13 @@ import { rpc } from '#/renderer/rpc.ts'
 import { terminalBridge } from '#/renderer/terminal.ts'
 import { SETTINGS_PANEL_CONTENT_ID } from '#/renderer/components/ui/ids.ts'
 
-export type SettingsPage = 'general' | 'apps' | 'sync' | 'proxy' | 'shortcuts' | 'about'
+export type SettingsPage = 'general' | 'github' | 'apps' | 'sync' | 'proxy' | 'shortcuts' | 'about'
 
 const appIconUrl = new URL('../../../assets/icon.png', import.meta.url).href
+
+function hostLoginCommand(host: string): string {
+  return host === 'github.com' ? 'gh auth login' : `gh auth login --hostname ${host}`
+}
 
 interface Props {
   open: boolean
@@ -102,10 +104,11 @@ const EDITOR_APPS: ExternalToolItem[] = [
 export function SettingsPanel({ open, page, onPageChange, onClose }: Props) {
   const t = useT()
   const selectedPageButtonRef = useRef<HTMLButtonElement | null>(null)
-  const pages: { page: SettingsPage; label: string; title: string; Icon: LucideIcon }[] = [
+  const pages: { page: SettingsPage; label: string; title: string; Icon: ComponentType<{ className?: string }> }[] = [
     { page: 'general', label: t('settings.group.general'), title: t('settings.group.general'), Icon: Settings2 },
+    { page: 'github', label: t('settings.nav.github'), title: t('settings.github.title'), Icon: GitHubMark },
+    { page: 'apps', label: t('settings.group.apps'), title: t('settings.group.apps'), Icon: AppWindow },
     { page: 'shortcuts', label: t('settings.nav.shortcuts'), title: t('settings.shortcuts'), Icon: Keyboard },
-    { page: 'apps', label: t('settings.nav.integrations'), title: t('settings.nav.integrations'), Icon: AppWindow },
     { page: 'sync', label: t('settings.nav.refresh'), title: t('settings.nav.refresh'), Icon: SlidersHorizontal },
     { page: 'proxy', label: t('settings.group.proxy'), title: t('settings.group.proxy'), Icon: Shield },
     { page: 'about', label: t('settings.about'), title: t('settings.about'), Icon: Info },
@@ -166,6 +169,7 @@ export function SettingsPanel({ open, page, onPageChange, onClose }: Props) {
             <ScrollArea className="min-h-0 flex-1 bg-muted/20" viewportClassName="h-full">
               <div className="space-y-5 px-5 py-4">
                 {page === 'general' && <GeneralSettings />}
+                {page === 'github' && <GitHubSettings />}
                 {page === 'apps' && <ExternalAppSettings />}
                 {page === 'sync' && <SyncSettings />}
                 {page === 'proxy' && <ProxySettings />}
@@ -343,12 +347,112 @@ function GeneralSettings() {
   )
 }
 
+function GitHubSettings() {
+  const t = useT()
+  const githubCliAvailable = useSettingsStore((s) => s.githubCliAvailable)
+  const githubCliVersion = useSettingsStore((s) => s.githubCliVersion)
+  const githubCliHosts = useSettingsStore((s) => s.githubCliHosts)
+  const refreshGitHubCli = useSettingsStore((s) => s.refreshGitHubCli)
+  const hostStates = Object.values(githubCliHosts).sort((a, b) => a.host.localeCompare(b.host))
+  const [refreshingGitHubCli, setRefreshingGitHubCli] = useState(false)
+
+  useEffect(() => {
+    void refreshGitHubCli().catch((err) => {
+      console.warn('[settings] initial GitHub CLI refresh failed', err)
+    })
+  }, [])
+
+  const handleGitHubCliRefresh = () => {
+    if (refreshingGitHubCli) return
+    setRefreshingGitHubCli(true)
+    void refreshGitHubCli()
+      .catch((err) => {
+        console.warn('[settings] GitHub CLI refresh failed', err)
+      })
+      .finally(() => {
+        setRefreshingGitHubCli(false)
+      })
+  }
+
+  return (
+    <SettingsGroup label={t('settings.github.title')} hint={t('settings.github.body')}>
+      <SettingsList>
+        <SettingsRow
+          controlId="settings-github-cli"
+          label={
+            <span className="inline-flex items-center gap-2">
+              <span>{t('settings.github.cli-label')}</span>
+              <Badge
+                variant={githubCliAvailable ? 'success' : 'outline'}
+                className={cn(githubCliAvailable ? '' : 'text-muted-foreground')}
+              >
+                {t(githubCliAvailable ? 'settings.github.status-available' : 'settings.github.status-unavailable')}
+              </Badge>
+            </span>
+          }
+          hint={githubCliAvailable ? githubCliVersion ?? t('settings.github.hint-installed') : t('settings.github.hint-missing')}
+          control={
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                data-interactive
+                variant="outline"
+                size="sm"
+                onClick={handleGitHubCliRefresh}
+                disabled={refreshingGitHubCli}
+              >
+                <RotateCw className={cn('size-3', refreshingGitHubCli && 'animate-spin')} />
+                {t('settings.github.refresh')}
+              </Button>
+            </div>
+          }
+        />
+        {hostStates.length > 0 ? (
+          hostStates.map((hostState) => (
+            <SettingsRow
+              key={hostState.host}
+              controlId={`settings-github-host-${hostState.host}`}
+              label={
+                <span className="inline-flex items-center gap-2">
+                  <span className="font-mono text-xs">{hostState.host}</span>
+                  <Badge
+                    variant={hostState.authenticated ? 'success' : 'outline'}
+                    className={cn(hostState.authenticated ? '' : 'text-muted-foreground')}
+                  >
+                    {t(hostState.authenticated ? 'settings.github.auth-signed-in' : 'settings.github.auth-signed-out')}
+                  </Badge>
+                </span>
+              }
+              hint={
+                hostState.authenticated
+                  ? hostState.activeLogin
+                    ? `${t('settings.github.auth-account')} ${hostState.activeLogin}`
+                    : t('settings.github.auth-signed-in-hint')
+                  : `${t('settings.github.auth-login-required')} ${hostLoginCommand(hostState.host)}`
+              }
+              control={
+                <div className="flex w-72 items-center justify-end gap-2 text-xs text-muted-foreground">
+                  {hostState.tokenSource ? (
+                    <span className="truncate">
+                      {t('settings.github.auth-token-source')} {hostState.tokenSource}
+                    </span>
+                  ) : hostState.logins.length > 1 ? (
+                    <span className="truncate">{hostState.logins.join(', ')}</span>
+                  ) : null}
+                </div>
+              }
+            />
+          ))
+        ) : (
+          <div className="px-4 py-3 text-[13px] leading-relaxed text-muted-foreground">{t('settings.github.no-hosts')}</div>
+        )}
+      </SettingsList>
+    </SettingsGroup>
+  )
+}
+
 function ExternalAppSettings() {
   const t = useT()
-  const githubTokenConfigured = useSettingsStore((s) => s.githubTokenConfigured)
-  const secureStorageAvailable = useSettingsStore((s) => s.secureStorageAvailable)
-  const setGitHubToken = useSettingsStore((s) => s.setGitHubToken)
-  const clearGitHubToken = useSettingsStore((s) => s.clearGitHubToken)
   const terminalApp = useSettingsStore((s) => s.terminalApp)
   const terminalAppAvailability = useSettingsStore((s) => s.terminalAppAvailability)
   const setTerminalApp = useSettingsStore((s) => s.setTerminalApp)
@@ -357,15 +461,6 @@ function ExternalAppSettings() {
   const setEditorApp = useSettingsStore((s) => s.setEditorApp)
   const refreshExternalApps = useSettingsStore((s) => s.refreshExternalApps)
   const [refreshing, setRefreshing] = useState(false)
-  const [tokenInput, setTokenInput] = useState('')
-  const [tokenDirty, setTokenDirty] = useState(false)
-  const tokenDraftRef = useRef({
-    value: '',
-    dirty: false,
-    configured: githubTokenConfigured,
-    committing: false,
-    skipNextBlurCommit: false,
-  })
   const terminalOptions: { value: TerminalPref; labelKey: string }[] = [
     { value: 'auto', labelKey: 'settings.terminal.auto' },
     { value: 'ghostty', labelKey: 'settings.terminal.ghostty' },
@@ -379,71 +474,6 @@ function ExternalAppSettings() {
   ]
   const save = (fn: () => Promise<unknown>, label: string) => {
     void fn().catch((err) => console.warn(`[settings] ${label} update failed`, err))
-  }
-
-  useEffect(() => {
-    const draft = tokenDraftRef.current
-    draft.value = tokenInput
-    draft.dirty = tokenDirty
-    draft.configured = githubTokenConfigured
-  }, [githubTokenConfigured, tokenDirty, tokenInput])
-
-  const resetTokenDraft = (value = '') => {
-    const draft = tokenDraftRef.current
-    draft.value = value
-    draft.dirty = false
-    draft.skipNextBlurCommit = false
-    setTokenInput(value)
-    setTokenDirty(false)
-  }
-
-  const commitTokenDraft = (options?: { fromBlur?: boolean }) => {
-    const draft = tokenDraftRef.current
-    if (options?.fromBlur && draft.skipNextBlurCommit) {
-      draft.skipNextBlurCommit = false
-      return
-    }
-    draft.skipNextBlurCommit = false
-    if (!draft.dirty || draft.committing) return
-    const token = draft.value.trim()
-    draft.committing = true
-    if (!token) {
-      if (!draft.configured) {
-        draft.dirty = false
-        setTokenDirty(false)
-        draft.committing = false
-        return
-      }
-      save(async () => {
-        try {
-          await clearGitHubToken()
-          resetTokenDraft()
-        } finally {
-          tokenDraftRef.current.committing = false
-        }
-      }, 'github token')
-      return
-    }
-    save(async () => {
-      try {
-        await setGitHubToken(token)
-        resetTokenDraft(token)
-      } finally {
-        tokenDraftRef.current.committing = false
-      }
-    }, 'github token')
-  }
-
-  useEffect(() => {
-    return () => {
-      commitTokenDraft()
-    }
-  }, [])
-
-  const handleTokenKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter') return
-    event.preventDefault()
-    commitTokenDraft()
   }
 
   const handleRefresh = () => {
@@ -460,76 +490,6 @@ function ExternalAppSettings() {
 
   return (
     <>
-      <SettingsGroup label={t('settings.github.title')} hint={t('settings.github.body')}>
-        <SettingsList>
-          <SettingsRow
-            controlId="settings-github-token"
-            label={
-              <span className="inline-flex items-center gap-2">
-                <span>{t('settings.github.token-label')}</span>
-                <Badge
-                  variant={githubTokenConfigured ? 'success' : 'outline'}
-                  className={cn(githubTokenConfigured ? '' : 'text-muted-foreground')}
-                >
-                  {t(githubTokenConfigured ? 'settings.github.status-configured' : 'settings.github.status-not-configured')}
-                </Badge>
-                {githubTokenConfigured && (
-                  <Button
-                    type="button"
-                    data-interactive
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-1.5 text-muted-foreground hover:text-foreground"
-                    onPointerDown={() => {
-                      tokenDraftRef.current.skipNextBlurCommit = true
-                    }}
-                    onClick={() => {
-                      if (tokenDraftRef.current.committing) return
-                      tokenDraftRef.current.committing = true
-                      void clearGitHubToken()
-                        .then(() => {
-                          resetTokenDraft()
-                        })
-                        .catch((err) => {
-                          console.warn('[settings] github token update failed', err)
-                        })
-                        .finally(() => {
-                          tokenDraftRef.current.committing = false
-                        })
-                    }}
-                  >
-                    {t('settings.github.clear')}
-                  </Button>
-                )}
-              </span>
-            }
-            hint={secureStorageAvailable
-              ? githubTokenConfigured
-                ? `${t('settings.github.token-hint')} ${t('settings.github.configured-hidden')}`
-                : t('settings.github.token-hint')
-              : `${t('settings.github.token-hint')} ${t('settings.github.unavailable')}`}
-            control={
-              <div className="relative w-72">
-                <SecretInput
-                  id="settings-github-token"
-                  value={tokenInput}
-                  onChange={(event) => {
-                    setTokenInput(event.target.value)
-                    setTokenDirty(true)
-                  }}
-                  onBlur={() => commitTokenDraft({ fromBlur: true })}
-                  onKeyDown={handleTokenKeyDown}
-                  placeholder={t('settings.github.token-placeholder')}
-                  disabled={!secureStorageAvailable}
-                  className="h-8 w-full"
-                  showLabel={t('settings.github.show-token')}
-                  hideLabel={t('settings.github.hide-token')}
-                />
-              </div>
-            }
-          />
-        </SettingsList>
-      </SettingsGroup>
       <SettingsGroup label={t('settings.group.apps')}>
         <SettingsList>
           <SettingsRow

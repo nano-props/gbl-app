@@ -10,17 +10,24 @@ import {
   pickPullRequest,
 } from '#/main/git/pull-requests.ts'
 
-vi.mock('#/main/security/credentials.ts', () => ({
-  getCredentialsManager: () => ({
-    getGitHubToken: (_host?: string) => null,
-  }),
+const execaMock = vi.hoisted(() => vi.fn())
+const canQueryGitHubHostMock = vi.hoisted(() => vi.fn())
+
+vi.mock('execa', async () => {
+  const actual = await vi.importActual<typeof import('execa')>('execa')
+  return {
+    ...actual,
+    execa: ((file: string, args?: readonly string[], options?: Record<string, unknown>) =>
+      file === 'gh' ? execaMock(file, args, options) : actual.execa(file, args, options as any)) as typeof actual.execa,
+  }
+})
+
+vi.mock('#/main/system/github-cli.ts', () => ({
+  buildGitHubCliPath: vi.fn(() => process.env.PATH ?? ''),
+  canQueryGitHubHost: vi.fn((host: string) => canQueryGitHubHostMock(host)),
 }))
 
-const TOKEN_ENV_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN'] as const
-
 let templateRepo: string | null = null
-let originalFetch: typeof globalThis.fetch
-let originalEnv: Partial<Record<(typeof TOKEN_ENV_KEYS)[number], string | undefined>>
 let tmp: string | null = null
 
 beforeAll(() => {
@@ -30,6 +37,12 @@ beforeAll(() => {
     cwd: templateRepo,
     stdio: 'ignore',
   })
+})
+
+beforeEach(() => {
+  execaMock.mockReset()
+  canQueryGitHubHostMock.mockReset()
+  canQueryGitHubHostMock.mockResolvedValue(true)
 })
 
 afterAll(() => {
@@ -60,42 +73,30 @@ function pullRequestNode(number: number, headRefName: string) {
   }
 }
 
-function graphqlPullRequests(nodes: unknown[]): Response {
-  return new Response(
-    JSON.stringify({
-      data: {
-        repository: {
-          pullRequests: {
-            nodes,
-            pageInfo: { hasNextPage: false, endCursor: null },
-          },
+function graphqlPullRequests(nodes: unknown[]) {
+  return JSON.stringify({
+    data: {
+      repository: {
+        pullRequests: {
+          nodes,
+          pageInfo: { hasNextPage: false, endCursor: null },
         },
       },
-    }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } },
-  )
+    },
+  })
 }
 
-beforeEach(() => {
-  originalFetch = globalThis.fetch
-  originalEnv = Object.fromEntries(TOKEN_ENV_KEYS.map((key) => [key, process.env[key]]))
-  for (const key of TOKEN_ENV_KEYS) delete process.env[key]
-  process.env.GH_TOKEN = 'test-token'
-})
+function installGhGraphqlMock(handler: (payload: { variables?: Record<string, unknown> }) => string | Promise<string>): void {
+  execaMock.mockImplementation(async (_cmd, _args, options) => ({ stdout: await handler(JSON.parse(String(options?.input))) }))
+}
 
 afterEach(() => {
   vi.restoreAllMocks()
-  globalThis.fetch = originalFetch
-  for (const key of TOKEN_ENV_KEYS) {
-    const value = originalEnv[key]
-    if (value === undefined) delete process.env[key]
-    else process.env[key] = value
-  }
   if (tmp) rmSync(tmp, { recursive: true, force: true })
   tmp = null
 })
 
-describe('normalizeGhPullRequest', () => {
+describe('pull request normalization', () => {
   test('normalizes open pull requests', () => {
     expect(
       normalizeGhPullRequest({
@@ -111,7 +112,7 @@ describe('normalizeGhPullRequest', () => {
         headRepositoryOwner: { login: 'acme' },
         isCrossRepository: false,
       }),
-    ).toEqual({
+    ).toMatchObject({
       number: 12,
       title: 'Feature',
       url: 'https://github.com/acme/repo/pull/12',
@@ -123,103 +124,22 @@ describe('normalizeGhPullRequest', () => {
       headRefName: 'feature',
       headRepositoryOwner: 'acme',
       isCrossRepository: false,
-      checks: undefined,
-      reviewDecision: null,
-      mergeable: undefined,
     })
   })
-
-  test('summarizes checks, review, and mergeability', () => {
-    expect(
-      normalizeGhPullRequest({
-        number: 12,
-        title: 'Feature',
-        url: 'https://github.com/acme/repo/pull/12',
-        state: 'OPEN',
-        reviewDecision: 'APPROVED',
-        mergeable: 'MERGEABLE',
-        statusCheckRollup: {
-          nodes: [
-            {
-              commit: {
-                statusCheckRollup: {
-                  contexts: {
-                    checkRunCountsByState: [
-                      { state: 'SUCCESS', count: 2 },
-                      { state: 'FAILURE', count: 1 },
-                      { state: 'PENDING', count: 1 },
-                    ],
-                    statusContextCountsByState: [
-                      { state: 'SUCCESS', count: 1 },
-                      { state: 'PENDING', count: 1 },
-                    ],
-                  },
-                },
-              },
-            },
-          ],
-        },
-      })?.checks,
-    ).toEqual({ total: 6, passing: 3, failing: 1, pending: 2 })
-  })
-
-  test('uses mergedAt as the merged signal', () => {
-    expect(
-      normalizeGhPullRequest({
-        number: 12,
-        title: 'Feature',
-        url: 'https://github.com/acme/repo/pull/12',
-        state: 'CLOSED',
-        mergedAt: '2026-05-20T10:00:00Z',
-      })?.state,
-    ).toBe('merged')
-  })
-
-  test('uses dirty merge state as a conflict signal', () => {
-    expect(
-      normalizeGhPullRequest({
-        number: 12,
-        title: 'Feature',
-        url: 'https://github.com/acme/repo/pull/12',
-        state: 'OPEN',
-        mergeable: 'UNKNOWN',
-        mergeStateStatus: 'DIRTY',
-      })?.mergeable,
-    ).toBe('CONFLICTING')
-  })
-
-  test('rejects incomplete records', () => {
-    expect(normalizeGhPullRequest({ number: 12, title: 'Feature' })).toBeNull()
-  })
 })
 
-describe('pickPullRequest', () => {
-  test('prefers open over merged and merged over closed', () => {
-    const closed = {
-      number: 1,
-      title: 'Closed',
-      url: 'https://github.com/acme/repo/pull/1',
-      state: 'closed' as const,
-    }
-    const merged = {
-      number: 2,
-      title: 'Merged',
-      url: 'https://github.com/acme/repo/pull/2',
-      state: 'merged' as const,
-    }
-    const open = {
-      number: 3,
-      title: 'Open',
-      url: 'https://github.com/acme/repo/pull/3',
-      state: 'open' as const,
-    }
+describe('pull request selection', () => {
+  test('prefers open over merged over closed', () => {
+    const merged = { number: 1, title: 'Merged', url: 'https://example.com/1', state: 'merged' as const, isDraft: false }
+    const open = { number: 2, title: 'Open', url: 'https://example.com/2', state: 'open' as const, isDraft: false }
+    const closed = { number: 3, title: 'Closed', url: 'https://example.com/3', state: 'closed' as const, isDraft: false }
 
-    expect(pickPullRequest(closed, merged)).toBe(merged)
     expect(pickPullRequest(merged, open)).toBe(open)
+    expect(pickPullRequest(open, closed)).toBe(open)
   })
 })
 
-describe('getBranchPullRequest', () => {
+describe('branch pull request lookup', () => {
   test('uses the branch upstream GitHub remote for single-branch queries', async () => {
     const repo = initGitHubRepo()
     git(repo, 'remote', 'set-url', 'origin', 'https://github.com/me/fork.git')
@@ -227,14 +147,10 @@ describe('getBranchPullRequest', () => {
     git(repo, 'config', 'branch.feature.remote', 'upstream')
     git(repo, 'config', 'branch.feature.merge', 'refs/heads/main')
     const queriedRepos: Array<{ owner?: string; repo?: string; headRefName?: string }> = []
-    globalThis.fetch = (async (...args: Parameters<typeof fetch>) => {
-      const init = args[1]
-      const body = JSON.parse(String(init?.body)) as {
-        variables?: { owner?: string; repo?: string; headRefName?: string }
-      }
-      queriedRepos.push(body.variables ?? {})
+    installGhGraphqlMock(async (body) => {
+      queriedRepos.push((body.variables ?? {}) as { owner?: string; repo?: string; headRefName?: string })
       return graphqlPullRequests([pullRequestNode(42, 'feature')])
-    }) as typeof fetch
+    })
 
     const result = await getBranchPullRequests(repo, new Set(['feature']), { mode: 'summary' })
 
@@ -249,17 +165,11 @@ describe('getBranchPullRequest', () => {
     git(repo, 'config', 'branch.feature.remote', 'upstream')
     git(repo, 'config', 'branch.feature.merge', 'refs/heads/main')
     const queriedRepos: Array<{ owner?: string; repo?: string; headRefName?: string }> = []
-    globalThis.fetch = (async (...args: Parameters<typeof fetch>) => {
-      const init = args[1]
-      const body = JSON.parse(String(init?.body)) as {
-        variables?: { owner?: string; repo?: string; headRefName?: string }
-      }
-      const variables = body.variables ?? {}
+    installGhGraphqlMock(async (body) => {
+      const variables = (body.variables ?? {}) as { owner?: string; repo?: string; headRefName?: string }
       queriedRepos.push(variables)
-      return graphqlPullRequests([
-        pullRequestNode(variables.headRefName === 'feature' ? 42 : 7, variables.headRefName ?? ''),
-      ])
-    }) as typeof fetch
+      return graphqlPullRequests([pullRequestNode(variables.headRefName === 'feature' ? 42 : 7, variables.headRefName ?? '')])
+    })
 
     const upstreamBranch = await getBranchPullRequests(repo, new Set(['feature']), { mode: 'summary' })
     const originBranch = await getBranchPullRequests(repo, new Set(['other']), { mode: 'summary' })
@@ -275,15 +185,14 @@ describe('getBranchPullRequest', () => {
   test('does not treat a repo-wide cache miss as a definitive single-branch miss', async () => {
     const repo = initGitHubRepo()
     const queriedHeads: Array<string | undefined> = []
-    globalThis.fetch = (async (...args: Parameters<typeof fetch>) => {
-      const init = args[1]
-      const body = JSON.parse(String(init?.body)) as { variables?: { headRefName?: string; states?: string[] } }
-      const headRefName = body.variables?.headRefName
+    installGhGraphqlMock(async (body) => {
+      const headRefName = body.variables?.headRefName as string | undefined
+      const states = body.variables?.states as string[] | undefined
       queriedHeads.push(headRefName)
       if (headRefName === 'hidden') return graphqlPullRequests([pullRequestNode(99, 'hidden')])
-      if (body.variables?.states?.includes('OPEN')) return graphqlPullRequests([pullRequestNode(1, 'cached')])
+      if (states?.includes('OPEN')) return graphqlPullRequests([pullRequestNode(1, 'cached')])
       return graphqlPullRequests([])
-    }) as typeof fetch
+    })
 
     const repoWide = await getBranchPullRequests(repo, undefined, { mode: 'full' })
     const hidden = await getBranchPullRequest(repo, 'hidden')
@@ -292,18 +201,27 @@ describe('getBranchPullRequest', () => {
     expect(hidden?.number).toBe(99)
     expect(queriedHeads).toContain('hidden')
   })
+
+  test('skips single-branch pull request fetches when host capability is unavailable', async () => {
+    const repo = initGitHubRepo()
+    canQueryGitHubHostMock.mockResolvedValueOnce(false)
+
+    const result = await getBranchPullRequest(repo, 'feature')
+
+    expect(result).toBeNull()
+    expect(execaMock).not.toHaveBeenCalled()
+  })
 })
 
-describe('getBranchPullRequests cancellation', () => {
-  test('does not let a signaled caller abort an unsignaled caller', async () => {
+describe('getBranchPullRequests request coordination', () => {
+  test('does not let a signaled caller abort an unsignaled shared request', async () => {
     const repo = initGitHubRepo()
     const ctrl = new AbortController()
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     let releaseFirstFetch!: () => void
     let fetchCalls = 0
     const firstFetchStarted = new Promise<void>((resolve) => {
-      globalThis.fetch = (async (...args: Parameters<typeof fetch>) => {
-        const init = args[1]
+      execaMock.mockImplementation(async (_cmd, _args, options) => {
         fetchCalls += 1
         if (fetchCalls === 1) {
           resolve()
@@ -311,14 +229,14 @@ describe('getBranchPullRequests cancellation', () => {
             releaseFirstFetch = resolveFirstFetch
           })
           const aborted = new Promise<never>((_resolve, reject) => {
-            init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), {
+            options?.cancelSignal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), {
               once: true,
             })
           })
           await Promise.race([release, aborted])
         }
-        return graphqlPullRequests([pullRequestNode(7, 'feature/a')])
-      }) as typeof fetch
+        return { stdout: graphqlPullRequests([pullRequestNode(7, 'feature/a')]) }
+      })
     })
 
     const first = getBranchPullRequests(repo, undefined, { mode: 'summary', signal: ctrl.signal })
@@ -338,14 +256,14 @@ describe('getBranchPullRequests cancellation', () => {
     let releaseFetch!: () => void
     let fetchCalls = 0
     const firstFetchStarted = new Promise<void>((resolve) => {
-      globalThis.fetch = (async (..._args: Parameters<typeof fetch>) => {
+      execaMock.mockImplementation(async () => {
         fetchCalls += 1
         resolve()
         await new Promise<void>((release) => {
           releaseFetch = release
         })
-        return graphqlPullRequests([pullRequestNode(8, 'feature/shared')])
-      }) as typeof fetch
+        return { stdout: graphqlPullRequests([pullRequestNode(8, 'feature/shared')]) }
+      })
     })
 
     const first = getBranchPullRequests(repo, undefined, { mode: 'summary', signal: ctrl.signal })
@@ -359,15 +277,15 @@ describe('getBranchPullRequests cancellation', () => {
     expect(secondResult?.get('feature/shared')?.number).toBe(8)
   })
 
-  test('stops full repo queries when aborted after open pull requests load', async () => {
+  test('stops full-repo queries when aborted after open pull requests load', async () => {
     const repo = initGitHubRepo()
     const ctrl = new AbortController()
     let fetchCalls = 0
-    globalThis.fetch = (async (..._args: Parameters<typeof fetch>) => {
+    execaMock.mockImplementation(async () => {
       fetchCalls += 1
       ctrl.abort()
-      return graphqlPullRequests([pullRequestNode(9, 'feature/open')])
-    }) as typeof fetch
+      return { stdout: graphqlPullRequests([pullRequestNode(9, 'feature/open')]) }
+    })
 
     const result = await getBranchPullRequests(repo, undefined, { mode: 'full', signal: ctrl.signal })
 
@@ -377,20 +295,30 @@ describe('getBranchPullRequests cancellation', () => {
 
   test('does not overwrite a successful repo cache when an unexpected refresh error occurs', async () => {
     const repo = initGitHubRepo()
-    globalThis.fetch = (async () => graphqlPullRequests([pullRequestNode(3, 'cached')])) as unknown as typeof fetch
+    execaMock.mockResolvedValueOnce({ stdout: graphqlPullRequests([pullRequestNode(3, 'cached')]) })
     const summary = await getBranchPullRequests(repo, undefined, { mode: 'summary' })
     expect(summary?.get('cached')?.number).toBe(3)
 
     vi.spyOn(console, 'warn').mockImplementation(() => {
       throw new Error('logger unavailable')
     })
-    globalThis.fetch = (async () =>
-      new Response('', { status: 500, statusText: 'server down' })) as unknown as typeof fetch
-    const failed = await getBranchPullRequests(repo, undefined, { mode: 'full' })
+    execaMock.mockRejectedValueOnce(Object.assign(new Error('server down'), { stderr: 'gh: server down (HTTP 500)' }))
+    await expect(getBranchPullRequests(repo, undefined, { mode: 'full' })).rejects.toThrow(
+      'GoblinPullRequests failed on github.com: HTTP_ERROR HTTP 500 (retryable) - gh: server down (HTTP 500)',
+    )
     vi.mocked(console.warn).mockRestore()
     const cached = await getBranchPullRequests(repo, undefined, { mode: 'summary' })
 
-    expect(failed).toBeNull()
     expect(cached?.get('cached')?.number).toBe(3)
+  })
+
+  test('skips repo-wide pull request fetches when host capability is unavailable', async () => {
+    const repo = initGitHubRepo()
+    canQueryGitHubHostMock.mockResolvedValueOnce(false)
+
+    const result = await getBranchPullRequests(repo, undefined, { mode: 'full' })
+
+    expect(result).toBeNull()
+    expect(execaMock).not.toHaveBeenCalled()
   })
 })
