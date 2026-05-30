@@ -1,18 +1,21 @@
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { isRegisteredRendererSurfaceId } from '#/main/window-registry.ts'
 
-const trustedWebContentsIds = new Set<number>()
+const explicitlyTrustedWebContentsIds = new Set<number>()
 const trustedAppUrls = new Set<string>()
+const trustedAppUrlsByWebContentsId = new Map<number, Set<string>>()
 
 export function registerTrustedAppPath(filePath: string): void {
   trustedAppUrls.add(normalizeTrustedAppPath(filePath))
 }
 
 export function registerTrustedWebContents(webContents: WebContents): void {
-  trustedWebContentsIds.add(webContents.id)
+  explicitlyTrustedWebContentsIds.add(webContents.id)
   webContents.once('destroyed', () => {
-    trustedWebContentsIds.delete(webContents.id)
+    explicitlyTrustedWebContentsIds.delete(webContents.id)
+    trustedAppUrlsByWebContentsId.delete(webContents.id)
   })
 }
 
@@ -21,14 +24,34 @@ export function registerTrustedAppUrl(value: string): void {
   if (normalized) trustedAppUrls.add(normalized)
 }
 
+export function allowTrustedAppUrlForWebContents(webContents: WebContents, value: string): void {
+  const normalized = normalizeTrustedAppUrl(value)
+  if (!normalized) return
+  const trustedUrls = trustedAppUrlsByWebContentsId.get(webContents.id) ?? new Set<string>()
+  trustedUrls.add(normalized)
+  trustedAppUrlsByWebContentsId.set(webContents.id, trustedUrls)
+  webContents.once('destroyed', () => {
+    trustedAppUrlsByWebContentsId.delete(webContents.id)
+  })
+}
+
 export function isTrustedAppUrl(value: string): boolean {
   const normalized = normalizeTrustedAppUrl(value)
   return normalized ? trustedAppUrls.has(normalized) : false
 }
 
+export function isTrustedAppUrlForWebContents(webContentsId: number, value: string): boolean {
+  const normalized = normalizeTrustedAppUrl(value)
+  if (!normalized || !trustedAppUrls.has(normalized)) return false
+  const scoped = trustedAppUrlsByWebContentsId.get(webContentsId)
+  return !scoped || scoped.has(normalized)
+}
+
 export function isTrustedIpcEvent(event: IpcMainInvokeEvent): boolean {
   return (
-    trustedWebContentsIds.has(event.sender.id) && event.senderFrame !== null && isTrustedAppUrl(event.senderFrame.url)
+    (isRegisteredRendererSurfaceId(event.sender.id) || explicitlyTrustedWebContentsIds.has(event.sender.id)) &&
+    event.senderFrame !== null &&
+    isTrustedAppUrlForWebContents(event.sender.id, event.senderFrame.url)
   )
 }
 

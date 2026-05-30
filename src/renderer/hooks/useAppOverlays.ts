@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState } from 'react'
-import type { SettingsPage } from '#/renderer/components/SettingsPanel.tsx'
+import { useCallback, useMemo } from 'react'
 import { useOverlayRegistry } from '#/renderer/hooks/useOverlayRegistry.ts'
 
-const APP_OVERLAY_KEYS = ['settings', 'clone', 'openRepo'] as const
+const APP_OVERLAY_KEYS = ['clone', 'openRepo'] as const
 type AppOverlayKey = (typeof APP_OVERLAY_KEYS)[number]
 
 export function useAppOverlays() {
@@ -10,18 +9,7 @@ export function useAppOverlays() {
   // any overlay-specific payload (such as settingsPage). New app overlays
   // should usually be wired here rather than expanding useOverlayRegistry.
   const registry = useOverlayRegistry<AppOverlayKey>(APP_OVERLAY_KEYS)
-  const { anyOpen, close, closeAll, open, setOpen, state: openByKey } = registry
-  const [settingsPage, setSettingsPage] = useState<SettingsPage>('general')
-
-  const openSettings = useCallback((page: SettingsPage = 'general') => {
-    setSettingsPage(page)
-    open('settings')
-  }, [open])
-
-  const closeSettings = useCallback(() => {
-    close('settings')
-    setSettingsPage('general')
-  }, [close])
+  const { anyOpen, closeAll, open, setOpen, state: openByKey } = registry
 
   const openCloneRepo = useCallback(() => {
     open('clone')
@@ -41,20 +29,16 @@ export function useAppOverlays() {
 
   const closeAllOverlays = useCallback(() => {
     closeAll()
-    setSettingsPage('general')
   }, [closeAll])
 
   const state = useMemo(() => ({
-    settings: { open: openByKey.settings, page: settingsPage },
     clone: { open: openByKey.clone },
     openRepo: { open: openByKey.openRepo },
-  }), [openByKey.clone, openByKey.openRepo, openByKey.settings, settingsPage])
+  }), [openByKey.clone, openByKey.openRepo])
 
   return {
     state,
     anyOpen,
-    openSettings,
-    closeSettings,
     openCloneRepo,
     setCloneOpen,
     openRepoPathDialog,

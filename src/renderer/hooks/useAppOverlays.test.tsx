@@ -14,12 +14,6 @@ function Harness() {
 
   return (
     <>
-      <button id="open-settings-about" type="button" onClick={() => overlays.openSettings('about')}>
-        open settings about
-      </button>
-      <button id="close-settings" type="button" onClick={overlays.closeSettings}>
-        close settings
-      </button>
       <button id="open-clone" type="button" onClick={overlays.openCloneRepo}>
         open clone
       </button>
@@ -29,8 +23,6 @@ function Harness() {
       <button id="close-all" type="button" onClick={overlays.closeAllOverlays}>
         close all
       </button>
-      <output id="settings-open">{overlays.state.settings.open ? 'open' : 'closed'}</output>
-      <output id="settings-page">{overlays.state.settings.page}</output>
       <output id="clone-open">{overlays.state.clone.open ? 'open' : 'closed'}</output>
       <output id="open-repo-open">{overlays.state.openRepo.open ? 'open' : 'closed'}</output>
       <output id="any-open">{overlays.anyOpen ? 'open' : 'closed'}</output>
@@ -53,7 +45,7 @@ afterEach(() => {
 })
 
 describe('useAppOverlays', () => {
-  test('tracks overlay state centrally and resets all overlays together', () => {
+  test('tracks non-settings overlays centrally and resets all overlays together', () => {
     container = document.createElement('div')
     document.body.append(container)
     root = createRoot(container)
@@ -62,18 +54,13 @@ describe('useAppOverlays', () => {
       root!.render(<Harness />)
     })
 
-    click('#open-settings-about')
     click('#open-clone')
     click('#open-repo')
-    expect(text('#settings-open')).toBe('open')
-    expect(text('#settings-page')).toBe('about')
     expect(text('#clone-open')).toBe('open')
     expect(text('#open-repo-open')).toBe('open')
     expect(text('#any-open')).toBe('open')
 
     click('#close-all')
-    expect(text('#settings-open')).toBe('closed')
-    expect(text('#settings-page')).toBe('general')
     expect(text('#clone-open')).toBe('closed')
     expect(text('#open-repo-open')).toBe('closed')
     expect(text('#any-open')).toBe('closed')

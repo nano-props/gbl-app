@@ -1,7 +1,8 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Button } from '#/renderer/components/ui/button.tsx'
 import { Switch } from '#/renderer/components/ui/switch.tsx'
+import { registerWindowFlusher } from '#/renderer/lib/window-flush-registry.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { cn } from '#/renderer/lib/cn.ts'
@@ -21,6 +22,20 @@ export function ShortcutSettings() {
   const setGlobalShortcut = useSettingsStore((s) => s.setGlobalShortcut)
   const [recordingShortcut, setRecordingShortcut] = useState(false)
   const [shortcutError, setShortcutError] = useState<string | null>(null)
+  const recordingShortcutRef = useRef(recordingShortcut)
+
+  useEffect(() => {
+    recordingShortcutRef.current = recordingShortcut
+  }, [recordingShortcut])
+
+  useEffect(() => {
+    return registerWindowFlusher(async () => {
+      if (!recordingShortcutRef.current) return
+      recordingShortcutRef.current = false
+      setRecordingShortcut(false)
+      setShortcutError(null)
+    })
+  }, [])
 
   const saveShortcutsDisabled = (disabled: boolean) => {
     void setShortcutsDisabled(disabled).catch((err) => {

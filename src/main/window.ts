@@ -8,26 +8,34 @@
 // before exit (without it the very last drag is truncated).
 
 import { BrowserWindow, app, screen } from 'electron'
-import os from 'node:os'
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { getTheme } from '#/main/theme.ts'
 import { loadSettings, setWindowBounds, type WindowBounds } from '#/main/settings.ts'
+import { attachRendererSurfaceWindow, detachRendererSurfaceWindow } from '#/main/renderer-surface.ts'
 import { closeAllTerminalSessions } from '#/main/terminal.ts'
-import { openHttpExternal } from '#/main/external-url.ts'
-import { isTrustedAppUrl, registerTrustedAppPath, registerTrustedAppUrl, registerTrustedWebContents } from '#/main/ipc/trusted-webcontents.ts'
-import { WINDOW_BACKGROUND_BY_COLOR_THEME } from '#/shared/theme-tokens.ts'
+import { defaultTitleBarStyle, macTrafficLightPosition, supportsTitleBarOverlay, titleBarOverlayForTheme } from '#/main/window-chrome.ts'
+import { getMainWindow as getRegisteredMainWindow } from '#/main/window-registry.ts'
+import {
+  allowRendererWindowEntryUrl,
+  createRendererEntryUrl,
+  createRendererWindowWebPreferences,
+  windowCanvasBackground,
+} from '#/main/window-shell.ts'
+import { getTheme } from '#/main/theme.ts'
+import { WINDOW_TOPBAR_HEIGHT_PX } from '#/shared/window-chrome.ts'
 
 const DEFAULT_BOUNDS: WindowBounds = { width: 1200, height: 760 }
+const MAIN_WINDOW_SURFACE = {
+  kind: 'main',
+  windowKey: 'main',
+  capabilities: {
+    rpcBroadcast: true,
+    themeSync: true,
+  },
+} as const
 
-let mainWindow: BrowserWindow | null = null
 let mainWindowCreation: Promise<BrowserWindow> | null = null
-const rendererDevUrl = process.env.GOBLIN_RENDERER_DEV_URL?.trim()
 
 export function getMainWindow(): BrowserWindow | null {
-  if (mainWindow && !mainWindow.isDestroyed()) return mainWindow
-  mainWindow = null
-  return mainWindow
+  return getRegisteredMainWindow()
 }
 
 export function getOrCreateMainWindow(): Promise<BrowserWindow> {
@@ -79,11 +87,8 @@ function clampToDisplay(bounds: WindowBounds): WindowBounds {
 }
 
 async function createMainWindow(): Promise<BrowserWindow> {
+  const backgroundColor = windowCanvasBackground()
   const { resolved, colorTheme } = getTheme()
-  // Match the renderer's body background so there's no white flash
-  // before the bundle loads. Hex values mirror each theme's
-  // `--gbl-surface-canvas`.
-  const backgroundColor = WINDOW_BACKGROUND_BY_COLOR_THEME[colorTheme][resolved]
 
   const settings = await loadSettings()
   const saved = settings.windowBounds
@@ -97,49 +102,15 @@ async function createMainWindow(): Promise<BrowserWindow> {
     minWidth: 640,
     minHeight: 480,
     backgroundColor,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    webPreferences: {
-      preload: path.join(app.getAppPath(), 'src/preload/preload.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      // Sandbox the renderer. The preload bridge uses only `electron`
-      // (`contextBridge`, `ipcRenderer`, `webUtils`) which is
-      // sandbox-compatible — no `fs`/`path` required.
-      // Enabling sandbox cuts off Node primitives if `contextIsolation`
-      // ever leaks, turning a renderer XSS into something less than
-      // arbitrary code execution.
-      sandbox: true,
-      webSecurity: true,
-      // Inject startup-time constants the preload would otherwise need
-      // Node modules to resolve. Sandbox forbids `require('os')` in the
-      // preload, but `process.argv` is still readable — this is the
-      // Electron-recommended way to thread main-process values down.
-      additionalArguments: [`--gbl-home-dir=${os.homedir()}`],
-    },
+    titleBarStyle: defaultTitleBarStyle(),
+    titleBarOverlay: titleBarOverlayForTheme(resolved, colorTheme, WINDOW_TOPBAR_HEIGHT_PX),
+    trafficLightPosition: macTrafficLightPosition(WINDOW_TOPBAR_HEIGHT_PX),
+    autoHideMenuBar: process.platform !== 'darwin',
+    webPreferences: createRendererWindowWebPreferences(),
   })
-  registerTrustedWebContents(win.webContents)
-
-  // Dev loads the Vite server for HMR; packaged/prod still uses file://
-  // so CSP and release behavior stay unchanged. `?theme=` and
-  // `?colorTheme=` let the boot script apply theme attrs before
-  // stylesheets load (no flash). `pathToFileURL` handles Windows
-  // path/URL conversion (drive letters, backslashes) — interpolating into
-  // a `file://` literal string would produce malformed URLs on Win32.
-  const appHtmlPath = path.join(app.getAppPath(), 'dist/renderer/index.html')
-  const url = rendererDevUrl ? new URL(rendererDevUrl) : pathToFileURL(appHtmlPath)
-  if (rendererDevUrl) registerTrustedAppUrl(url.toString())
-  else registerTrustedAppPath(appHtmlPath)
-  url.searchParams.set('theme', resolved)
-  url.searchParams.set('colorTheme', colorTheme)
-  win.webContents.on('will-navigate', (event, nextUrl) => {
-    if (!isTrustedAppUrl(nextUrl)) event.preventDefault()
-  })
-  win.webContents.setWindowOpenHandler(({ url: nextUrl }) => {
-    void openHttpExternal(nextUrl).catch((err) => {
-      console.warn('[window] failed to open external window URL', err)
-    })
-    return { action: 'deny' }
-  })
+  attachRendererSurfaceWindow(win, { logLabel: 'window', surface: MAIN_WINDOW_SURFACE })
+  const { url } = createRendererEntryUrl({ entryHtml: 'index.html' })
+  allowRendererWindowEntryUrl(win, url.toString())
   // Persist bounds. We listen on both `resize` and `move` because the
   // user can do either independently. `getNormalBounds` returns the
   // pre-maximize size so a maximized window doesn't overwrite the
@@ -155,14 +126,24 @@ async function createMainWindow(): Promise<BrowserWindow> {
 
   win.on('closed', () => {
     closeAllTerminalSessions()
-    if (mainWindow === win) mainWindow = null
+    detachRendererSurfaceWindow(win, MAIN_WINDOW_SURFACE)
   })
 
-  mainWindow = win
   try {
     await win.loadURL(url.toString())
   } catch (err) {
     console.warn('[window] failed to load app URL', err)
   }
   return win
+}
+
+export function applyMainWindowChromeTheme(theme: 'light' | 'dark'): void {
+  if (!supportsTitleBarOverlay()) return
+  const win = getMainWindow()
+  if (!win || win.isDestroyed()) return
+  const overlay = titleBarOverlayForTheme(theme, getTheme().colorTheme, WINDOW_TOPBAR_HEIGHT_PX)
+  if (!overlay) return
+  try {
+    win.setTitleBarOverlay(overlay)
+  } catch {}
 }

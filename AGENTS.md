@@ -46,3 +46,12 @@
 - Reuse `src/renderer/hooks/useOverlayRegistry.ts` for generic open/close/close-all overlay state instead of hand-rolled boolean groups.
 - Keep UI primitives and dialog presentation inside components (for example shadcn/ui `Dialog` wrappers); overlay hooks should manage state and coordination only, not visual structure.
 - When adding a new app-level overlay, wire it through the overlay manager, `closeAllOverlays()`, and any overlay-aware gates such as keyboard shortcut suppression.
+
+## Window and multi-window architecture
+
+- Scope renderer entry trust per `BrowserWindow`, not globally.
+- Keep renderer windows on their own boot entry; route internally instead of cross-entry main-frame navigation.
+- Reuse `src/main/window-shell.ts` and `src/main/standalone-page-window.ts` for new trusted / auxiliary windows.
+- If an auxiliary window can lose meaningful in-memory UI state on close, use the close-time lifecycle flush path and register renderer flushers.
+- Parent native dialogs to the actual RPC caller window when possible.
+- Keep window chrome sizes in `src/shared/window-chrome.ts`, and use `src/main/window-chrome.ts` helpers for platform chrome / overlay colors.

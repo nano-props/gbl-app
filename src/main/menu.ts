@@ -12,7 +12,7 @@
 // language whenever `setCurrentLang` fires (the i18n IPC handler
 // rebuilds this menu on lang change).
 
-import { app, Menu, shell, dialog, type MenuItemConstructorOptions, BrowserWindow } from 'electron'
+import { app, Menu, shell, dialog, type MenuItemConstructorOptions } from 'electron'
 import { promises as fs } from 'node:fs'
 import { activateMainWindow, getMainWindow } from '#/main/window.ts'
 import { applyLangPref, t } from '#/main/i18n/index.ts'
@@ -26,9 +26,11 @@ import {
 } from '#/main/settings.ts'
 import { broadcastRpcEvent, sendRpcEvent } from '#/main/events.ts'
 import { getTheme, setThemePref } from '#/main/theme.ts'
+import { openSettingsWindow } from '#/main/settings-window.ts'
 import { normalizeWorkspaceLayout, type WorkspaceLayout } from '#/shared/workspace-layout.ts'
 import { tildifyPath } from '#/shared/paths.ts'
 import type { LangPref, MenuAction, ThemePref } from '#/shared/rpc.ts'
+import { focusedRegisteredSurface } from '#/main/window-registry.ts'
 
 interface AppMenuState {
   isMac: boolean
@@ -72,7 +74,7 @@ function send(action: MenuAction): void {
 
 async function sendMenuAction(action: MenuAction): Promise<void> {
   try {
-    const win = getMainWindow() ?? BrowserWindow.getFocusedWindow() ?? (await activateMainWindow())
+    const win = getMainWindow() ?? focusedRegisteredSurface()?.window ?? (await activateMainWindow())
     sendRpcEvent(win, { type: 'menu-action', action })
   } catch (err) {
     console.warn('[menu] failed to send menu action', err)
@@ -122,9 +124,9 @@ function createMacAppMenu(state: AppMenuState): MenuItemConstructorOptions {
   return {
     label: state.name,
     submenu: [
-      { label: t('menu.app.about', { name: state.name }), click: () => send('open-about') },
+      { label: t('menu.app.about', { name: state.name }), click: () => void openSettingsWindow('about') },
       separator(),
-      { label: t('menu.app.settings'), accelerator: accelerator(state, 'Cmd+,'), click: () => send('open-settings') },
+      { label: t('menu.app.settings'), accelerator: accelerator(state, 'Cmd+,'), click: () => void openSettingsWindow('general') },
       createAppearanceMenu(state.themePref),
       createLanguageMenu(state.langPref),
       separator(),
@@ -164,7 +166,7 @@ function createFileMenu(state: AppMenuState): MenuItemConstructorOptions {
       // closes the window vs. the tab. Default: ⌘W = close window,
       // ⌘⇧W = close tab. Swapped: ⌘W = close tab, ⌘⇧W = close window.
       state.shortcutsDisabled
-        ? { label: t('menu.file.close-window'), click: () => BrowserWindow.getFocusedWindow()?.close() }
+        ? { label: t('menu.file.close-window'), click: () => focusedRegisteredSurface()?.window.close() }
         : {
             role: 'close',
             label: t('menu.file.close-window'),
@@ -182,7 +184,7 @@ function createFileMenu(state: AppMenuState): MenuItemConstructorOptions {
             {
               label: t('menu.file.settings'),
               accelerator: accelerator(state, 'Ctrl+,'),
-              click: () => send('open-settings'),
+              click: () => void openSettingsWindow('general'),
             },
             separator(),
             { role: 'quit' as const, label: t('menu.file.quit') },
@@ -247,7 +249,7 @@ function createViewMenu(state: AppMenuState): MenuItemConstructorOptions {
       state.shortcutsDisabled
         ? {
             label: t('menu.view.toggle-dev-tools'),
-            click: () => BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools(),
+            click: () => focusedRegisteredSurface()?.window.webContents.toggleDevTools(),
           }
         : {
             role: 'toggleDevTools',
@@ -288,7 +290,7 @@ function createHelpMenu(): MenuItemConstructorOptions {
     // No menu accelerator: Electron requires a modifier on accelerators,
     // and bare `?` is rejected at registration. The renderer's keyboard
     // hook handles `?` directly so the binding still works.
-    submenu: [{ label: t('menu.help.shortcuts'), click: () => send('show-help') }],
+    submenu: [{ label: t('menu.help.shortcuts'), click: () => void openSettingsWindow('shortcuts') }],
   }
 }
 

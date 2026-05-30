@@ -26,7 +26,6 @@ import { RepoCloneDialog } from '#/renderer/components/RepoCloneDialog.tsx'
 import { RepoOpenDialog } from '#/renderer/components/RepoOpenDialog.tsx'
 import { RepoView } from '#/renderer/components/RepoView.tsx'
 import { RepoWorkspaceSkeleton } from '#/renderer/components/Skeleton.tsx'
-import { SettingsPanel, type SettingsPage } from '#/renderer/components/SettingsPanel.tsx'
 import { RepoDropOverlay } from '#/renderer/components/RepoDropOverlay.tsx'
 import { TerminalSessionProvider } from '#/renderer/components/terminal/TerminalSessionProvider.tsx'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
@@ -41,6 +40,8 @@ import { useMenuActions } from '#/renderer/hooks/useMenuActions.ts'
 import { useSessionPersistence } from '#/renderer/hooks/useSessionPersistence.ts'
 import { useSettingsWriteErrorToast } from '#/renderer/hooks/useSettingsWriteErrorToast.ts'
 import { repoWorkspaceBehavior } from '#/renderer/lib/workspace-layout.ts'
+import { rpc } from '#/renderer/rpc.ts'
+import type { SettingsPage } from '#/shared/rpc.ts'
 
 export function App() {
   const activeId = useReposStore((s) => s.activeId)
@@ -49,9 +50,14 @@ export function App() {
   const workspaceLayout = useReposStore((s) => s.workspaceLayout)
   const overlays = useAppOverlays()
   const workspaceBehavior = repoWorkspaceBehavior(workspaceLayout, detailCollapsed)
+  const openSettingsWindow = useCallback((page: SettingsPage = 'general') => {
+    void rpc.app.openSettingsWindow.mutate({ page }).catch((err) => {
+      console.warn('[settings-window] failed to open', err)
+    })
+  }, [])
   const showHelp = useCallback(() => {
-    overlays.openSettings('shortcuts')
-  }, [overlays.openSettings])
+    openSettingsWindow('shortcuts')
+  }, [openSettingsWindow])
   // Shared gate: any modal overlay suppresses both
   // keyboard shortcuts and the file-drop dashed border. useKeyboard
   // additionally OR's in commit-detail, which is per-repo state read
@@ -65,11 +71,9 @@ export function App() {
   useBackgroundFetch()
   useExternalOpenPaths()
   useMenuActions({
-    openSettings: overlays.openSettings,
     closeAllOverlays: overlays.closeAllOverlays,
     openRepoPathDialog: overlays.openRepoPathDialog,
     openCloneRepo: overlays.openCloneRepo,
-    showHelp,
     isOverlayOpen: () => modalOpen,
   })
 
@@ -95,7 +99,7 @@ export function App() {
           onDragLeave={repoDrop.onDragLeave}
           onDrop={repoDrop.onDrop}
         >
-          <Topbar onOpenSettings={overlays.openSettings} settingsActive={overlays.state.settings.open}>
+          <Topbar onOpenSettings={() => openSettingsWindow()}>
             <RepoTabs onClone={overlays.openCloneRepo} />
           </Topbar>
           <main className="flex flex-1 min-h-0 min-w-0">
@@ -113,12 +117,6 @@ export function App() {
               )}
             </ErrorBoundary>
           </main>
-          <SettingsPanel
-            open={overlays.state.settings.open}
-            page={overlays.state.settings.page}
-            onPageChange={overlays.openSettings}
-            onClose={overlays.closeSettings}
-          />
           <RepoOpenDialog open={overlays.state.openRepo.open} onOpenChange={overlays.setOpenRepoOpen} />
           <RepoCloneDialog open={overlays.state.clone.open} onOpenChange={overlays.setCloneOpen} />
           <RepoDropOverlay active={repoDrop.active} />

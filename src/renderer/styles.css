@@ -63,6 +63,9 @@ body,
   -webkit-app-region: drag;
   padding: 0 16px 0 80px;
 }
+html[data-chrome='overlay'] .topbar {
+  padding: 0 150px 0 16px;
+}
 button,
 [data-interactive] {
   -webkit-app-region: no-drag;

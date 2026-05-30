@@ -44,6 +44,7 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       input: {
         index: path.resolve(import.meta.dirname, 'src/renderer/index.html'),
+        settings: path.resolve(import.meta.dirname, 'src/renderer/settings.html'),
       },
     },
   },

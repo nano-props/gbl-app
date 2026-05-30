@@ -10,9 +10,11 @@ const mocks = vi.hoisted(() => {
     win,
     activateMainWindow: vi.fn(() => Promise.resolve(win)),
     getFocusedWindow: vi.fn((): any => null),
+    focusedRegisteredSurface: vi.fn((): any => null),
     getMainWindow: vi.fn((): any => null),
     getRecentRepos: vi.fn<() => string[]>(() => []),
     sendRpcEvent: vi.fn(),
+    openSettingsWindow: vi.fn(() => Promise.resolve()),
     buildFromTemplate: vi.fn((nextTemplate: any[]) => {
       template.splice(0, template.length, ...nextTemplate)
       return nextTemplate
@@ -46,6 +48,10 @@ vi.mock('#/main/window.ts', () => ({
   getMainWindow: mocks.getMainWindow,
 }))
 
+vi.mock('#/main/window-registry.ts', () => ({
+  focusedRegisteredSurface: mocks.focusedRegisteredSurface,
+}))
+
 vi.mock('#/main/i18n/index.ts', () => ({
   applyLangPref: vi.fn(),
   t: vi.fn((key: string) => key),
@@ -77,6 +83,10 @@ vi.mock('#/main/theme.ts', () => ({
   setThemePref: vi.fn(),
 }))
 
+vi.mock('#/main/settings-window.ts', () => ({
+  openSettingsWindow: mocks.openSettingsWindow,
+}))
+
 describe('app menu actions', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -87,7 +97,9 @@ describe('app menu actions', () => {
     mocks.getRecentRepos.mockReturnValue([])
     mocks.getMainWindow.mockReturnValue(null)
     mocks.getFocusedWindow.mockReturnValue(null)
+    mocks.focusedRegisteredSurface.mockReturnValue(null)
     mocks.activateMainWindow.mockResolvedValue(mocks.win)
+    mocks.openSettingsWindow.mockResolvedValue(undefined)
   })
 
   test('activates the main window before sending an action when no window exists', async () => {
@@ -138,7 +150,6 @@ describe('app menu actions', () => {
 
   test('keeps the shortcuts help item available when shortcuts are disabled', async () => {
     mocks.getShortcutsDisabled.mockReturnValue(true)
-    mocks.getMainWindow.mockReturnValue(mocks.win)
     const { buildAppMenu } = await import('#/main/menu.ts')
 
     buildAppMenu()
@@ -149,7 +160,17 @@ describe('app menu actions', () => {
     shortcutsItem.click()
     await Promise.resolve()
 
-    expect(mocks.sendRpcEvent).toHaveBeenCalledWith(mocks.win, { type: 'menu-action', action: 'show-help' })
+    expect(mocks.openSettingsWindow).toHaveBeenCalledWith('shortcuts')
+  })
+
+  test('opens the standalone settings window from the file menu', async () => {
+    const { buildAppMenu } = await import('#/main/menu.ts')
+
+    buildAppMenu()
+    clickMenuItem('Goblin', 'menu.app.settings')
+    await Promise.resolve()
+
+    expect(mocks.openSettingsWindow).toHaveBeenCalledWith('general')
   })
 })
 

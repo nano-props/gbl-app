@@ -3,20 +3,17 @@ import { useReposStore } from '#/renderer/stores/repos/store.ts'
 import { isShortcutBlockingLayerOpen } from '#/renderer/lib/layers.ts'
 import { onRpcEventType } from '#/renderer/rpc.ts'
 import { isTerminalFocused } from '#/renderer/terminal-focus.ts'
-import type { SettingsPage } from '#/renderer/components/SettingsPanel.tsx'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { openRepoFromDialog } from '#/renderer/lib/open-repo-dialog.ts'
 
 interface MenuActionHandlers {
-  openSettings: (page?: SettingsPage) => void
   closeAllOverlays: () => void
   openRepoPathDialog: () => void
   openCloneRepo: () => void
-  showHelp: () => void
   isOverlayOpen: () => boolean
 }
 
-export function useMenuActions({ openSettings, closeAllOverlays, openRepoPathDialog, openCloneRepo, showHelp, isOverlayOpen }: MenuActionHandlers) {
+export function useMenuActions({ closeAllOverlays, openRepoPathDialog, openCloneRepo, isOverlayOpen }: MenuActionHandlers) {
   const syncAndRefresh = useReposStore((s) => s.syncAndRefresh)
   const closeRepo = useReposStore((s) => s.closeRepo)
   const cycleActive = useReposStore((s) => s.cycleActive)
@@ -69,21 +66,6 @@ export function useMenuActions({ openSettings, closeAllOverlays, openRepoPathDia
         if (action === 'reset-layout') {
           // Same app-level view preference as set-workspace-layout above.
           resetLayout()
-          return
-        }
-        // Settings / about navigate inside the settings overlay, so they
-        // must work even when the overlay is already open (e.g. the user
-        // clicks "About Goblin" while on the General tab).
-        if (action === 'open-settings') {
-          openSettings()
-          return
-        }
-        if (action === 'open-about') {
-          openSettings('about')
-          return
-        }
-        if (action === 'show-help') {
-          showHelp()
           return
         }
         if (isOverlayOpenRef.current() || isShortcutBlockingLayerOpen()) return
@@ -155,12 +137,10 @@ export function useMenuActions({ openSettings, closeAllOverlays, openRepoPathDia
     cycleActive,
     openRepoPathDialog,
     openCloneRepo,
-    openSettings,
     resetLayout,
     setDetailCollapsed,
     setDetailTab,
     setWorkspaceLayout,
-    showHelp,
     syncAndRefresh,
     t,
     toggleDetailCollapsed,

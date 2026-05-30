@@ -8,19 +8,21 @@ import { Settings } from 'lucide-react'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { Tip } from '#/renderer/components/Tip.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
-import { SETTINGS_PANEL_CONTENT_ID } from '#/renderer/components/ui/ids.ts'
+import { WINDOW_TOPBAR_HEIGHT_PX } from '#/shared/window-chrome.ts'
 
 interface Props {
   onOpenSettings: () => void
-  settingsActive?: boolean
   children: ReactNode
 }
 
-export function Topbar({ onOpenSettings, settingsActive = false, children }: Props) {
+export function Topbar({ onOpenSettings, children }: Props) {
   const t = useT()
 
   return (
-    <div className="topbar relative flex h-10 items-center gap-2 border-b border-separator bg-background text-sm">
+    <div
+      className="topbar relative flex items-center gap-2 border-b border-separator bg-background text-sm"
+      style={{ height: WINDOW_TOPBAR_HEIGHT_PX }}
+    >
       {children}
       <Tip label={t('topbar.settings')}>
         <Button
@@ -28,9 +30,6 @@ export function Topbar({ onOpenSettings, settingsActive = false, children }: Pro
           size="icon"
           onClick={() => onOpenSettings()}
           aria-label={t('topbar.settings')}
-          aria-haspopup="dialog"
-          aria-controls={settingsActive ? SETTINGS_PANEL_CONTENT_ID : undefined}
-          data-active={settingsActive ? 'true' : undefined}
         >
           <Settings />
         </Button>

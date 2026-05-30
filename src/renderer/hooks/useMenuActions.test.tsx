@@ -12,14 +12,12 @@ let root: Root | null = null
 const rpcEventListeners = new Set<(event: { type: string; repoRoot?: string }) => void>()
 const reactActEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
 const closeAllOverlays = vi.fn()
-const showHelp = vi.fn()
 let overlayOpen = false
 
 beforeEach(() => {
   reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true
   resetReposStore()
   closeAllOverlays.mockClear()
-  showHelp.mockClear()
   overlayOpen = false
   Object.defineProperty(window, 'goblin', {
     configurable: true,
@@ -86,18 +84,6 @@ describe('useMenuActions', () => {
     expect(state.repos[repo.id]?.ui.detailTab).toBe('terminal')
     expect(state.detailCollapsed).toBe(false)
   })
-
-  test('menu help actions still open help while another overlay is open', async () => {
-    overlayOpen = true
-    await renderHookHost()
-
-    await act(async () => {
-      for (const listener of rpcEventListeners) listener({ type: 'menu-action', action: 'show-help' } as any)
-      await Promise.resolve()
-    })
-
-    expect(showHelp).toHaveBeenCalledTimes(1)
-  })
 })
 
 async function renderHookHost() {
@@ -114,11 +100,9 @@ async function renderHookHost() {
 
 function HookHost() {
   useMenuActions({
-    openSettings: () => {},
     closeAllOverlays,
     openRepoPathDialog: () => {},
     openCloneRepo: () => {},
-    showHelp,
     isOverlayOpen: () => overlayOpen,
   })
   return null

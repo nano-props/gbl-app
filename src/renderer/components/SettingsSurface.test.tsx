@@ -3,7 +3,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { SettingsPanel } from '#/renderer/components/SettingsPanel.tsx'
+import { SettingsSurface } from '#/renderer/components/SettingsSurface.tsx'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
 
 const toastMocks = vi.hoisted(() => ({
@@ -134,9 +134,9 @@ afterEach(() => {
   reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = false
 })
 
-describe('SettingsPanel', () => {
+describe('SettingsSurface', () => {
   test('can trigger a test terminal notification from settings', async () => {
-    await render(<SettingsPanel open page="general" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsSurface page="general" onPageChange={() => {}} />)
 
     await act(async () => {
       buttonByText('settings.terminal-notifications-test-button').click()
@@ -149,7 +149,7 @@ describe('SettingsPanel', () => {
 
   test('shows an error toast when the test notification is blocked', async () => {
     sendTestNotification.mockResolvedValueOnce(false)
-    await render(<SettingsPanel open page="general" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsSurface page="general" onPageChange={() => {}} />)
 
     await act(async () => {
       buttonByText('settings.terminal-notifications-test-button').click()
@@ -167,7 +167,7 @@ describe('SettingsPanel', () => {
       githubCliAvailable: true,
       githubCliVersion: 'gh version 2.93.0',
     })
-    await render(<SettingsPanel open page="github" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsSurface page="github" onPageChange={() => {}} />)
 
     expect(document.body.textContent).toContain('settings.github.status-available')
     expect(document.body.textContent).toContain('gh version 2.93.0')
@@ -176,7 +176,7 @@ describe('SettingsPanel', () => {
   })
 
   test('refreshes GitHub CLI detection from settings', async () => {
-    await render(<SettingsPanel open page="github" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsSurface page="github" onPageChange={() => {}} />)
 
     await act(async () => {
       buttonByText('settings.github.refresh').click()
@@ -209,7 +209,7 @@ describe('SettingsPanel', () => {
       githubCliVersion: null,
       githubCliHosts: {},
     })
-    await render(<SettingsPanel open page="github" onPageChange={() => {}} onClose={() => {}} />)
+    await render(<SettingsSurface page="github" onPageChange={() => {}} />)
 
     expect(document.body.textContent).toContain('settings.github.status-unavailable')
     expect(document.body.textContent).toContain('settings.github.hint-missing')

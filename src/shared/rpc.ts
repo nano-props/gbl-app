@@ -13,8 +13,10 @@ import { WORKSPACE_LAYOUTS } from '#/shared/workspace-layout.ts'
 import { COLOR_THEMES } from '#/shared/color-theme.ts'
 import type { WorkspaceDetailPaneSizes, WorkspaceLayout } from '#/shared/workspace-layout.ts'
 import type { ColorTheme } from '#/shared/color-theme.ts'
+import { SETTINGS_PAGES, type SettingsPage } from '#/shared/settings-pages.ts'
 
 export type { WorkspaceLayout } from '#/shared/workspace-layout.ts'
+export type { SettingsPage } from '#/shared/settings-pages.ts'
 
 export type ThemePref = 'auto' | 'light' | 'dark'
 export type ResolvedTheme = 'light' | 'dark'
@@ -183,9 +185,6 @@ export type MenuAction =
   | 'tab-terminal'
   | 'toggle-detail'
   | 'reset-layout'
-  | 'open-settings'
-  | 'open-about'
-  | 'show-help'
   | { type: 'open-recent-repo'; path: string }
   | { type: 'set-workspace-layout'; layout: WorkspaceLayout }
 
@@ -211,6 +210,7 @@ export interface AppRpcHandlers {
   app: {
     openProjectGitHub: () => Promise<ExecResult>
     openExternalUrl: (input: { url: string }) => Promise<ExecResult>
+    openSettingsWindow: (input?: { page?: SettingsPage }) => Promise<void>
   }
   repo: {
     openDialog: () => Promise<string | null>
@@ -314,6 +314,9 @@ export function createAppRouter(handlers: AppRpcHandlers) {
       openExternalUrl: p
         .input(v.object({ url: v.string() }))
         .mutation(({ input }) => handlers.app.openExternalUrl(input)),
+      openSettingsWindow: p
+        .input(v.optional(v.object({ page: v.optional(v.picklist(SETTINGS_PAGES)) })))
+        .mutation(({ input }) => handlers.app.openSettingsWindow(input)),
     }),
     repo: t.router({
       openDialog: p.input(EmptyInput).mutation(() => handlers.repo.openDialog()),

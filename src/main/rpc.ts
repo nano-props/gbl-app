@@ -60,7 +60,8 @@ import {
   isValidOptionalBranch,
   toSafeSessionPath,
 } from '#/main/ipc/validation.ts'
-import { getMainWindow } from '#/main/window.ts'
+import { applyMainWindowChromeTheme, getMainWindow } from '#/main/window.ts'
+import { allRegisteredSurfacesWithCapability, focusedRegisteredSurface } from '#/main/window-registry.ts'
 import { getTheme, setColorTheme, setThemePref, subscribeTheme } from '#/main/theme.ts'
 import {
   addRecentRepo,
@@ -99,6 +100,7 @@ import { openHttpExternal, openHttpsExternal } from '#/main/external-url.ts'
 import { isTrustedIpcEvent } from '#/main/ipc/trusted-webcontents.ts'
 import { WINDOW_BACKGROUND_BY_COLOR_THEME } from '#/shared/theme-tokens.ts'
 import { consumeExternalOpenPaths } from '#/main/external-open.ts'
+import { applySettingsWindowChromeTheme, openSettingsWindow } from '#/main/settings-window.ts'
 
 const PROJECT_GITHUB_URL = 'https://github.com/nano-props/goblin'
 const PATCH_TIMEOUT_MS = 90_000
@@ -128,6 +130,7 @@ const activeOpControllers = new Map<string, ActiveNetworkOp>()
 const activeCloneControllers = new Map<string, ActiveCloneOp>()
 const activeRpcControllers = new Map<string, AbortController>()
 const rpcSignalStorage = new AsyncLocalStorage<AbortSignal>()
+const rpcWindowStorage = new AsyncLocalStorage<BrowserWindow | null>()
 
 let wired = false
 
@@ -158,12 +161,20 @@ export function wireRpcIpc(): void {
       if (typeof procedure !== 'function') {
         throw new TRPCError({ code: 'NOT_FOUND', message: `Unknown RPC procedure: ${request.path}` })
       }
+      const runInRpcContext = <T>(fn: () => Promise<T>): Promise<T> => {
+        const rpcWindow = BrowserWindow.fromWebContents(event.sender) ?? null
+        // Keep the originating BrowserWindow alongside the AbortSignal for the
+        // lifetime of the RPC. Main-side helpers such as native dialogs can
+        // then parent themselves to the real caller instead of guessing from
+        // current focus, which is brittle once multiple renderer windows exist.
+        return rpcWindowStorage.run(rpcWindow, fn)
+      }
       const requestId = request.requestId
-      if (!isValidRpcRequestId(requestId)) return { ok: true, data: await procedure(request.input) }
+      if (!isValidRpcRequestId(requestId)) return { ok: true, data: await runInRpcContext(() => procedure(request.input)) }
       const ctrl = new AbortController()
       activeRpcControllers.set(requestId, ctrl)
       try {
-        const data = await rpcSignalStorage.run(ctrl.signal, () => procedure(request.input))
+        const data = await runInRpcContext(() => rpcSignalStorage.run(ctrl.signal, () => procedure(request.input)))
         return { ok: true, data }
       } finally {
         if (activeRpcControllers.get(requestId) === ctrl) activeRpcControllers.delete(requestId)
@@ -174,9 +185,11 @@ export function wireRpcIpc(): void {
   })
 
   subscribeTheme((state) => {
-    for (const win of BrowserWindow.getAllWindows()) {
+    for (const { window: win } of allRegisteredSurfacesWithCapability('themeSync')) {
       if (!win.isDestroyed()) win.setBackgroundColor(WINDOW_BACKGROUND_BY_COLOR_THEME[state.colorTheme][state.resolved])
     }
+    applyMainWindowChromeTheme(state.resolved)
+    applySettingsWindowChromeTheme(state.resolved)
     buildAppMenu()
     broadcastRpcEvent({ type: 'theme-changed', state })
   })
@@ -222,6 +235,10 @@ function currentRpcSignal(): AbortSignal | undefined {
   return rpcSignalStorage.getStore()
 }
 
+function currentRpcWindow(): BrowserWindow | null {
+  return rpcWindowStorage.getStore() ?? null
+}
+
 function resolveRpcPathSegment(target: unknown, segment: string): unknown {
   if (FORBIDDEN_RPC_PATH_SEGMENTS.has(segment)) return undefined
   if (!target || (typeof target !== 'object' && typeof target !== 'function')) return undefined
@@ -262,6 +279,9 @@ function createRpcHandlers(): AppRpcHandlers {
       openExternalUrl: async ({ url }) => {
         if (!(await openHttpExternal(url))) return { ok: false, message: 'error.invalid-url' }
         return { ok: true, message: url }
+      },
+      openSettingsWindow: async (input) => {
+        await openSettingsWindow(input?.page ?? 'general')
       },
     },
     repo: {
@@ -593,7 +613,10 @@ async function openRepoDialog(): Promise<string | null> {
 }
 
 async function openDirectoryDialog(title: string): Promise<string | null> {
-  const win = getMainWindow() ?? BrowserWindow.getFocusedWindow()
+  // Prefer the actual RPC caller, then fall back to focus, then the main
+  // window. This keeps dialogs attached to the window that initiated the
+  // action without breaking older call sites that predate multi-window RPC.
+  const win = currentRpcWindow() ?? focusedRegisteredSurface()?.window ?? getMainWindow() ?? null
   const opts: Electron.OpenDialogOptions = {
     properties: ['openDirectory'],
     title,

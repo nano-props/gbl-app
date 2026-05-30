@@ -17,11 +17,13 @@ import { getEditorAppAvailability, resolveEditorApp } from '#/main/system/editor
 import type { EditorAppState, ExternalAppsSnapshot, RpcResponse } from '#/shared/rpc.ts'
 
 const ipcHandlers = new Map<string, (_event: unknown, input: any) => Promise<unknown>>()
+const browserWindowFromWebContents = vi.hoisted(() => vi.fn(() => null))
 
 vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: () => [],
     getFocusedWindow: () => null,
+    fromWebContents: browserWindowFromWebContents,
   },
   dialog: {
     showOpenDialog: vi.fn(),
@@ -98,6 +100,18 @@ vi.mock('#/main/git/log.ts', () => ({
 
 vi.mock('#/main/window.ts', () => ({
   getMainWindow: vi.fn(() => null),
+}))
+
+vi.mock('#/main/window-registry.ts', () => ({
+  focusedRegisteredSurface: vi.fn(() => null),
+  allRegisteredSurfacesWithCapability: vi.fn(() => []),
+  isRegisteredRendererSurfaceId: vi.fn(() => false),
+  registeredRendererSurfaceByWebContentsId: vi.fn(() => null),
+}))
+
+vi.mock('#/main/settings-window.ts', () => ({
+  applySettingsWindowChromeTheme: vi.fn(),
+  openSettingsWindow: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('#/main/theme.ts', () => ({
@@ -242,6 +256,7 @@ describe('main repo rpc cancellation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    browserWindowFromWebContents.mockReturnValue(null)
     vi.mocked(isGitRepo).mockResolvedValue(true)
     vi.mocked(getCurrentBranch).mockResolvedValue('main')
     vi.mocked(getWorktrees).mockResolvedValue([{ path: '/repo', branch: 'main', isBare: false, isPrimary: true }])
@@ -316,6 +331,24 @@ describe('main repo rpc cancellation', () => {
     expect(result).toEqual({
       ok: false,
       error: { name: 'TRPCError', code: 'FORBIDDEN', message: 'Untrusted IPC sender' },
+    })
+  })
+
+  test('parents repo open dialogs to the RPC sender window before focus fallbacks', async () => {
+    const senderWindow = {} as any
+    browserWindowFromWebContents.mockReturnValue(senderWindow)
+    vi.mocked((await import('electron')).dialog.showOpenDialog).mockResolvedValueOnce({
+      canceled: false,
+      filePaths: ['/repo'],
+    } as any)
+
+    const result = await invokeRpc('repo.openDialog')
+
+    expect(result).toEqual({ ok: true, data: '/repo' })
+    expect(browserWindowFromWebContents).toHaveBeenCalledWith(trustedSender)
+    expect(vi.mocked((await import('electron')).dialog.showOpenDialog)).toHaveBeenCalledWith(senderWindow, {
+      properties: ['openDirectory'],
+      title: 'Open Git Repository',
     })
   })
 

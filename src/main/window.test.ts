@@ -3,15 +3,17 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 const mocks = vi.hoisted(() => {
   const state = {
     windows: [] as any[],
+    windowOptions: [] as any[],
     webContentsOn: vi.fn(),
     setWindowOpenHandler: vi.fn(),
     windowOn: vi.fn(),
     loadURL: vi.fn(),
     openHttpExternal: vi.fn(() => Promise.resolve(true)),
     loadSettings: vi.fn(() => Promise.resolve({ windowBounds: null })),
+    setTitleBarOverlay: vi.fn(),
   }
   const BrowserWindow = Object.assign(
-    vi.fn(function BrowserWindow() {
+    vi.fn(function BrowserWindow(options: any) {
       const win = {
         webContents: {
           id: 1,
@@ -28,10 +30,12 @@ const mocks = vi.hoisted(() => {
         restore: vi.fn(),
         show: vi.fn(),
         focus: vi.fn(),
+        setTitleBarOverlay: state.setTitleBarOverlay,
         getNormalBounds: () => ({ x: 0, y: 0, width: 1200, height: 760 }),
         loadURL: state.loadURL,
         on: state.windowOn,
       }
+      state.windowOptions.push(options)
       state.windows.push(win)
       return win
     }),
@@ -79,6 +83,7 @@ describe('main window navigation boundaries', () => {
     vi.clearAllMocks()
     delete process.env.GOBLIN_RENDERER_DEV_URL
     mocks.windows.length = 0
+    mocks.windowOptions.length = 0
     mocks.loadSettings.mockReturnValue(Promise.resolve({ windowBounds: null }))
   })
 
@@ -146,6 +151,42 @@ describe('main window navigation boundaries', () => {
 
     await getOrCreateMainWindow()
 
-    expect(mocks.loadURL).toHaveBeenCalledWith('http://127.0.0.1:5173/?theme=light&colorTheme=macos')
+    expect(mocks.loadURL).toHaveBeenCalledWith('http://127.0.0.1:5173/index.html?theme=light&colorTheme=macos')
+  })
+
+  test('configures chrome to match the current platform', async () => {
+    const { applyMainWindowChromeTheme, getOrCreateMainWindow } = await import('#/main/window.ts')
+
+    await getOrCreateMainWindow()
+
+    if (process.platform === 'darwin') {
+      expect(mocks.windowOptions[0]).toMatchObject({
+        titleBarStyle: 'hiddenInset',
+        titleBarOverlay: undefined,
+        autoHideMenuBar: false,
+      })
+
+      applyMainWindowChromeTheme('dark')
+      expect(mocks.setTitleBarOverlay).not.toHaveBeenCalled()
+      return
+    }
+
+    expect(mocks.windowOptions[0]).toMatchObject({
+      titleBarStyle: 'hidden',
+      titleBarOverlay: {
+        color: '#fbfbfd',
+        symbolColor: '#000000',
+        height: 40,
+      },
+      autoHideMenuBar: true,
+    })
+
+    applyMainWindowChromeTheme('dark')
+
+    expect(mocks.setTitleBarOverlay).toHaveBeenCalledWith({
+      color: '#1c1c1e',
+      symbolColor: '#ffffff',
+      height: 40,
+    })
   })
 })

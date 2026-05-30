@@ -41,7 +41,7 @@ vi.mock('electron', () => ({
     vi.fn(mockNotificationEmitting('show')),
     { isSupported: vi.fn(() => true) },
   ),
-  app: { on: vi.fn(), dock: { bounce: vi.fn() } },
+  app: { on: vi.fn(), getAppPath: vi.fn(() => '/app'), dock: { bounce: vi.fn() } },
 }))
 
 vi.mock('#/main/git/worktrees.ts', () => ({
