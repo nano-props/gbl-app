@@ -80,6 +80,7 @@ import {
   setEditorApp,
   getEditorApp,
 } from '#/main/settings.ts'
+import { getCredentialsManager } from '#/main/security/credentials.ts'
 import {
   effectiveDetailCollapsed,
   normalizeDetailPaneSizes,
@@ -234,11 +235,10 @@ function toRpcError(err: unknown): Extract<RpcResponse, { ok: false }>['error'] 
 
 async function externalAppsState(terminalPref: TerminalPref, editorPref: EditorPref): Promise<ExternalAppsSnapshot> {
   const state = await probeExternalApps(terminalPref, editorPref, currentRpcSignal())
-  return { gh: state.gh, terminal: state.terminals, editor: state.editors }
+  return { terminal: state.terminals, editor: state.editors }
 }
 
 function broadcastExternalAppsState(state: ExternalAppsSnapshot): void {
-  broadcastRpcEvent({ type: 'github-cli-changed', ...state.gh })
   broadcastRpcEvent({ type: 'terminal-app-changed', ...state.terminal })
   broadcastRpcEvent({ type: 'editor-app-changed', ...state.editor })
 }
@@ -547,6 +547,25 @@ function createRpcHandlers(): AppRpcHandlers {
         const s = await loadSettings()
         const state = await externalAppsState(s.terminalApp, s.editorApp)
         broadcastExternalAppsState(state)
+        return state
+      },
+    },
+    credentials: {
+      get: async () => {
+        const credentialsManager = getCredentialsManager()
+        return credentialsManager.snapshot()
+      },
+      set: async ({ token }) => {
+        if (token.trim().length === 0) throw new TRPCError({ code: 'BAD_REQUEST', message: 'GitHub token cannot be empty' })
+        const credentialsManager = getCredentialsManager()
+        const state = await credentialsManager.setGitHubToken(token)
+        broadcastRpcEvent({ type: 'github-credentials-changed', state })
+        return state
+      },
+      clear: async () => {
+        const credentialsManager = getCredentialsManager()
+        const state = await credentialsManager.clearGitHubToken()
+        broadcastRpcEvent({ type: 'github-credentials-changed', state })
         return state
       },
     },

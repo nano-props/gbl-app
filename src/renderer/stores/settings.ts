@@ -9,10 +9,10 @@
 
 import { create } from 'zustand'
 import type {
+  CredentialsSnapshot,
   EditorAppAvailability,
   EditorPref,
   ExternalAppsSnapshot,
-  GitHubCliState,
   GlobalShortcutState,
   ResolvedEditorApp,
   ResolvedTerminalApp,
@@ -33,8 +33,6 @@ interface SettingsStore {
   toggleDetailOnActionBarBlankClick: boolean
   globalShortcut: string
   globalShortcutRegistered: boolean
-  ghAvailable: boolean
-  ghVersion: string | null
   terminalApp: TerminalPref
   resolvedTerminalApp: ResolvedTerminalApp | null
   terminalAvailable: boolean
@@ -47,6 +45,8 @@ interface SettingsStore {
   /** Saved session from previous run — consumed once by App.tsx during
    *  hydration, then irrelevant. We keep it in state for diagnostics. */
   savedSession: SessionState
+  githubTokenConfigured: boolean
+  secureStorageAvailable: boolean
 
   hydrate: () => Promise<SessionState>
   hydrateExternalApps: () => Promise<void>
@@ -59,13 +59,13 @@ interface SettingsStore {
   setGlobalShortcut: (accelerator: string) => Promise<GlobalShortcutState>
   setTerminalApp: (pref: TerminalPref) => Promise<void>
   setEditorApp: (pref: EditorPref) => Promise<void>
+  setGitHubToken: (token: string) => Promise<void>
+  clearGitHubToken: () => Promise<void>
   refreshExternalApps: () => Promise<void>
 }
 
 type ExternalAppsStoreState = Pick<
   SettingsStore,
-  | 'ghAvailable'
-  | 'ghVersion'
   | 'terminalApp'
   | 'resolvedTerminalApp'
   | 'terminalAvailable'
@@ -103,12 +103,11 @@ function sameEditorAppAvailability(a: EditorAppAvailability, b: EditorAppAvailab
   return a.vscode === b.vscode && a.cursor === b.cursor && a.windsurf === b.windsurf
 }
 
-function applyGitHubCliState(state: GitHubCliState): Pick<SettingsStore, 'ghAvailable' | 'ghVersion'> {
-  return { ghAvailable: state.available, ghVersion: state.version }
-}
-
-function sameGitHubCliState(s: SettingsStore, next: Pick<SettingsStore, 'ghAvailable' | 'ghVersion'>): boolean {
-  return s.ghAvailable === next.ghAvailable && s.ghVersion === next.ghVersion
+function applyCredentialsState(state: CredentialsSnapshot): Pick<SettingsStore, 'githubTokenConfigured' | 'secureStorageAvailable'> {
+  return {
+    githubTokenConfigured: state.githubTokenConfigured,
+    secureStorageAvailable: state.secureStorageAvailable,
+  }
 }
 
 function applyTerminalAppState(state: {
@@ -141,7 +140,6 @@ function applyEditorAppState(state: {
 
 function applyExternalAppsSnapshot(state: ExternalAppsSnapshot): ExternalAppsStoreState {
   return {
-    ...applyGitHubCliState(state.gh),
     ...applyTerminalAppState(state.terminal),
     ...applyEditorAppState(state.editor),
   }
@@ -162,11 +160,11 @@ function sameEditorAppState(s: SettingsStore, next: EditorAppStoreState): boolea
 }
 
 function sameExternalAppsState(s: SettingsStore, next: ExternalAppsStoreState): boolean {
-  return sameGitHubCliState(s, next) && sameTerminalAppState(s, next) && sameEditorAppState(s, next)
+  return sameTerminalAppState(s, next) && sameEditorAppState(s, next)
 }
 
 function getExternalAppsDetectedAt(state: ExternalAppsSnapshot): number {
-  return Math.max(state.gh.detectedAt, state.terminal.detectedAt, state.editor.detectedAt)
+  return Math.max(state.terminal.detectedAt, state.editor.detectedAt)
 }
 
 function shouldIgnoreExternalAppsUpdate(currentDetectedAt: number, nextDetectedAt: number): boolean {
@@ -192,8 +190,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   toggleDetailOnActionBarBlankClick: false,
   globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
   globalShortcutRegistered: false,
-  ghAvailable: false,
-  ghVersion: null,
   terminalApp: 'auto',
   resolvedTerminalApp: null,
   terminalAvailable: false,
@@ -211,10 +207,13 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     workspaceLayout: DEFAULT_WORKSPACE_LAYOUT,
     detailPaneSizes: DEFAULT_DETAIL_PANE_SIZES,
   },
+  githubTokenConfigured: false,
+  secureStorageAvailable: false,
 
   async hydrate() {
     const version = ++hydrateVersion
     const snap = await rpc.settings.get.query()
+    const credentialsSnap = await rpc.credentials.get.query()
     if (version !== hydrateVersion) return snap.session
     set({
       fetchIntervalSec: snap.fetchIntervalSec,
@@ -228,6 +227,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       terminalApp: snap.terminalApp,
       editorApp: snap.editorApp,
       savedSession: snap.session,
+      ...applyCredentialsState(credentialsSnap),
     })
     const nextUnsubscribers: Array<() => void> = []
     try {
@@ -264,12 +264,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
               : { globalShortcut: accelerator, globalShortcutRegistered: registered },
           )
         }),
-        onRpcEventType('github-cli-changed', (event) => {
-          set((s) => {
-            const next = applyGitHubCliState(event)
-            return mergeDetectedExternalAppsState(s, next, event.detectedAt, sameGitHubCliState)
-          })
-        }),
         onRpcEventType('terminal-app-changed', (event) => {
           set((s) => {
             return mergeDetectedExternalAppsState(s, applyTerminalAppState(event), event.detectedAt, sameTerminalAppState)
@@ -278,6 +272,15 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
         onRpcEventType('editor-app-changed', (event) => {
           set((s) => {
             return mergeDetectedExternalAppsState(s, applyEditorAppState(event), event.detectedAt, sameEditorAppState)
+          })
+        }),
+        onRpcEventType('github-credentials-changed', (event) => {
+          set((s) => {
+            const next = applyCredentialsState(event.state)
+            return s.githubTokenConfigured === next.githubTokenConfigured &&
+                s.secureStorageAvailable === next.secureStorageAvailable
+              ? s
+              : next
           })
         }),
       )
@@ -356,6 +359,28 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     const state = await rpc.settings.setEditorApp.mutate({ pref })
     set((s) => {
       return mergeDetectedExternalAppsState(s, applyEditorAppState(state), state.detectedAt, sameEditorAppState)
+    })
+  },
+
+  async setGitHubToken(token) {
+    const state = await rpc.credentials.set.mutate({ token })
+    set((s) => {
+      const next = applyCredentialsState(state)
+      return s.githubTokenConfigured === next.githubTokenConfigured &&
+          s.secureStorageAvailable === next.secureStorageAvailable
+        ? s
+        : next
+    })
+  },
+
+  async clearGitHubToken() {
+    const state = await rpc.credentials.clear.mutate()
+    set((s) => {
+      const next = applyCredentialsState(state)
+      return s.githubTokenConfigured === next.githubTokenConfigured &&
+          s.secureStorageAvailable === next.secureStorageAvailable
+        ? s
+        : next
     })
   },
 

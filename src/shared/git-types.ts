@@ -106,7 +106,8 @@ export interface LogEntry {
 
 export interface GitRemoteInfo {
   name: string
-  url: string
+  fetchUrl: string
+  pushUrl: string
 }
 
 export type BrowserRemoteProvider = 'github' | 'gitlab' | 'external'

@@ -43,6 +43,28 @@ function rpcCall(request) {
 // `os.homedir()` or a sync IPC.
 const HOME_PREFIX = '--gbl-home-dir='
 const homeDir = process.argv.find((a) => a.startsWith(HOME_PREFIX))?.slice(HOME_PREFIX.length) ?? ''
+const rpcEventSubscribers = new Set()
+let rpcEventListener = null
+
+function ensureRpcEventListener() {
+  if (rpcEventListener) return
+  rpcEventListener = (_event, payload) => {
+    for (const cb of rpcEventSubscribers) {
+      try {
+        cb(payload)
+      } catch (err) {
+        console.warn('[ipc] goblin:event subscriber failed', err)
+      }
+    }
+  }
+  ipcRenderer.on('goblin:event', rpcEventListener)
+}
+
+function maybeDisposeRpcEventListener() {
+  if (rpcEventSubscribers.size > 0 || !rpcEventListener) return
+  ipcRenderer.off('goblin:event', rpcEventListener)
+  rpcEventListener = null
+}
 
 contextBridge.exposeInMainWorld('goblin', {
   homeDir,
@@ -57,6 +79,8 @@ contextBridge.exposeInMainWorld('goblin', {
     close: (input) => safeInvoke('goblin:terminal-close', input),
     pruneRepo: (input) => safeInvoke('goblin:terminal-prune-repo', input),
     notifyBell: (input) => safeInvoke('goblin:terminal-notify-bell', input),
+    sendTestNotification: () => safeInvoke('goblin:terminal-send-test-notification'),
+    setBadge: (count) => { ipcRenderer.send('goblin:terminal-set-badge', count) },
     onOutput: (cb) => {
       const listener = (_event, payload) => cb(payload)
       ipcRenderer.on('goblin:terminal-output', listener)
@@ -69,8 +93,11 @@ contextBridge.exposeInMainWorld('goblin', {
     },
   },
   onEvent: (cb) => {
-    const listener = (_event, payload) => cb(payload)
-    ipcRenderer.on('goblin:event', listener)
-    return () => ipcRenderer.off('goblin:event', listener)
+    rpcEventSubscribers.add(cb)
+    ensureRpcEventListener()
+    return () => {
+      rpcEventSubscribers.delete(cb)
+      maybeDisposeRpcEventListener()
+    }
   },
 })

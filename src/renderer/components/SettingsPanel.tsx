@@ -1,6 +1,6 @@
 // Unified settings overlay using Goblin's desktop UI tokens.
 
-import { useRef, useState, type ComponentType, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import {
   AppWindow,
@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#
 import { Switch } from '#/renderer/components/ui/switch.tsx'
 import { Badge } from '#/renderer/components/ui/badge.tsx'
 import { Button } from '#/renderer/components/ui/button.tsx'
+import { SecretInput } from '#/renderer/components/ui/secret-input.tsx'
 import { AppleTerminalIcon, CursorIcon, GhosttyIcon, VSCodeIcon, WindsurfIcon } from '#/renderer/components/ExternalAppIcon/index.tsx'
 import { GitHubMark } from '#/renderer/components/GitHubMark.tsx'
 import { ShortcutSettings } from '#/renderer/components/settings/ShortcutSettings.tsx'
@@ -60,13 +61,6 @@ interface ExternalToolItem {
   titleKey: string
   commandKey: string
   detail?: string | null
-}
-
-const GH_TOOL: ExternalToolItem = {
-  id: 'gh',
-  Icon: GitHubMark,
-  titleKey: 'settings.apps.tool.gh.title',
-  commandKey: 'settings.apps.tool.gh.command',
 }
 
 const TERMINAL_APPS: ExternalToolItem[] = [
@@ -110,10 +104,10 @@ export function SettingsPanel({ open, page, onPageChange, onClose }: Props) {
   const selectedPageButtonRef = useRef<HTMLButtonElement | null>(null)
   const pages: { page: SettingsPage; label: string; title: string; Icon: LucideIcon }[] = [
     { page: 'general', label: t('settings.group.general'), title: t('settings.group.general'), Icon: Settings2 },
-    { page: 'apps', label: t('settings.group.apps'), title: t('settings.group.apps'), Icon: AppWindow },
-    { page: 'sync', label: t('settings.group.sync'), title: t('settings.group.sync'), Icon: SlidersHorizontal },
-    { page: 'proxy', label: t('settings.group.proxy'), title: t('settings.group.proxy'), Icon: Shield },
     { page: 'shortcuts', label: t('settings.nav.shortcuts'), title: t('settings.shortcuts'), Icon: Keyboard },
+    { page: 'apps', label: t('settings.nav.integrations'), title: t('settings.nav.integrations'), Icon: AppWindow },
+    { page: 'sync', label: t('settings.nav.refresh'), title: t('settings.nav.refresh'), Icon: SlidersHorizontal },
+    { page: 'proxy', label: t('settings.group.proxy'), title: t('settings.group.proxy'), Icon: Shield },
     { page: 'about', label: t('settings.about'), title: t('settings.about'), Icon: Info },
   ]
   const active = pages.find((item) => item.page === page) ?? pages[0]
@@ -132,7 +126,7 @@ export function SettingsPanel({ open, page, onPageChange, onClose }: Props) {
       >
         <div className="flex h-full min-h-0 bg-background">
           <aside className="flex w-48 shrink-0 flex-col border-r border-separator bg-muted/30 px-3 py-3">
-            <nav className="space-y-1" aria-label={t('settings.title')}>
+            <nav className="space-y-1.5" aria-label={t('settings.title')}>
               {pages.map((item) => (
                 <Button
                   key={item.page}
@@ -142,24 +136,20 @@ export function SettingsPanel({ open, page, onPageChange, onClose }: Props) {
                   variant="ghost"
                   onClick={() => onPageChange(item.page)}
                   className={cn(
-                    'h-9 w-full justify-start gap-2.5 px-2.5 text-left text-sm font-normal',
+                    'h-9 w-full justify-start gap-2 px-2.5 text-left text-sm font-normal',
                     page === item.page
-                      ? 'bg-selected text-selected-foreground'
-                      : 'text-foreground hover:bg-accent hover:text-accent-foreground',
+                      ? 'bg-selected text-selected-foreground hover:bg-selected'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                   )}
                   aria-current={page === item.page ? 'page' : undefined}
                 >
-                  <span
+                  <item.Icon
                     className={cn(
-                      'flex size-6 shrink-0 items-center justify-center rounded-md border',
-                      page === item.page
-                        ? 'border-brand-border bg-brand-surface text-brand-text'
-                        : 'border-border bg-card text-muted-foreground',
+                      'size-4 shrink-0',
+                      page === item.page ? 'text-selected-foreground' : 'text-muted-foreground',
                     )}
-                  >
-                    <item.Icon className="size-3.5" />
-                  </span>
-                  <span className="truncate font-medium">{item.label}</span>
+                  />
+                  <span className={cn('truncate', page === item.page ? 'font-medium' : 'font-normal')}>{item.label}</span>
                 </Button>
               ))}
             </nav>
@@ -225,16 +215,14 @@ function GeneralSettings() {
   const testTerminalNotification = () => {
     if (testingTerminalNotification) return
     setTestingTerminalNotification(true)
+    // sendTestNotification resolves to true only after the 'show' event fires on
+    // the main process Notification object — not when show() is merely called.
+    // false means the notification was blocked (unsigned binary, permission denied, etc.).
     void terminalBridge
-      .notifyBell({
-        title: t('settings.terminal-notifications-test-title'),
-        body: t('settings.terminal-notifications-test-body'),
-      })
+      .sendTestNotification()
       .then((shown) => {
         if (shown) {
-          toast.success(t('settings.terminal-notifications-test-sent'), {
-            description: t('settings.terminal-notifications-test-sent-hint'),
-          })
+          toast.success(t('settings.terminal-notifications-test-sent'))
         } else {
           toast.error(t('settings.terminal-notifications-test-failed'), {
             description: t('settings.terminal-notifications-test-failed-hint'),
@@ -357,8 +345,10 @@ function GeneralSettings() {
 
 function ExternalAppSettings() {
   const t = useT()
-  const ghAvailable = useSettingsStore((s) => s.ghAvailable)
-  const ghVersion = useSettingsStore((s) => s.ghVersion)
+  const githubTokenConfigured = useSettingsStore((s) => s.githubTokenConfigured)
+  const secureStorageAvailable = useSettingsStore((s) => s.secureStorageAvailable)
+  const setGitHubToken = useSettingsStore((s) => s.setGitHubToken)
+  const clearGitHubToken = useSettingsStore((s) => s.clearGitHubToken)
   const terminalApp = useSettingsStore((s) => s.terminalApp)
   const terminalAppAvailability = useSettingsStore((s) => s.terminalAppAvailability)
   const setTerminalApp = useSettingsStore((s) => s.setTerminalApp)
@@ -367,6 +357,15 @@ function ExternalAppSettings() {
   const setEditorApp = useSettingsStore((s) => s.setEditorApp)
   const refreshExternalApps = useSettingsStore((s) => s.refreshExternalApps)
   const [refreshing, setRefreshing] = useState(false)
+  const [tokenInput, setTokenInput] = useState('')
+  const [tokenDirty, setTokenDirty] = useState(false)
+  const tokenDraftRef = useRef({
+    value: '',
+    dirty: false,
+    configured: githubTokenConfigured,
+    committing: false,
+    skipNextBlurCommit: false,
+  })
   const terminalOptions: { value: TerminalPref; labelKey: string }[] = [
     { value: 'auto', labelKey: 'settings.terminal.auto' },
     { value: 'ghostty', labelKey: 'settings.terminal.ghostty' },
@@ -380,6 +379,71 @@ function ExternalAppSettings() {
   ]
   const save = (fn: () => Promise<unknown>, label: string) => {
     void fn().catch((err) => console.warn(`[settings] ${label} update failed`, err))
+  }
+
+  useEffect(() => {
+    const draft = tokenDraftRef.current
+    draft.value = tokenInput
+    draft.dirty = tokenDirty
+    draft.configured = githubTokenConfigured
+  }, [githubTokenConfigured, tokenDirty, tokenInput])
+
+  const resetTokenDraft = (value = '') => {
+    const draft = tokenDraftRef.current
+    draft.value = value
+    draft.dirty = false
+    draft.skipNextBlurCommit = false
+    setTokenInput(value)
+    setTokenDirty(false)
+  }
+
+  const commitTokenDraft = (options?: { fromBlur?: boolean }) => {
+    const draft = tokenDraftRef.current
+    if (options?.fromBlur && draft.skipNextBlurCommit) {
+      draft.skipNextBlurCommit = false
+      return
+    }
+    draft.skipNextBlurCommit = false
+    if (!draft.dirty || draft.committing) return
+    const token = draft.value.trim()
+    draft.committing = true
+    if (!token) {
+      if (!draft.configured) {
+        draft.dirty = false
+        setTokenDirty(false)
+        draft.committing = false
+        return
+      }
+      save(async () => {
+        try {
+          await clearGitHubToken()
+          resetTokenDraft()
+        } finally {
+          tokenDraftRef.current.committing = false
+        }
+      }, 'github token')
+      return
+    }
+    save(async () => {
+      try {
+        await setGitHubToken(token)
+        resetTokenDraft(token)
+      } finally {
+        tokenDraftRef.current.committing = false
+      }
+    }, 'github token')
+  }
+
+  useEffect(() => {
+    return () => {
+      commitTokenDraft()
+    }
+  }, [])
+
+  const handleTokenKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    commitTokenDraft()
   }
 
   const handleRefresh = () => {
@@ -396,6 +460,76 @@ function ExternalAppSettings() {
 
   return (
     <>
+      <SettingsGroup label={t('settings.github.title')} hint={t('settings.github.body')}>
+        <SettingsList>
+          <SettingsRow
+            controlId="settings-github-token"
+            label={
+              <span className="inline-flex items-center gap-2">
+                <span>{t('settings.github.token-label')}</span>
+                <Badge
+                  variant={githubTokenConfigured ? 'success' : 'outline'}
+                  className={cn(githubTokenConfigured ? '' : 'text-muted-foreground')}
+                >
+                  {t(githubTokenConfigured ? 'settings.github.status-configured' : 'settings.github.status-not-configured')}
+                </Badge>
+                {githubTokenConfigured && (
+                  <Button
+                    type="button"
+                    data-interactive
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto px-1.5 text-muted-foreground hover:text-foreground"
+                    onPointerDown={() => {
+                      tokenDraftRef.current.skipNextBlurCommit = true
+                    }}
+                    onClick={() => {
+                      if (tokenDraftRef.current.committing) return
+                      tokenDraftRef.current.committing = true
+                      void clearGitHubToken()
+                        .then(() => {
+                          resetTokenDraft()
+                        })
+                        .catch((err) => {
+                          console.warn('[settings] github token update failed', err)
+                        })
+                        .finally(() => {
+                          tokenDraftRef.current.committing = false
+                        })
+                    }}
+                  >
+                    {t('settings.github.clear')}
+                  </Button>
+                )}
+              </span>
+            }
+            hint={secureStorageAvailable
+              ? githubTokenConfigured
+                ? `${t('settings.github.token-hint')} ${t('settings.github.configured-hidden')}`
+                : t('settings.github.token-hint')
+              : `${t('settings.github.token-hint')} ${t('settings.github.unavailable')}`}
+            control={
+              <div className="relative w-72">
+                <SecretInput
+                  id="settings-github-token"
+                  value={tokenInput}
+                  onChange={(event) => {
+                    setTokenInput(event.target.value)
+                    setTokenDirty(true)
+                  }}
+                  onBlur={() => commitTokenDraft({ fromBlur: true })}
+                  onKeyDown={handleTokenKeyDown}
+                  placeholder={t('settings.github.token-placeholder')}
+                  disabled={!secureStorageAvailable}
+                  className="h-8 w-full"
+                  showLabel={t('settings.github.show-token')}
+                  hideLabel={t('settings.github.hide-token')}
+                />
+              </div>
+            }
+          />
+        </SettingsList>
+      </SettingsGroup>
       <SettingsGroup label={t('settings.group.apps')}>
         <SettingsList>
           <SettingsRow
@@ -425,8 +559,7 @@ function ExternalAppSettings() {
         </SettingsList>
       </SettingsGroup>
       <SettingsGroup
-        label={t('settings.apps.detection')}
-        hint={t('settings.apps.detection-hint')}
+        label={t('settings.apps.group.terminals')}
         action={
           <Button
             type="button"
@@ -442,9 +575,6 @@ function ExternalAppSettings() {
           </Button>
         }
       >
-        <DetectionList items={[{ ...GH_TOOL, available: ghAvailable, detail: ghVersion }]} />
-      </SettingsGroup>
-      <SettingsGroup label={t('settings.apps.group.terminals')}>
         <DetectionList
           items={TERMINAL_APPS.map((item) => ({
             ...item,
@@ -539,25 +669,6 @@ function ProxySettings() {
           </div>
         </div>
       </SettingsGroup>
-      <SettingsGroup
-        label={
-          <span className="inline-flex items-center gap-1.5">
-            <span>{t('settings.proxy.gh-title')}</span>
-            <Badge variant="outline" className="border-border/60 text-muted-foreground/75">
-              {t('settings.proxy.external-badge')}
-            </Badge>
-          </span>
-        }
-        hint={t('settings.proxy.gh-body')}
-      >
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-background/85 shadow-[var(--shadow-inset-highlight)]">
-          <div className="px-4 py-3">
-            <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] leading-snug text-muted-foreground">
-              {t('settings.proxy.gh-example')}
-            </pre>
-          </div>
-        </div>
-      </SettingsGroup>
     </>
   )
 }
@@ -595,7 +706,9 @@ function AboutSettings() {
         <div className="min-w-0 flex-1">
           <span className="truncate text-sm font-medium text-foreground">{t('about.build')}</span>
         </div>
-        <span className="shrink-0 font-mono text-xs text-muted-foreground">{commit || t('about.build.unknown')}</span>
+        <span className={cn('shrink-0 text-xs text-muted-foreground', commit ? 'font-mono' : 'font-sans')}>
+          {commit || t('about.build.unknown')}
+        </span>
       </li>
       <li className="flex min-h-14 items-center gap-3 px-4 py-2.5 [&+&]:border-t [&+&]:border-separator">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
@@ -675,7 +788,7 @@ function SettingsRow({
   control,
 }: {
   controlId: string
-  label: string
+  label: ReactNode
   hint?: string
   control: ReactNode
 }) {

@@ -27,11 +27,6 @@ export type ResolvedEditorApp = Exclude<EditorPref, 'auto'>
 export type TerminalAppAvailability = Record<ResolvedTerminalApp, boolean>
 export type EditorAppAvailability = Record<ResolvedEditorApp, boolean>
 export type NetworkOpKind = 'user' | 'background'
-export interface GitHubCliState {
-  available: boolean
-  version: string | null
-  detectedAt: number
-}
 
 export interface ThemeState {
   pref: ThemePref
@@ -72,6 +67,11 @@ export interface GlobalShortcutState {
   registered: boolean
 }
 
+export interface CredentialsSnapshot {
+  githubTokenConfigured: boolean
+  secureStorageAvailable: boolean
+}
+
 export interface TerminalAppState {
   pref: TerminalPref
   resolved: ResolvedTerminalApp | null
@@ -89,7 +89,6 @@ export interface EditorAppState {
 }
 
 export interface ExternalAppsSnapshot {
-  gh: GitHubCliState
   terminal: TerminalAppState
   editor: EditorAppState
 }
@@ -189,12 +188,13 @@ export type RpcEvent =
   | { type: 'swap-close-shortcuts-changed'; swapped: boolean }
   | { type: 'toggle-detail-on-action-bar-blank-click-changed'; enabled: boolean }
   | { type: 'global-shortcut-changed'; state: GlobalShortcutState }
-  | ({ type: 'github-cli-changed' } & GitHubCliState)
   | ({ type: 'terminal-app-changed' } & TerminalAppState)
   | ({ type: 'editor-app-changed' } & EditorAppState)
+  | { type: 'github-credentials-changed'; state: CredentialsSnapshot }
   | { type: 'settings-write-error'; message: string }
   | { type: 'external-open-enqueued' }
   | { type: 'menu-action'; action: MenuAction }
+  | { type: 'terminal-bell-click'; repoRoot: string }
   | { type: 'i18n-changed'; payload: I18nPayload }
 
 export interface AppRpcHandlers {
@@ -277,6 +277,11 @@ export interface AppRpcHandlers {
   externalApps: {
     get: () => Promise<ExternalAppsSnapshot>
     refresh: () => Promise<ExternalAppsSnapshot>
+  }
+  credentials: {
+    get: () => Promise<CredentialsSnapshot>
+    set: (input: { token: string }) => Promise<CredentialsSnapshot>
+    clear: () => Promise<CredentialsSnapshot>
   }
   i18n: {
     get: () => Promise<I18nPayload>
@@ -450,6 +455,13 @@ export function createAppRouter(handlers: AppRpcHandlers) {
     externalApps: t.router({
       get: p.input(EmptyInput).query(() => handlers.externalApps.get()),
       refresh: p.input(EmptyInput).mutation(() => handlers.externalApps.refresh()),
+    }),
+    credentials: t.router({
+      get: p.input(EmptyInput).query(() => handlers.credentials.get()),
+      set: p
+        .input(v.object({ token: v.string() }))
+        .mutation(({ input }) => handlers.credentials.set(input)),
+      clear: p.input(EmptyInput).mutation(() => handlers.credentials.clear()),
     }),
     i18n: t.router({
       get: p.input(EmptyInput).query(() => handlers.i18n.get()),

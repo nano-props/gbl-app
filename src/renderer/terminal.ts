@@ -40,6 +40,12 @@ export const terminalBridge = {
   notifyBell(input: TerminalNotifyBellInput): Promise<TerminalMutationResult> {
     return getTerminalBridge().notifyBell(input)
   },
+  sendTestNotification(): Promise<boolean> {
+    return getTerminalBridge().sendTestNotification()
+  },
+  setBadge(count: number): void {
+    getTerminalBridge().setBadge(count)
+  },
   onOutput(cb: (event: TerminalOutputEvent) => void): () => void {
     return getTerminalBridge().onOutput(cb)
   },

@@ -77,6 +77,7 @@ describe('main window navigation boundaries', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    delete process.env.GOBLIN_RENDERER_DEV_URL
     mocks.windows.length = 0
     mocks.loadSettings.mockReturnValue(Promise.resolve({ windowBounds: null }))
   })
@@ -137,5 +138,14 @@ describe('main window navigation boundaries', () => {
     expect(mocks.BrowserWindow).toHaveBeenCalledTimes(1)
     expect(warn).toHaveBeenCalledWith('[window] failed to load app URL', expect.any(Error))
     warn.mockRestore()
+  })
+
+  test('loads the configured renderer dev server URL in development', async () => {
+    process.env.GOBLIN_RENDERER_DEV_URL = 'http://127.0.0.1:5173/'
+    const { getOrCreateMainWindow } = await import('#/main/window.ts')
+
+    await getOrCreateMainWindow()
+
+    expect(mocks.loadURL).toHaveBeenCalledWith('http://127.0.0.1:5173/?theme=light&colorTheme=goblin')
   })
 })

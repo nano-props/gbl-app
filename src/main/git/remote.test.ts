@@ -110,7 +110,7 @@ describe('fetchAll', () => {
     const { repo, remote } = initRepo('remote with space.git')
 
     await expect(getRemoteInfo(repo)).resolves.toEqual({
-      remotes: [{ name: 'origin', url: remote }],
+      remotes: [{ name: 'origin', fetchUrl: remote, pushUrl: remote }],
       hasRemotes: true,
       hasBrowserRemote: false,
       browserRemoteProvider: undefined,
@@ -121,6 +121,23 @@ describe('fetchAll', () => {
 
     expect(result.ok).toBe(true)
   }, 15000)
+
+  test('captures separate fetch and push URLs for a remote', async () => {
+    const { repo } = initRepo()
+    git(repo, 'remote', 'set-url', 'origin', 'https://github.com/nano-props/goblin.git')
+    git(repo, 'remote', 'set-url', '--push', 'origin', 'git@github.com:nano-props/goblin.git')
+
+    await expect(getRemoteInfo(repo)).resolves.toMatchObject({
+      remotes: [
+        {
+          name: 'origin',
+          fetchUrl: 'https://github.com/nano-props/goblin.git',
+          pushUrl: 'git@github.com:nano-props/goblin.git',
+        },
+      ],
+      hasRemotes: true,
+    })
+  })
 
   test('resolves browser URLs from non-origin GitHub remotes', async () => {
     tmp = mkdtempSync(path.join(os.tmpdir(), 'gbl-remote-test-'))

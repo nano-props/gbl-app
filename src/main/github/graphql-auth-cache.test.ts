@@ -2,20 +2,22 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 const TOKEN_ENV_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN'] as const
 const repo = { host: 'github.com', owner: 'acme', name: 'repo' }
-const execaMock = vi.hoisted(() => vi.fn())
+const credentialsManagerMock = vi.hoisted(() => ({
+  getGitHubToken: vi.fn<(host?: string) => string | null>(() => null),
+}))
 const originalEnv = Object.fromEntries(TOKEN_ENV_KEYS.map((key) => [key, process.env[key]])) as Record<
   (typeof TOKEN_ENV_KEYS)[number],
   string | undefined
 >
 
-vi.mock('execa', () => ({
-  ExecaError: Error,
-  execa: execaMock,
+vi.mock('#/main/security/credentials.ts', () => ({
+  getCredentialsManager: () => credentialsManagerMock,
 }))
 
 describe('GitHub auth token cache', () => {
   afterEach(() => {
-    execaMock.mockReset()
+    credentialsManagerMock.getGitHubToken.mockReset()
+    credentialsManagerMock.getGitHubToken.mockReturnValue(null)
     vi.resetModules()
     globalThis.fetch = originalFetch
     for (const key of TOKEN_ENV_KEYS) {
@@ -26,16 +28,13 @@ describe('GitHub auth token cache', () => {
 
   const originalFetch = globalThis.fetch
 
-  test('does not cache aborted gh auth token lookups as token misses', async () => {
+  test('does not cache aborted token lookups as token misses', async () => {
     vi.resetModules()
     for (const key of TOKEN_ENV_KEYS) delete process.env[key]
     let authCalls = 0
-    execaMock.mockImplementation((_command: string, _args: string[], options: { cancelSignal?: AbortSignal }) => {
+    credentialsManagerMock.getGitHubToken.mockImplementation(() => {
       authCalls += 1
-      if (options.cancelSignal?.aborted) {
-        return Promise.reject(Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' }))
-      }
-      return Promise.resolve({ stdout: 'cli-token' })
+      return null
     })
     globalThis.fetch = (async () =>
       new Response(JSON.stringify({ data: { ok: true } }), {
@@ -47,6 +46,7 @@ describe('GitHub auth token cache', () => {
     ctrl.abort()
 
     await graphqlRequestResult('/tmp/repo', repo, 'query Test { viewer { login } }', {}, 'Test', ctrl.signal)
+    process.env.GH_TOKEN = 'env-token'
     const result = await graphqlRequestResult<{ ok: boolean }>(
       '/tmp/repo',
       repo,
@@ -59,10 +59,9 @@ describe('GitHub auth token cache', () => {
     expect(result).toEqual({ ok: true, data: { ok: true } })
   })
 
-  test('returns a token miss when gh auth token is unavailable', async () => {
+  test('returns a token miss when no configured token or env token is available', async () => {
     vi.resetModules()
     for (const key of TOKEN_ENV_KEYS) delete process.env[key]
-    execaMock.mockRejectedValue(Object.assign(new Error('spawn gh ENOENT'), { code: 'ENOENT' }))
     const fetchMock = vi.fn()
     globalThis.fetch = fetchMock as unknown as typeof fetch
     const { graphqlRequestResult } = await import('#/main/github/graphql.ts')
@@ -74,19 +73,55 @@ describe('GitHub auth token cache', () => {
     if (!result.ok) expect(result.error.code).toBe('NO_AUTH_TOKEN')
   })
 
-  test('returns a token miss when gh is not logged in', async () => {
+  test('returns a configured safeStorage token before checking env tokens', async () => {
     vi.resetModules()
-    for (const key of TOKEN_ENV_KEYS) delete process.env[key]
-    execaMock.mockRejectedValue(new Error('not logged in'))
-    const fetchMock = vi.fn()
+    process.env.GH_TOKEN = 'env-token'
+    credentialsManagerMock.getGitHubToken.mockReturnValue('stored-token')
+    const fetchMock = vi.fn(async (_input, init) => {
+      expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer stored-token')
+      return new Response(JSON.stringify({ data: { ok: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
     globalThis.fetch = fetchMock as unknown as typeof fetch
     const { graphqlRequestResult } = await import('#/main/github/graphql.ts')
 
-    const result = await graphqlRequestResult('/tmp/repo', repo, 'query Test { viewer { login } }', {}, 'Test')
+    const result = await graphqlRequestResult<{ ok: boolean }>('/tmp/repo', repo, 'query Test { viewer { login } }', {}, 'Test')
 
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.error.code).toBe('NO_AUTH_TOKEN')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ ok: true, data: { ok: true } })
+  })
+
+  test('does not apply a stored github.com token to custom enterprise hosts', async () => {
+    vi.resetModules()
+    delete process.env.GH_TOKEN
+    delete process.env.GITHUB_TOKEN
+    process.env.GH_ENTERPRISE_TOKEN = 'enterprise-token'
+    credentialsManagerMock.getGitHubToken.mockImplementation((host?: string) =>
+      host === 'github.com' ? 'stored-public-token' : null,
+    )
+    const enterpriseRepo = { host: 'github.example.com', owner: 'acme', name: 'repo' }
+    const fetchMock = vi.fn(async (_input, init) => {
+      expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer enterprise-token')
+      return new Response(JSON.stringify({ data: { ok: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    const { graphqlRequestResult } = await import('#/main/github/graphql.ts')
+
+    const result = await graphqlRequestResult<{ ok: boolean }>(
+      '/tmp/repo',
+      enterpriseRepo,
+      'query Test { viewer { login } }',
+      {},
+      'Test',
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ ok: true, data: { ok: true } })
   })
 
   test('does not fetch when aborted before a queued GraphQL request starts', async () => {

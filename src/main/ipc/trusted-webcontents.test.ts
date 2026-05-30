@@ -3,6 +3,7 @@ import {
   isTrustedAppUrl,
   isTrustedIpcEvent,
   registerTrustedAppPath,
+  registerTrustedAppUrl,
   registerTrustedWebContents,
 } from '#/main/ipc/trusted-webcontents.ts'
 
@@ -37,6 +38,26 @@ describe('trusted app web contents', () => {
       isTrustedIpcEvent({
         sender: { id: 7 },
         senderFrame: { url: 'file:///tmp/dist/renderer/index.html?theme=light' },
+      } as any),
+    ).toBe(false)
+  })
+
+  test('trusts the registered dev server app URL but not other routes', () => {
+    registerTrustedAppUrl('http://127.0.0.1:5173/')
+    registerTrustedWebContents({ id: 8, once: vi.fn() } as any)
+
+    expect(isTrustedAppUrl('http://127.0.0.1:5173/?theme=light')).toBe(true)
+    expect(isTrustedAppUrl('http://127.0.0.1:5173/settings')).toBe(false)
+    expect(
+      isTrustedIpcEvent({
+        sender: { id: 8 },
+        senderFrame: { url: 'http://127.0.0.1:5173/?theme=light&colorTheme=goblin' },
+      } as any),
+    ).toBe(true)
+    expect(
+      isTrustedIpcEvent({
+        sender: { id: 8 },
+        senderFrame: { url: 'http://127.0.0.1:4173/?theme=light' },
       } as any),
     ).toBe(false)
   })

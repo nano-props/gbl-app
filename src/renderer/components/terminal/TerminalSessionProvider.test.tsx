@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import i18next from 'i18next'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -96,17 +95,6 @@ beforeEach(() => {
   mockSessions.length = 0
   resetReposStore()
   useSettingsStore.setState({ terminalNotificationsEnabled: false })
-  i18next.addResourceBundle(
-    'en',
-    'translation',
-    {
-      'terminal.index-title': 'Terminal {index}',
-      'terminal.bell-notification-title': 'Background terminal alert',
-      'terminal.bell-notification-body': '{terminalTitle} · {processName} · {branch}',
-    },
-    true,
-    true,
-  )
   document.body.innerHTML = ''
   Object.defineProperty(window, 'goblin', {
     configurable: true,
@@ -137,6 +125,7 @@ beforeEach(() => {
         resize: vi.fn(async () => true),
         close: vi.fn(async () => true),
         notifyBell: vi.fn(async () => true),
+        setBadge: vi.fn(async () => {}),
         pruneRepo: vi.fn(async () => true),
         onOutput: vi.fn(() => () => {}),
         onExit: vi.fn((cb: (event: TerminalExitEvent) => void) => {
@@ -236,8 +225,9 @@ describe('TerminalSessionProvider', () => {
         ['terminal-2', true, false],
       ])
       expect(notifyBell).toHaveBeenCalledWith({
-        title: 'Background terminal alert',
-        body: 'Terminal 1 · zsh · feature/worktree',
+        title: 'gbl-terminal-provider-repo',
+        body: 'feature/worktree\nzsh',
+        repoRoot: REPO_ID,
       })
 
       await act(async () => {

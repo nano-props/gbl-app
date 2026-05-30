@@ -46,6 +46,7 @@ export function emptyRepo(id: string, name: string): RepoState {
     },
     remote: {
       remotes: [],
+      remoteDetails: [],
       hasRemotes: false,
       hasBrowserRemote: false,
       browserRemoteProvider: undefined,

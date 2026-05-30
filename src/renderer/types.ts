@@ -4,6 +4,7 @@
 
 export type {
   BranchSnapshotInfo,
+  GitRemoteInfo,
   StatusEntry,
   WorktreeStatus,
   LogEntry,

@@ -46,6 +46,8 @@ const DEFAULT_PARKING_HEIGHT = 400
 const DEFAULT_TERMINAL_COLS = 80
 const DEFAULT_TERMINAL_ROWS = 24
 const RESIZE_DEBOUNCE_MS = 80
+const FONT_REMEASURE_DEBOUNCE_MS = 80
+const TERMINAL_FONT_FAMILY = "'Goblin Mono', monospace"
 const EMPTY_SEARCH_RESULT: TerminalSearchResult = { resultIndex: -1, resultCount: 0, found: false }
 
 export class ManagedTerminalSession {
@@ -78,6 +80,7 @@ export class ManagedTerminalSession {
   private pendingResize: { cols: number; rows: number } | null = null
   private pendingOutput: string[] = []
   private disposeThemeObserver: (() => void) | null = null
+  private disposeFontObserver: (() => void) | null = null
   private disposed = false
   private lastWidth = DEFAULT_PARKING_WIDTH
   private lastHeight = DEFAULT_PARKING_HEIGHT
@@ -86,6 +89,7 @@ export class ManagedTerminalSession {
   private searchResult: TerminalSearchResult | null = null
   private progressState: TerminalProgressState | null = null
   private processName = 'terminal'
+  private fontFitTimer: number | null = null
 
   constructor(
     descriptor: TerminalDescriptor,
@@ -231,6 +235,7 @@ export class ManagedTerminalSession {
       term.open(this.xtermHost)
 
       this.installResizeObserver()
+      this.installFontObserver(term)
       await waitForTerminalLayout()
       if (!this.currentStart(token, term)) return
       const restart = this.restartOnStart
@@ -385,6 +390,9 @@ export class ManagedTerminalSession {
     for (const disposable of this.disposables.splice(0)) disposable.dispose()
     this.disposeThemeObserver?.()
     this.disposeThemeObserver = null
+    this.disposeFontObserver?.()
+    this.disposeFontObserver = null
+    this.cancelFontFit()
     this.fitAddon = null
     this.searchAddon = null
     this.serializeAddon = null
@@ -409,15 +417,17 @@ export class ManagedTerminalSession {
   private createTerminal(): XTermTerminal {
     const theme = terminalThemeForCurrentDocument()
     const term = new Terminal({
+      allowProposedApi: true,
       cols: DEFAULT_TERMINAL_COLS,
       rows: DEFAULT_TERMINAL_ROWS,
       cursorBlink: true,
-      fontFamily: "'JetBrains Mono', var(--font-mono)",
+      fontFamily: TERMINAL_FONT_FAMILY,
       fontSize: 14,
       lineHeight: 1.35,
       minimumContrastRatio: 4.5,
       scrollback: 10_000,
       macOptionIsMeta: true,
+      rescaleOverlappingGlyphs: true,
       scrollOnUserInput: true,
       theme,
     })
@@ -584,9 +594,44 @@ export class ManagedTerminalSession {
     this.resizeObserver.observe(this.xtermHost)
   }
 
+  private installFontObserver(term: XTermTerminal): void {
+    this.disposeFontObserver?.()
+    this.disposeFontObserver = null
+    const fonts = document.fonts
+    if (!fonts) return
+    const refit = () => this.scheduleFontFit(term)
+    fonts.ready.then(refit).catch(() => {})
+    fonts.addEventListener?.('loadingdone', refit)
+    this.disposeFontObserver = () => {
+      fonts.removeEventListener?.('loadingdone', refit)
+    }
+  }
+
   private disconnectResizeObserver(): void {
     this.resizeObserver?.disconnect()
     this.resizeObserver = null
+  }
+
+  private scheduleFontFit(term: XTermTerminal): void {
+    if (this.disposed || this.term !== term) return
+    this.cancelFontFit()
+    this.fontFitTimer = window.setTimeout(() => {
+      this.fontFitTimer = null
+      this.fitForFontLoad(term)
+    }, FONT_REMEASURE_DEBOUNCE_MS)
+  }
+
+  private cancelFontFit(): void {
+    if (this.fontFitTimer === null) return
+    window.clearTimeout(this.fontFitTimer)
+    this.fontFitTimer = null
+  }
+
+  private fitForFontLoad(term: XTermTerminal): void {
+    if (this.disposed || this.term !== term || !this.fitAddon || !hasMeasurableBox(this.xtermHost)) return
+    remeasureTerminal(term)
+    this.fitAddon.fit()
+    term.refresh(0, Math.max(0, term.rows - 1))
   }
 
   private fitSoon(): void {
@@ -680,6 +725,17 @@ function waitForTerminalResponseFlush(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())), 0)
   })
+}
+
+function remeasureTerminal(term: XTermTerminal): void {
+  const internal = term as XTermTerminal & {
+    _core?: {
+      _charSizeService?: { measure?: () => void }
+      _renderService?: { clear?: () => void }
+    }
+  }
+  internal._core?._charSizeService?.measure?.()
+  internal._core?._renderService?.clear?.()
 }
 
 function cancelScheduledAnimationFrame(frame: number): void {

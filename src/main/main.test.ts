@@ -27,6 +27,9 @@ const mocks = vi.hoisted(() => {
     flushSettings: vi.fn(() => Promise.resolve(true)),
     initTheme: vi.fn(() => Promise.resolve()),
     loadSettings: vi.fn(() => Promise.resolve(settings)),
+    credentialsManager: {
+      load: vi.fn(() => Promise.resolve()),
+    },
     resolveLang: vi.fn(() => 'en'),
     setCurrentLang: vi.fn(),
     syncGlobalShortcuts: vi.fn(),
@@ -48,6 +51,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('electron', () => ({
   app: {
     focus: vi.fn(),
+    getPath: vi.fn(() => '/tmp/goblin'),
     isPackaged: false,
     on: mocks.appOn,
     exit: mocks.exit,
@@ -69,6 +73,10 @@ vi.mock('#/main/theme.ts', () => ({
 vi.mock('#/main/settings.ts', () => ({
   flushSettings: mocks.flushSettings,
   loadSettings: mocks.loadSettings,
+}))
+
+vi.mock('#/main/security/credentials.ts', () => ({
+  getCredentialsManager: vi.fn(() => mocks.credentialsManager),
 }))
 
 vi.mock('#/main/menu.ts', () => ({

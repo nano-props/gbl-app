@@ -47,8 +47,6 @@ function resetSettingsStore(): void {
     toggleDetailOnActionBarBlankClick: false,
     globalShortcut: 'CommandOrControl+Shift+G',
     globalShortcutRegistered: false,
-    ghAvailable: false,
-    ghVersion: null,
     terminalApp: 'auto',
     resolvedTerminalApp: null,
     terminalAvailable: false,
@@ -58,6 +56,8 @@ function resetSettingsStore(): void {
     editorAvailable: false,
     editorAppAvailability: { vscode: false, cursor: false, windsurf: false },
     externalAppsDetectedAt: 0,
+    githubTokenConfigured: false,
+    secureStorageAvailable: true,
     savedSession: {
       openRepos: [],
       activeRepo: null,
@@ -76,7 +76,6 @@ describe('settings store external app hydration', () => {
 
   test('ignores stale externalApps.get results after a newer refresh', async () => {
     const startup = deferred<{
-      gh: { available: boolean; version: string | null; detectedAt: number }
       terminal: {
         pref: 'auto'
         resolved: 'terminal'
@@ -93,7 +92,6 @@ describe('settings store external app hydration', () => {
       }
     }>()
     const refreshed = {
-      gh: { available: true, version: 'gh version 2.80.0', detectedAt: 200 },
       terminal: {
         pref: 'auto' as const,
         resolved: 'ghostty' as const,
@@ -118,7 +116,6 @@ describe('settings store external app hydration', () => {
     await Promise.resolve()
     await useSettingsStore.getState().refreshExternalApps()
     startup.resolve({
-      gh: { available: false, version: null, detectedAt: 100 },
       terminal: {
         pref: 'auto',
         resolved: 'terminal',
@@ -137,8 +134,6 @@ describe('settings store external app hydration', () => {
     await hydratePromise
 
     expect(useSettingsStore.getState()).toMatchObject({
-      ghAvailable: true,
-      ghVersion: 'gh version 2.80.0',
       resolvedTerminalApp: 'ghostty',
       terminalAppAvailability: { ghostty: true, terminal: true },
       resolvedEditorApp: 'cursor',
@@ -172,8 +167,8 @@ describe('settings store external app hydration', () => {
         },
         recentRepos: [],
       }),
+      'credentials.get': () => ({ githubTokenConfigured: false, secureStorageAvailable: true }),
       'externalApps.refresh': () => ({
-        gh: { available: true, version: 'gh version 2.80.0', detectedAt: 200 },
         terminal: {
           pref: 'auto',
           resolved: 'ghostty',
@@ -234,6 +229,7 @@ describe('settings store external app hydration', () => {
         },
         recentRepos: [],
       }),
+      'credentials.get': () => ({ githubTokenConfigured: false, secureStorageAvailable: true }),
     })
 
     await useSettingsStore.getState().hydrate()

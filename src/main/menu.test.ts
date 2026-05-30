@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => {
   const win = { isDestroyed: () => false, webContents: { isDestroyed: () => false, send: vi.fn() } }
   return {
     appGetPath: vi.fn<(name: string) => string>((name: string) => (name === 'home' ? '/home/user' : '/data')),
+    getShortcutsDisabled: vi.fn(() => false),
     template,
     win,
     activateMainWindow: vi.fn(() => Promise.resolve(win)),
@@ -62,7 +63,7 @@ vi.mock('#/main/settings.ts', () => ({
     workspaceLayout: 'top-bottom',
     detailPaneSizes: {},
   })),
-  getShortcutsDisabled: vi.fn(() => false),
+  getShortcutsDisabled: mocks.getShortcutsDisabled,
   getSwapCloseShortcuts: vi.fn(() => false),
 }))
 
@@ -82,6 +83,7 @@ describe('app menu actions', () => {
     vi.clearAllMocks()
     mocks.template.length = 0
     mocks.appGetPath.mockImplementation((name: string) => (name === 'home' ? '/home/user' : '/data'))
+    mocks.getShortcutsDisabled.mockReturnValue(false)
     mocks.getRecentRepos.mockReturnValue([])
     mocks.getMainWindow.mockReturnValue(null)
     mocks.getFocusedWindow.mockReturnValue(null)
@@ -132,6 +134,22 @@ describe('app menu actions', () => {
     const fileMenu = mocks.template.find((entry) => entry.label === 'menu.file')
     const recentMenu = fileMenu?.submenu?.find((entry: any) => entry.label === 'menu.file.open-recent')
     expect(recentMenu?.submenu?.[0]?.label).toBe('~\\Developer\\repo')
+  })
+
+  test('keeps the shortcuts help item available when shortcuts are disabled', async () => {
+    mocks.getShortcutsDisabled.mockReturnValue(true)
+    mocks.getMainWindow.mockReturnValue(mocks.win)
+    const { buildAppMenu } = await import('#/main/menu.ts')
+
+    buildAppMenu()
+
+    const helpMenu = mocks.template.find((entry) => entry.label === 'menu.help')
+    const shortcutsItem = helpMenu?.submenu?.find((entry: any) => entry.label === 'menu.help.shortcuts')
+    expect(shortcutsItem?.enabled).not.toBe(false)
+    shortcutsItem.click()
+    await Promise.resolve()
+
+    expect(mocks.sendRpcEvent).toHaveBeenCalledWith(mocks.win, { type: 'menu-action', action: 'show-help' })
   })
 })
 

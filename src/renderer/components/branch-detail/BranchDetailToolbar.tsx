@@ -137,12 +137,12 @@ export function BranchDetailToolbar({
               >
                 {t(tab.labelKey)}
                 {tab.id === 'changes' && detail.statusCount > 0 && (
-                  <Badge variant="attention" className="font-mono tabular-nums">
+                  <Badge variant="attention" className="font-normal font-mono tabular-nums">
                     {detail.statusCount}
                   </Badge>
                 )}
                 {tab.id === 'terminal' && terminalCount > 0 && (
-                  <Badge variant="outline" className="font-mono tabular-nums text-muted-foreground">
+                  <Badge variant="outline" className="font-normal font-mono tabular-nums text-muted-foreground">
                     {terminalCount}
                   </Badge>
                 )}

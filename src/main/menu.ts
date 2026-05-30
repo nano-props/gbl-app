@@ -114,7 +114,7 @@ function createAppMenuTemplate(state: AppMenuState): MenuItemConstructorOptions[
     createEditMenu(),
     createViewMenu(state),
     createWindowMenu(state),
-    createHelpMenu(state),
+    createHelpMenu(),
   ]
 }
 
@@ -282,13 +282,13 @@ function createWindowMenu(state: AppMenuState): MenuItemConstructorOptions {
   }
 }
 
-function createHelpMenu(state: AppMenuState): MenuItemConstructorOptions {
+function createHelpMenu(): MenuItemConstructorOptions {
   return {
     label: t('menu.help'),
     // No menu accelerator: Electron requires a modifier on accelerators,
     // and bare `?` is rejected at registration. The renderer's keyboard
     // hook handles `?` directly so the binding still works.
-    submenu: [{ label: t('menu.help.shortcuts'), enabled: !state.shortcutsDisabled, click: () => send('show-help') }],
+    submenu: [{ label: t('menu.help.shortcuts'), click: () => send('show-help') }],
   }
 }
 

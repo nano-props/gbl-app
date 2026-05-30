@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import i18next from 'i18next'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { createTerminalBellController } from '#/renderer/components/terminal/terminal-bell-controller.ts'
 import { useSettingsStore } from '#/renderer/stores/settings.ts'
@@ -18,17 +17,6 @@ const descriptor: TerminalDescriptor = {
 
 beforeEach(() => {
   useSettingsStore.setState({ terminalNotificationsEnabled: false })
-  i18next.addResourceBundle(
-    'en',
-    'translation',
-    {
-      'terminal.index-title': 'Terminal {index}',
-      'terminal.bell-notification-title': 'Background terminal alert',
-      'terminal.bell-notification-body': '{terminalTitle} · {processName} · {branch}',
-    },
-    true,
-    true,
-  )
   Object.defineProperty(window, 'goblin', {
     configurable: true,
     value: {
@@ -39,6 +27,7 @@ beforeEach(() => {
       pathForFile: vi.fn(() => ''),
       terminal: {
         notifyBell: vi.fn(async () => true),
+        setBadge: vi.fn(async () => {}),
       },
     },
   })
@@ -49,7 +38,7 @@ describe('terminal bell controller', () => {
     const notify = vi.fn()
     const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
     useSettingsStore.setState({ terminalNotificationsEnabled: true })
-    const controller = createTerminalBellController(notify)
+    const controller = createTerminalBellController(notify, vi.fn())
 
     controller.handleBell(descriptor, { processName: 'zsh', visible: false })
     await Promise.resolve()
@@ -57,8 +46,9 @@ describe('terminal bell controller', () => {
     expect(controller.hasBell(descriptor.key)).toBe(true)
     expect(notify).toHaveBeenCalledTimes(1)
     expect(window.goblin.terminal.notifyBell).toHaveBeenCalledWith({
-      title: 'Background terminal alert',
-      body: 'Terminal 1 · zsh · feature/test',
+      title: 'repo',
+      body: 'feature/test\nzsh',
+      repoRoot: '/tmp/repo',
     })
 
     hasFocus.mockRestore()
@@ -68,7 +58,7 @@ describe('terminal bell controller', () => {
     const notify = vi.fn()
     const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
     useSettingsStore.setState({ terminalNotificationsEnabled: false })
-    const controller = createTerminalBellController(notify)
+    const controller = createTerminalBellController(notify, vi.fn())
 
     controller.handleBell(descriptor, { processName: 'zsh', visible: false })
     await Promise.resolve()
@@ -84,7 +74,7 @@ describe('terminal bell controller', () => {
     const notify = vi.fn()
     const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     useSettingsStore.setState({ terminalNotificationsEnabled: true })
-    const controller = createTerminalBellController(notify)
+    const controller = createTerminalBellController(notify, vi.fn())
 
     controller.handleBell(descriptor, { processName: 'zsh', visible: true })
     await Promise.resolve()
@@ -101,7 +91,7 @@ describe('terminal bell controller', () => {
     const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
     const now = vi.spyOn(Date, 'now')
     useSettingsStore.setState({ terminalNotificationsEnabled: true })
-    const controller = createTerminalBellController(notify)
+    const controller = createTerminalBellController(notify, vi.fn())
 
     now.mockReturnValueOnce(10_000)
     controller.handleBell(descriptor, { processName: 'zsh', visible: false })
@@ -123,7 +113,7 @@ describe('terminal bell controller', () => {
   })
 
   test('supports clearing and removing tracked bell state', () => {
-    const controller = createTerminalBellController(vi.fn())
+    const controller = createTerminalBellController(vi.fn(), vi.fn())
 
     controller.handleBell(descriptor, { processName: 'zsh', visible: false })
     expect(controller.hasBell(descriptor.key)).toBe(true)
@@ -140,7 +130,7 @@ describe('terminal bell controller', () => {
     const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
     const now = vi.spyOn(Date, 'now')
     useSettingsStore.setState({ terminalNotificationsEnabled: true })
-    const controller = createTerminalBellController(vi.fn())
+    const controller = createTerminalBellController(vi.fn(), vi.fn())
 
     now.mockReturnValueOnce(20_000)
     controller.handleBell(descriptor, { processName: 'zsh', visible: false })

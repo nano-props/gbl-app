@@ -64,7 +64,7 @@
    * and font stacks. */
   --font-sans:
     -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-mono: 'Goblin Mono', monospace;
 
   --shadow-xs: var(--gbl-shadow-xs, var(--gbl-shadow-sm));
   --shadow-sm: var(--gbl-shadow-sm);

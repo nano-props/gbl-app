@@ -97,10 +97,10 @@ export function CommitDetail({ repoId, detail }: Props) {
                 {f.binary ? <FileWarning size={14} /> : <FileText size={14} />}
               </span>
               <FilePathText path={f.path} />
-              <span className="shrink-0 font-mono text-xs">
-                {f.binary ? (
-                  <span className="text-muted-foreground">{t('commit.binary')}</span>
-                ) : (
+              {f.binary ? (
+                <span className="shrink-0 text-xs text-muted-foreground">{t('commit.binary')}</span>
+              ) : (
+                <span className="shrink-0 font-mono text-xs">
                   <>
                     <span className="text-success">+{f.added}</span> <span className="text-danger">−{f.deleted}</span>
                     <span
@@ -113,8 +113,8 @@ export function CommitDetail({ repoId, detail }: Props) {
                       }}
                     />
                   </>
-                )}
-              </span>
+                </span>
+              )}
             </li>
           ))}
         </ul>

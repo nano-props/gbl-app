@@ -43,6 +43,8 @@ export interface TerminalPruneRepoInput {
 export interface TerminalNotifyBellInput {
   title: string
   body: string
+  /** Clicking the notification focuses Goblin and navigates to this repo's terminal tab. */
+  repoRoot: string
 }
 
 export type TerminalMutationResult = boolean
@@ -81,6 +83,10 @@ export function isValidTerminalSize(cols: unknown, rows: unknown): boolean {
 
 export function isValidTerminalNotifyBellInput(value: unknown): value is TerminalNotifyBellInput {
   if (!value || typeof value !== 'object') return false
-  const { title, body } = value as { title?: unknown; body?: unknown }
-  return typeof title === 'string' && title.length > 0 && title.length <= 200 && typeof body === 'string' && body.length > 0 && body.length <= 500
+  const { title, body, repoRoot } = value as { title?: unknown; body?: unknown; repoRoot?: unknown }
+  return (
+    typeof title === 'string' && title.length > 0 && title.length <= 200 &&
+    typeof body === 'string' && body.length > 0 && body.length <= 500 &&
+    typeof repoRoot === 'string' && repoRoot.length > 0
+  )
 }

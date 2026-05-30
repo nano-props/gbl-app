@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   formatGraphqlError,
   GITHUB_API_CONCURRENCY,
@@ -9,6 +9,12 @@ import {
   tokenFromEnv,
   type GraphqlRequestError,
 } from '#/main/github/graphql.ts'
+
+vi.mock('#/main/security/credentials.ts', () => ({
+  getCredentialsManager: () => ({
+    getGitHubToken: (_host?: string) => null,
+  }),
+}))
 
 const TOKEN_ENV_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN'] as const
 const repo = { host: 'github.com', owner: 'acme', name: 'repo' }

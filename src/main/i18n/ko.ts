@@ -90,6 +90,7 @@ export const ko: Record<DictKey, string> = {
   'repo-tabs.clone-confirm': '클론 후 열기',
   'repo-tabs.clone-cloning': '클론 중…',
   'repo-tabs.clone-opened': '리포지토리를 클론했습니다',
+  'repo-tabs.tooltip.no-remotes': '원격 없음',
   'repo-unavailable.title': '리포지토리 경로를 사용할 수 없음',
   'repo-unavailable.body':
     'Goblin 이 이 경로를 Git 리포지토리로 읽을 수 없습니다. 폴더를 복원하거나 .git 을 다시 만든 뒤 재시도하세요.',
@@ -172,7 +173,7 @@ export const ko: Record<DictKey, string> = {
   'branch-status.copy-worktree-path': '워크트리 경로 복사',
   'branch-status.copied': '복사됨',
   'branch-status.signal.branch': '브랜치',
-  'branch-status.signal.remote': '업스트림',
+  'branch-status.signal.upstream': '업스트림',
   'branch-status.signal.sync': '동기화',
   'branch-status.signal.merge': '기준선',
   'branch-status.signal.pr': 'PR',
@@ -236,8 +237,6 @@ export const ko: Record<DictKey, string> = {
   'terminal.index-title': '터미널 {index}',
   'terminal.bell-unread': '읽지 않은 터미널 벨',
   'terminal.bell-unread-count': '읽지 않은 벨 {count}개',
-  'terminal.bell-notification-title': '백그라운드 터미널 알림',
-  'terminal.bell-notification-body': '{terminalTitle} · {processName} · {branch}',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) --
   'worktrees.reveal-title': 'Finder 에서 보기',
@@ -386,20 +385,31 @@ export const ko: Record<DictKey, string> = {
   'settings.terminal-notifications': '터미널 벨 알림',
   'settings.terminal-notifications-hint': '백그라운드 터미널 벨에 대해 시스템 알림을 표시합니다.',
   'settings.terminal-notifications-test': '시스템 알림 테스트',
-  'settings.terminal-notifications-test-hint':
-    '같은 알림 경로로 테스트 알림을 보냅니다. Dock 튐만 보인다면 macOS 알림 설정을 확인하세요.',
+  'settings.terminal-notifications-test-hint': '테스트 알림을 보내 시스템 알림이 정상적으로 작동하는지 확인합니다.',
   'settings.terminal-notifications-test-button': '테스트 알림 표시',
   'settings.terminal-notifications-test-title': 'Goblin 테스트 알림',
-  'settings.terminal-notifications-test-body': '오른쪽 상단 알림이 보이지 않으면 macOS 알림 설정을 확인하세요.',
+  'settings.terminal-notifications-test-body': '이 알림이 보이면 알림이 정상적으로 작동하고 있습니다.',
   'settings.terminal-notifications-test-sent': '테스트 알림을 보냈습니다',
-  'settings.terminal-notifications-test-sent-hint':
-    'Dock 튐만 있고 오른쪽 상단 알림이 없다면 macOS의 Goblin 알림 설정을 확인하세요.',
   'settings.terminal-notifications-test-failed': '테스트 알림을 표시할 수 없습니다',
-  'settings.terminal-notifications-test-failed-hint': '알림 요청이 성공적으로 완료되지 않았습니다. 다시 시도해 주세요.',
+  'settings.terminal-notifications-test-failed-hint': '시스템 설정 → 알림 → Goblin으로 이동하여 알림이 허용되어 있는지 확인하세요.',
   'settings.group.general': '일반',
+  'settings.github.title': 'GitHub',
+  'settings.github.body': '풀 리퀘스트 및 기타 GitHub 기능을 사용하기 위해 GitHub.com 인증을 구성합니다.',
+  'settings.github.token-label': '개인 액세스 토큰',
+  'settings.github.token-placeholder': 'ghp_...',
+  'settings.github.token-hint': 'Classic PAT를 사용하고 repo 권한을 부여하세요. 저장된 토큰은 GitHub.com에만 적용됩니다.',
+  'settings.github.configured-hidden': '구성된 토큰은 다시 표시되지 않습니다.',
+  'settings.github.status-configured': '구성됨',
+  'settings.github.status-not-configured': '구성 안 됨',
+  'settings.github.show-token': '토큰 표시',
+  'settings.github.hide-token': '토큰 숨기기',
+  'settings.github.clear': '지우기',
+  'settings.github.unavailable': '이 시스템에서는 보안 저장소를 사용할 수 없어 GitHub 토큰 저장이 비활성화되었습니다.',
   'settings.group.apps': '외부 앱',
   'settings.group.sync': '동기화',
   'settings.group.proxy': '프록시',
+  'settings.nav.integrations': '연동',
+  'settings.nav.refresh': '새로 고침',
   'settings.nav.shortcuts': '단축키',
   'settings.about': '정보',
   'settings.terminal': '터미널',
@@ -450,12 +460,6 @@ export const ko: Record<DictKey, string> = {
   'settings.proxy.http-example':
     'git config --global http.proxy http://127.0.0.1:7890\n' +
     'git config --global https.proxy http://127.0.0.1:7890',
-  'settings.proxy.gh-title': 'GitHub CLI (`gh`)',
-  'settings.proxy.gh-body':
-    'Goblin은 `gh auth token`만 호출하고 시작 환경을 그대로 넘깁니다. `gh`에 프록시가 필요하면 Goblin 실행 전에 `HTTP_PROXY` / `HTTPS_PROXY`를 설정하세요. 이것이 Goblin의 GitHub API 요청까지 프록시하는 것은 아닙니다.',
-  'settings.proxy.gh-example':
-    'export HTTP_PROXY=http://127.0.0.1:7890\n' +
-    'export HTTPS_PROXY=http://127.0.0.1:7890',
   'settings.proxy.ssh-title': 'SSH 원격',
   'settings.proxy.ssh-body':
     'SSH 원격을 쓴다면 ~/.ssh/config를 설정하세요. Goblin은 시스템 git/ssh를 그대로 따릅니다.',

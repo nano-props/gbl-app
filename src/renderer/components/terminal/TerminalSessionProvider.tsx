@@ -22,6 +22,10 @@ interface TerminalSessionProviderProps {
   children: ReactNode
 }
 
+function syncDockBadge(count: number): void {
+  terminalBridge.setBadge(count)
+}
+
 export function TerminalSessionProvider({ children }: TerminalSessionProviderProps) {
   const repos = useReposStore((s) => s.repos)
   const parkingRootRef = useRef<HTMLDivElement | null>(null)
@@ -31,7 +35,7 @@ export function TerminalSessionProvider({ children }: TerminalSessionProviderPro
   const [version, setVersion] = useState(0)
   const notify = useCallback(() => setVersion((current) => current + 1), [])
   const bellControllerRef = useRef<ReturnType<typeof createTerminalBellController> | null>(null)
-  if (!bellControllerRef.current) bellControllerRef.current = createTerminalBellController(notify)
+  if (!bellControllerRef.current) bellControllerRef.current = createTerminalBellController(notify, syncDockBadge)
   const bellController = bellControllerRef.current
 
   function removeSession(key: string, options: { dispose: boolean }): boolean {

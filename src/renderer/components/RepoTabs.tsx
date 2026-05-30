@@ -28,6 +28,12 @@ function summariesEqual(a: RepoTabSummary[], b: RepoTabSummary[]): boolean {
     const x = a[i]!
     const y = b[i]!
     if (x.id !== y.id || x.name !== y.name || x.unavailable !== y.unavailable) return false
+    if (x.remoteDetails.length !== y.remoteDetails.length) return false
+    for (let j = 0; j < x.remoteDetails.length; j++) {
+      const xr = x.remoteDetails[j]!
+      const yr = y.remoteDetails[j]!
+      if (xr.name !== yr.name || xr.fetchUrl !== yr.fetchUrl || xr.pushUrl !== yr.pushUrl) return false
+    }
   }
   return true
 }
@@ -52,7 +58,14 @@ export function RepoTabs({ onClone }: RepoTabsProps) {
       s.order
         .map<RepoTabSummary | null>((id) => {
           const r = s.repos[id]
-          return r ? { id: r.id, name: r.name, unavailable: r.availability.phase === 'unavailable' } : null
+          return r
+            ? {
+                id: r.id,
+                name: r.name,
+                remoteDetails: r.remote.remoteDetails ?? [],
+                unavailable: r.availability.phase === 'unavailable',
+              }
+            : null
         })
         .filter((x): x is RepoTabSummary => x !== null),
     summariesEqual,

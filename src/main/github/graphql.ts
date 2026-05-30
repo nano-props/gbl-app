@@ -1,4 +1,3 @@
-import { execa } from 'execa'
 import { getRemotes, getUpstreamParts, pickPreferredRemote } from '#/main/git/remote.ts'
 import { isGitHubHost, parseGitRemoteUrl } from '#/main/git/remote-url.ts'
 import {
@@ -7,7 +6,7 @@ import {
   GITHUB_API_INTERVAL_CAP,
   GITHUB_API_INTERVAL_MS,
 } from '#/main/github/queue.ts'
-import { buildGitHubCliPath } from '#/main/system/github-cli.ts'
+import { getCredentialsManager } from '#/main/security/credentials.ts'
 
 export const GITHUB_API_TIMEOUT_MS = 17_000
 export { GITHUB_API_CONCURRENCY, GITHUB_API_INTERVAL_CAP, GITHUB_API_INTERVAL_MS }
@@ -63,23 +62,6 @@ export type GraphqlRequestResult<TData> =
 
 const TOKEN_ENV_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN'] as const
 
-function gh(cwd: string, args: string[], signal?: AbortSignal): Promise<string> {
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    GH_PROMPT_DISABLED: '1',
-    PATH: buildGitHubCliPath(),
-  }
-  for (const key of TOKEN_ENV_KEYS) delete env[key]
-  return execa('gh', args, {
-    cwd,
-    timeout: GITHUB_API_TIMEOUT_MS,
-    forceKillAfterDelay: 500,
-    cancelSignal: signal,
-    maxBuffer: 1024 * 1024,
-    env,
-  }).then(({ stdout }) => stdout.trimEnd())
-}
-
 export function parseGitHubRemoteUrl(url: string): GitHubRepoRef | null {
   const parsed = parseGitRemoteUrl(url)
   if (!parsed || !isGitHubHost(parsed.host)) return null
@@ -133,7 +115,7 @@ export async function getGitHubRepoRef(
       branch ? getUpstreamParts(cwd, branch, signal) : Promise.resolve(null),
     ])
     const remotes = allRemotes
-      .map((remote) => ({ name: remote.name, repo: parseGitHubRemoteUrl(remote.url) }))
+      .map((remote) => ({ name: remote.name, repo: parseGitHubRemoteUrl(remote.fetchUrl) }))
       .filter((remote): remote is { name: string; repo: GitHubRepoRef } => remote.repo !== null)
     return pickGitHubRepoRef(remotes, upstream)
   } catch (err) {
@@ -143,22 +125,20 @@ export async function getGitHubRepoRef(
 }
 
 async function getAuthToken(cwd: string, host: string, signal?: AbortSignal): Promise<string | null> {
+  const credentialsManager = getCredentialsManager()
+  const credentialsToken = credentialsManager.getGitHubToken(host)
+  if (credentialsToken) return credentialsToken
+
   const envToken = tokenFromEnv(host)
   if (envToken) return envToken
 
   const cached = tokenCache.get(host)
   if (cached && cached.expiresAt > Date.now()) return cached.token
 
-  try {
-    const token = await gh(cwd, ['auth', 'token', '--hostname', host], signal)
-    const value = token.trim() || null
-    tokenCache.set(host, { expiresAt: Date.now() + TOKEN_CACHE_TTL_MS, token: value })
-    return value
-  } catch (err) {
-    if (signal?.aborted || isAbortError(err)) return null
-    tokenCache.set(host, { expiresAt: Date.now() + TOKEN_MISS_CACHE_TTL_MS, token: null })
-    return null
-  }
+  // No token available
+  if (signal?.aborted) return null
+  tokenCache.set(host, { expiresAt: Date.now() + TOKEN_MISS_CACHE_TTL_MS, token: null })
+  return null
 }
 
 function compactVariables(variables: Record<string, unknown>): Record<string, unknown> {

@@ -1,10 +1,8 @@
-import type { EditorAppState, EditorPref, GitHubCliState, TerminalAppState, TerminalPref } from '#/shared/rpc.ts'
+import type { EditorAppState, EditorPref, TerminalAppState, TerminalPref } from '#/shared/rpc.ts'
 import { getEditorAppAvailability, resolveEditorApp } from '#/main/system/editors.ts'
-import { probeGitHubCli } from '#/main/system/github-cli.ts'
 import { getTerminalActionAvailability, getTerminalAppAvailability, resolveTerminalApp } from '#/main/system/terminals.ts'
 
 export interface ExternalAppsProbe {
-  gh: GitHubCliState
   terminals: TerminalAppState
   editors: EditorAppState
 }
@@ -51,13 +49,9 @@ export async function probeExternalApps(
   signal?: AbortSignal,
 ): Promise<ExternalAppsProbe> {
   const detectedAt = nextDetectedAt()
-  const [gh, terminals] = await Promise.all([
-    probeGitHubCli(signal, detectedAt),
-    probeTerminalApps(terminalPref, signal, detectedAt),
-  ])
+  const terminals = await probeTerminalApps(terminalPref, signal, detectedAt)
   const editors = probeEditorApps(editorPref, detectedAt)
   return {
-    gh,
     terminals,
     editors,
   }

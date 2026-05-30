@@ -16,7 +16,7 @@
 //   - settings write-error toast (warns the user if prefs aren't
 //     persisting instead of silently dropping their changes)
 
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { Trans } from 'react-i18next'
 import { Toaster } from '#/renderer/components/ui/sonner.tsx'
 import { Topbar } from '#/renderer/components/Topbar.tsx'
@@ -30,13 +30,13 @@ import { SettingsPanel, type SettingsPage } from '#/renderer/components/Settings
 import { RepoDropOverlay } from '#/renderer/components/RepoDropOverlay.tsx'
 import { TerminalSessionProvider } from '#/renderer/components/terminal/TerminalSessionProvider.tsx'
 import { useReposStore } from '#/renderer/stores/repos/store.ts'
-import { useSettingsStore } from '#/renderer/stores/settings.ts'
 import { useT } from '#/renderer/stores/i18n.ts'
 import { useKeyboard } from '#/renderer/hooks/useKeyboard.ts'
 import { useRepoDrop } from '#/renderer/hooks/useRepoDrop.ts'
 import { useAppBootstrap } from '#/renderer/hooks/useAppBootstrap.ts'
 import { useBackgroundFetch } from '#/renderer/hooks/useBackgroundFetch.ts'
 import { useExternalOpenPaths } from '#/renderer/hooks/useExternalOpenPaths.ts'
+import { useAppOverlays } from '#/renderer/hooks/useAppOverlays.ts'
 import { useMenuActions } from '#/renderer/hooks/useMenuActions.ts'
 import { useSessionPersistence } from '#/renderer/hooks/useSessionPersistence.ts'
 import { useSettingsWriteErrorToast } from '#/renderer/hooks/useSettingsWriteErrorToast.ts'
@@ -47,30 +47,16 @@ export function App() {
   const sessionReady = useReposStore((s) => s.sessionReady)
   const detailCollapsed = useReposStore((s) => s.detailCollapsed)
   const workspaceLayout = useReposStore((s) => s.workspaceLayout)
-  const shortcutsDisabled = useSettingsStore((s) => s.shortcutsDisabled)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsPage, setSettingsPage] = useState<SettingsPage>('general')
-  const [cloneOpen, setCloneOpen] = useState(false)
-  const [openRepoOpen, setOpenRepoOpen] = useState(false)
+  const overlays = useAppOverlays()
   const workspaceBehavior = repoWorkspaceBehavior(workspaceLayout, detailCollapsed)
-  const openSettings = useCallback((page: SettingsPage = 'general') => {
-    setSettingsPage(page)
-    setSettingsOpen(true)
-  }, [])
-  const openRepoPathDialog = useCallback(() => setOpenRepoOpen(true), [])
-  const closeSettings = useCallback(() => {
-    setSettingsOpen(false)
-    setSettingsPage('general')
-  }, [])
-  const openCloneRepo = useCallback(() => setCloneOpen(true), [])
   const showHelp = useCallback(() => {
-    if (!shortcutsDisabled) openSettings('shortcuts')
-  }, [openSettings, shortcutsDisabled])
+    overlays.openSettings('shortcuts')
+  }, [overlays.openSettings])
   // Shared gate: any modal overlay suppresses both
   // keyboard shortcuts and the file-drop dashed border. useKeyboard
   // additionally OR's in commit-detail, which is per-repo state read
   // from the store inside the hook itself.
-  const modalOpen = settingsOpen || cloneOpen || openRepoOpen
+  const modalOpen = overlays.anyOpen
   const repoDrop = useRepoDrop({ blocked: modalOpen })
 
   useAppBootstrap()
@@ -78,7 +64,14 @@ export function App() {
   useSettingsWriteErrorToast()
   useBackgroundFetch()
   useExternalOpenPaths()
-  useMenuActions({ openSettings, openRepoPathDialog, openCloneRepo, showHelp, isOverlayOpen: () => modalOpen })
+  useMenuActions({
+    openSettings: overlays.openSettings,
+    closeAllOverlays: overlays.closeAllOverlays,
+    openRepoPathDialog: overlays.openRepoPathDialog,
+    openCloneRepo: overlays.openCloneRepo,
+    showHelp,
+    isOverlayOpen: () => modalOpen,
+  })
 
   useKeyboard({
     onShowHelp: showHelp,
@@ -102,8 +95,8 @@ export function App() {
           onDragLeave={repoDrop.onDragLeave}
           onDrop={repoDrop.onDrop}
         >
-          <Topbar onOpenSettings={openSettings} settingsActive={settingsOpen}>
-            <RepoTabs onClone={openCloneRepo} />
+          <Topbar onOpenSettings={overlays.openSettings} settingsActive={overlays.state.settings.open}>
+            <RepoTabs onClone={overlays.openCloneRepo} />
           </Topbar>
           <main className="flex flex-1 min-h-0 min-w-0">
             <ErrorBoundary resetKey={activeId}>
@@ -121,13 +114,13 @@ export function App() {
             </ErrorBoundary>
           </main>
           <SettingsPanel
-            open={settingsOpen}
-            page={settingsPage}
-            onPageChange={setSettingsPage}
-            onClose={closeSettings}
+            open={overlays.state.settings.open}
+            page={overlays.state.settings.page}
+            onPageChange={overlays.openSettings}
+            onClose={overlays.closeSettings}
           />
-          <RepoOpenDialog open={openRepoOpen} onOpenChange={setOpenRepoOpen} />
-          <RepoCloneDialog open={cloneOpen} onOpenChange={setCloneOpen} />
+          <RepoOpenDialog open={overlays.state.openRepo.open} onOpenChange={overlays.setOpenRepoOpen} />
+          <RepoCloneDialog open={overlays.state.clone.open} onOpenChange={overlays.setCloneOpen} />
           <RepoDropOverlay active={repoDrop.active} />
           {/* shadcn/ui Toaster wrapper — owns its own theme + style hooks.
            * App-level only sets position + closeButton; the rest of the

@@ -29,6 +29,8 @@ interface GoblinBridge {
     close: (input: TerminalSessionInput) => Promise<TerminalMutationResult>
     pruneRepo: (input: TerminalPruneRepoInput) => Promise<TerminalMutationResult>
     notifyBell: (input: TerminalNotifyBellInput) => Promise<TerminalMutationResult>
+    sendTestNotification: () => Promise<boolean>
+    setBadge: (count: number) => void
     onOutput: (cb: (event: TerminalOutputEvent) => void) => () => void
     onExit: (cb: (event: TerminalExitEvent) => void) => () => void
   }

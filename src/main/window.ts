@@ -15,13 +15,14 @@ import { getTheme } from '#/main/theme.ts'
 import { loadSettings, setWindowBounds, type WindowBounds } from '#/main/settings.ts'
 import { closeAllTerminalSessions } from '#/main/terminal.ts'
 import { openHttpExternal } from '#/main/external-url.ts'
-import { isTrustedAppUrl, registerTrustedAppPath, registerTrustedWebContents } from '#/main/ipc/trusted-webcontents.ts'
+import { isTrustedAppUrl, registerTrustedAppPath, registerTrustedAppUrl, registerTrustedWebContents } from '#/main/ipc/trusted-webcontents.ts'
 import { WINDOW_BACKGROUND_BY_COLOR_THEME } from '#/shared/theme-tokens.ts'
 
 const DEFAULT_BOUNDS: WindowBounds = { width: 1200, height: 760 }
 
 let mainWindow: BrowserWindow | null = null
 let mainWindowCreation: Promise<BrowserWindow> | null = null
+const rendererDevUrl = process.env.GOBLIN_RENDERER_DEV_URL?.trim()
 
 export function getMainWindow(): BrowserWindow | null {
   if (mainWindow && !mainWindow.isDestroyed()) return mainWindow
@@ -118,14 +119,16 @@ async function createMainWindow(): Promise<BrowserWindow> {
   })
   registerTrustedWebContents(win.webContents)
 
-  // file:// load so the existing CSP (`script-src 'self'`) stays clean.
-  // `?theme=` and `?colorTheme=` let the boot script apply theme attrs
-  // before stylesheets load (no flash). `pathToFileURL` handles Windows
+  // Dev loads the Vite server for HMR; packaged/prod still uses file://
+  // so CSP and release behavior stay unchanged. `?theme=` and
+  // `?colorTheme=` let the boot script apply theme attrs before
+  // stylesheets load (no flash). `pathToFileURL` handles Windows
   // path/URL conversion (drive letters, backslashes) — interpolating into
   // a `file://` literal string would produce malformed URLs on Win32.
   const appHtmlPath = path.join(app.getAppPath(), 'dist/renderer/index.html')
-  registerTrustedAppPath(appHtmlPath)
-  const url = pathToFileURL(appHtmlPath)
+  const url = rendererDevUrl ? new URL(rendererDevUrl) : pathToFileURL(appHtmlPath)
+  if (rendererDevUrl) registerTrustedAppUrl(url.toString())
+  else registerTrustedAppPath(appHtmlPath)
   url.searchParams.set('theme', resolved)
   url.searchParams.set('colorTheme', colorTheme)
   win.webContents.on('will-navigate', (event, nextUrl) => {

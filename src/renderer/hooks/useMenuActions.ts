@@ -9,13 +9,14 @@ import { openRepoFromDialog } from '#/renderer/lib/open-repo-dialog.ts'
 
 interface MenuActionHandlers {
   openSettings: (page?: SettingsPage) => void
+  closeAllOverlays: () => void
   openRepoPathDialog: () => void
   openCloneRepo: () => void
   showHelp: () => void
   isOverlayOpen: () => boolean
 }
 
-export function useMenuActions({ openSettings, openRepoPathDialog, openCloneRepo, showHelp, isOverlayOpen }: MenuActionHandlers) {
+export function useMenuActions({ openSettings, closeAllOverlays, openRepoPathDialog, openCloneRepo, showHelp, isOverlayOpen }: MenuActionHandlers) {
   const syncAndRefresh = useReposStore((s) => s.syncAndRefresh)
   const closeRepo = useReposStore((s) => s.closeRepo)
   const cycleActive = useReposStore((s) => s.cycleActive)
@@ -27,6 +28,22 @@ export function useMenuActions({ openSettings, openRepoPathDialog, openCloneRepo
   const t = useT()
   const isOverlayOpenRef = useRef(isOverlayOpen)
   isOverlayOpenRef.current = isOverlayOpen
+
+  useEffect(() => {
+    const offBellClick = onRpcEventType('terminal-bell-click', (event) => {
+      const state = useReposStore.getState()
+      // repo.id is the absolute repoRoot path
+      const repo = state.repos[event.repoRoot]
+      if (!repo) return
+      // Notification clicks are high-priority navigation: close any open
+      // overlay and switch straight to the terminal tab.
+      closeAllOverlays()
+      state.setActive(repo.id)
+      setDetailTab(repo.id, 'terminal')
+      setDetailCollapsed(false)
+    })
+    return offBellClick
+  }, [closeAllOverlays, setDetailCollapsed, setDetailTab])
 
   useEffect(() => {
     const off = onRpcEventType('menu-action', async (event) => {
@@ -63,6 +80,10 @@ export function useMenuActions({ openSettings, openRepoPathDialog, openCloneRepo
         }
         if (action === 'open-about') {
           openSettings('about')
+          return
+        }
+        if (action === 'show-help') {
+          showHelp()
           return
         }
         if (isOverlayOpenRef.current() || isShortcutBlockingLayerOpen()) return
@@ -122,9 +143,6 @@ export function useMenuActions({ openSettings, openRepoPathDialog, openCloneRepo
           case 'toggle-detail':
             // Match VS Code: Cmd+J toggles the panel even while the integrated terminal owns focus.
             if (state.activeId) toggleDetailCollapsed()
-            break
-          case 'show-help':
-            showHelp()
             break
         }
       } catch (err) {

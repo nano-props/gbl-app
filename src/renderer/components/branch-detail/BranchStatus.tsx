@@ -85,7 +85,7 @@ export function BranchStatus({ detail, layout }: Props) {
       ? t('branch-status.merged')
       : t('branch-status.not-merged')
   const mergeTone: Tone = !mergeKnown ? 'neutral' : branch.mergedToDefault ? 'success' : 'attention'
-  const remoteTone: Tone = branch.trackingGone || !branch.tracking ? 'attention' : 'brand'
+  const upstreamTone: Tone = branch.trackingGone || !branch.tracking ? 'attention' : 'brand'
   const syncTone: Tone = !branch.tracking ? 'attention' : branch.behind > 0 ? 'attention' : 'success'
   const worktreeLocked = detail.worktreeState?.isLocked ?? false
   const worktreeTone: Tone =
@@ -109,14 +109,14 @@ export function BranchStatus({ detail, layout }: Props) {
         )}
       </>
     ) : undefined
-  const remoteValue = branch.tracking ? (
+  const upstreamValue = branch.tracking ? (
     <MonoValue title={branch.tracking} tone={branch.trackingGone ? 'attention' : undefined} truncate>
       {branch.tracking}
     </MonoValue>
   ) : (
     <StatusChip tone="attention">{t('branches.no-upstream')}</StatusChip>
   )
-  const remoteAfter = branch.trackingGone ? (
+  const upstreamAfter = branch.trackingGone ? (
     <StatusChip tone="attention">{t('branches.gone')}</StatusChip>
   ) : !branch.tracking && pullRequest ? (
     <StatusChip>{t('branch-status.upstream.pr-only')}</StatusChip>
@@ -155,11 +155,11 @@ export function BranchStatus({ detail, layout }: Props) {
       />
       <StatusRow
         icon={<RadioTower size={14} />}
-        label={t('branch-status.signal.remote')}
-        value={remoteValue}
-        after={remoteAfter}
+        label={t('branch-status.signal.upstream')}
+        value={upstreamValue}
+        after={upstreamAfter}
         valueLayout="inline"
-        tone={remoteTone}
+        tone={upstreamTone}
       />
       <StatusRow
         icon={<RefreshCw size={14} />}

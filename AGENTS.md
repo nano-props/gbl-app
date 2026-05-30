@@ -39,3 +39,10 @@
 
 - Use generic placeholders in examples, tests, docs, and snapshots. Do not include real user names, machine names, personal paths, emails, tokens, secrets, or company-internal identifiers.
 - Test fixtures and inline sample code should stay generic as well; avoid realistic business snippets, internal module names, or production-like file paths when a neutral placeholder communicates the same intent.
+
+## Overlay and dialog architecture
+
+- Keep app-level overlay orchestration in `src/renderer/hooks/useAppOverlays.ts`; do not add new top-level dialog booleans directly to `App.tsx`.
+- Reuse `src/renderer/hooks/useOverlayRegistry.ts` for generic open/close/close-all overlay state instead of hand-rolled boolean groups.
+- Keep UI primitives and dialog presentation inside components (for example shadcn/ui `Dialog` wrappers); overlay hooks should manage state and coordination only, not visual structure.
+- When adding a new app-level overlay, wire it through the overlay manager, `closeAllOverlays()`, and any overlay-aware gates such as keyboard shortcut suppression.

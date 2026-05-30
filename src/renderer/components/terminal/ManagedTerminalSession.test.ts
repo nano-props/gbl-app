@@ -29,19 +29,29 @@ const xtermMocks = vi.hoisted(() => {
     rows: number
     unicode = { activeVersion: '6' }
     options: {
+      allowProposedApi?: boolean
       cursorBlink?: boolean
+      fontFamily?: string
+      fontSize?: number
+      lineHeight?: number
       macOptionIsMeta?: boolean
       minimumContrastRatio?: number
+      rescaleOverlappingGlyphs?: boolean
       theme?: { background?: string; foreground?: string }
       scrollOnUserInput?: boolean
     }
     element: HTMLDivElement | null = null
     modes = { applicationCursorKeysMode: false }
+    refresh = vi.fn()
     write = vi.fn()
     reset = vi.fn()
     dispose = vi.fn()
     focus = vi.fn(() => this.textarea?.focus())
     customKeyEventHandler: ((event: KeyboardEvent) => boolean) | null = null
+    _core = {
+      _charSizeService: { measure: vi.fn() },
+      _renderService: { clear: vi.fn() },
+    }
     private textarea: HTMLTextAreaElement | null = null
     private resizeHandlers: Array<(size: { cols: number; rows: number }) => void> = []
     private dataHandlers: Array<(data: string) => void> = []
@@ -49,20 +59,30 @@ const xtermMocks = vi.hoisted(() => {
     private bellHandlers: Array<() => void> = []
 
     constructor(options: {
+      allowProposedApi?: boolean
       cols: number
       rows: number
       cursorBlink?: boolean
+      fontFamily?: string
+      fontSize?: number
+      lineHeight?: number
       macOptionIsMeta?: boolean
       minimumContrastRatio?: number
+      rescaleOverlappingGlyphs?: boolean
       theme?: { background?: string; foreground?: string }
       scrollOnUserInput?: boolean
     }) {
       this.cols = options.cols
       this.rows = options.rows
       this.options = {
+        allowProposedApi: options.allowProposedApi,
         cursorBlink: options.cursorBlink,
+        fontFamily: options.fontFamily,
+        fontSize: options.fontSize,
+        lineHeight: options.lineHeight,
         macOptionIsMeta: options.macOptionIsMeta,
         minimumContrastRatio: options.minimumContrastRatio,
+        rescaleOverlappingGlyphs: options.rescaleOverlappingGlyphs,
         theme: options.theme,
         scrollOnUserInput: options.scrollOnUserInput,
       }
@@ -290,6 +310,44 @@ class MockResizeObserver {
   }
 }
 
+class MockFontFaceSet {
+  private readonly loadingDoneHandlers = new Set<() => void>()
+  private readonly handlerMap = new Map<EventListenerOrEventListenerObject, () => void>()
+  private readyDeferred = deferred<void>()
+  ready = this.readyDeferred.promise
+
+  reset(): void {
+    this.loadingDoneHandlers.clear()
+    this.handlerMap.clear()
+    this.readyDeferred = deferred<void>()
+    this.ready = this.readyDeferred.promise
+  }
+
+  addEventListener(event: string, listener: EventListenerOrEventListenerObject): void {
+    if (event !== 'loadingdone') return
+    const handler =
+      typeof listener === 'function' ? () => listener(new Event('loadingdone')) : () => listener.handleEvent(new Event('loadingdone'))
+    this.handlerMap.set(listener, handler)
+    this.loadingDoneHandlers.add(handler)
+  }
+
+  removeEventListener(event: string, listener: EventListenerOrEventListenerObject): void {
+    if (event !== 'loadingdone') return
+    const handler = this.handlerMap.get(listener)
+    if (!handler) return
+    this.handlerMap.delete(listener)
+    this.loadingDoneHandlers.delete(handler)
+  }
+
+  resolveReady(): void {
+    this.readyDeferred.resolve()
+  }
+
+  emitLoadingDone(): void {
+    for (const handler of this.loadingDoneHandlers) handler()
+  }
+}
+
 const terminalCalls = {
   open: vi.fn<Window['goblin']['terminal']['open']>(),
   restart: vi.fn<Window['goblin']['terminal']['restart']>(),
@@ -297,8 +355,10 @@ const terminalCalls = {
   resize: vi.fn<Window['goblin']['terminal']['resize']>(),
   close: vi.fn<Window['goblin']['terminal']['close']>(),
   notifyBell: vi.fn<Window['goblin']['terminal']['notifyBell']>(),
+  setBadge: vi.fn<Window['goblin']['terminal']['setBadge']>(),
 }
 const invokeRpc = vi.fn<Window['goblin']['invokeRpc']>()
+const mockFonts = new MockFontFaceSet()
 
 const descriptor = {
   key: '/repo\0/worktree',
@@ -327,7 +387,9 @@ beforeEach(() => {
   vi.clearAllMocks()
   installTerminalThemeStyles()
   document.documentElement.setAttribute('data-theme', 'light')
+  mockFonts.reset()
   Object.defineProperty(globalThis, 'ResizeObserver', { configurable: true, value: MockResizeObserver })
+  Object.defineProperty(document, 'fonts', { configurable: true, value: mockFonts })
   Object.defineProperty(globalThis, 'requestAnimationFrame', {
     configurable: true,
     value: (cb: FrameRequestCallback) => window.setTimeout(() => cb(performance.now()), 0),
@@ -390,8 +452,49 @@ describe('ManagedTerminalSession', () => {
       rows: 30,
     })
     expect(xtermMocks.terminals[0]!.options.minimumContrastRatio).toBe(4.5)
+    expect(xtermMocks.terminals[0]!.options.allowProposedApi).toBe(true)
+    expect(xtermMocks.terminals[0]!.options.fontFamily).toContain('Goblin Mono')
+    expect(xtermMocks.terminals[0]!.options.rescaleOverlappingGlyphs).toBe(true)
     expect(terminalCalls.restart).not.toHaveBeenCalled()
     expect(session.snapshot().phase).toBe('open')
+  })
+
+  test('remeasures and refits after fonts finish loading', async () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const session = new ManagedTerminalSession(descriptor, vi.fn())
+
+    session.attach(host)
+    await flushTerminalStart()
+    await flushUntil(() => session.snapshot().phase === 'open')
+
+    const term = xtermMocks.terminals[0]!
+    const fitAddon = xtermMocks.fitAddons[0]!
+    term._core._charSizeService.measure.mockClear()
+    term._core._renderService.clear.mockClear()
+    term.refresh.mockClear()
+    fitAddon.fit.mockClear()
+
+    mockFonts.resolveReady()
+    await flushFontRefit()
+
+    expect(term._core._charSizeService.measure).toHaveBeenCalledTimes(1)
+    expect(term._core._renderService.clear).toHaveBeenCalledTimes(1)
+    expect(fitAddon.fit).toHaveBeenCalledTimes(1)
+    expect(term.refresh).toHaveBeenCalledWith(0, term.rows - 1)
+
+    term._core._charSizeService.measure.mockClear()
+    term._core._renderService.clear.mockClear()
+    term.refresh.mockClear()
+    fitAddon.fit.mockClear()
+
+    mockFonts.emitLoadingDone()
+    await flushFontRefit()
+
+    expect(term._core._charSizeService.measure).toHaveBeenCalledTimes(1)
+    expect(term._core._renderService.clear).toHaveBeenCalledTimes(1)
+    expect(fitAddon.fit).toHaveBeenCalledTimes(1)
+    expect(term.refresh).toHaveBeenCalledWith(0, term.rows - 1)
   })
 
   test('loads terminal addons and exposes search and serialization', async () => {
@@ -878,6 +981,12 @@ async function flushTerminalStart(): Promise<void> {
 }
 
 async function flushResizeDebounce(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  await Promise.resolve()
+}
+
+async function flushFontRefit(): Promise<void> {
+  await Promise.resolve()
   await new Promise((resolve) => setTimeout(resolve, 100))
   await Promise.resolve()
 }

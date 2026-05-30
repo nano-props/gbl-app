@@ -52,7 +52,7 @@ export function StatusList({
   }
 
   return dirtyWorktrees.map((wt) => (
-    <ul key={wt.path} className="py-1.5 tracking-wider" style={{ fontFamily: "'JetBrains Mono', var(--font-mono)" }}>
+    <ul key={wt.path} className="py-1.5 tracking-wider" style={{ fontFamily: 'var(--font-mono)' }}>
       {wt.entries.map((entry) => (
         <li
           key={`${wt.path}-${entry.path}`}

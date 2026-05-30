@@ -293,6 +293,7 @@ export function createRefreshActions(set: ReposSet, get: ReposGet) {
             r.ui.selectedBranch = selected
             if (snap.remote) {
               r.remote.remotes = snap.remote.remotes.map((remote) => remote.name)
+              r.remote.remoteDetails = snap.remote.remotes
               r.remote.hasRemotes = snap.remote.hasRemotes
               r.remote.hasBrowserRemote = snap.remote.hasBrowserRemote
               r.remote.browserRemoteProvider = snap.remote.browserRemoteProvider

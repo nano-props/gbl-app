@@ -97,6 +97,7 @@ export const en = {
   'repo-tabs.clone-confirm': 'Clone and open',
   'repo-tabs.clone-cloning': 'Cloning…',
   'repo-tabs.clone-opened': 'Repository cloned',
+  'repo-tabs.tooltip.no-remotes': 'No remotes',
   'repo-unavailable.title': 'Repository path unavailable',
   'repo-unavailable.body':
     'Goblin cannot read this path as a Git repository. Restore the folder or recreate .git, then retry.',
@@ -181,7 +182,7 @@ export const en = {
   'branch-status.copy-worktree-path': 'Copy worktree path',
   'branch-status.copied': 'Copied',
   'branch-status.signal.branch': 'Branch',
-  'branch-status.signal.remote': 'Upstream',
+  'branch-status.signal.upstream': 'Upstream',
   'branch-status.signal.sync': 'Sync',
   'branch-status.signal.merge': 'Baseline',
   'branch-status.signal.pr': 'PR',
@@ -245,8 +246,6 @@ export const en = {
   'terminal.index-title': 'Terminal {index}',
   'terminal.bell-unread': 'Unread terminal bell',
   'terminal.bell-unread-count': '{count} unread bell',
-  'terminal.bell-notification-title': 'Background terminal alert',
-  'terminal.bell-notification-body': '{terminalTitle} · {processName} · {branch}',
 
   // ---- Worktree row actions (used by branch rows that have a worktree) ---
   'worktrees.reveal-title': 'Reveal in Finder',
@@ -394,21 +393,32 @@ export const en = {
   'settings.terminal-notifications': 'Terminal bell notifications',
   'settings.terminal-notifications-hint': 'Show system notifications for background terminal bells.',
   'settings.terminal-notifications-test': 'Test system notifications',
-  'settings.terminal-notifications-test-hint':
-    'Trigger a test notification through the same notification path. If you only see the Dock bounce, check macOS notification settings.',
+  'settings.terminal-notifications-test-hint': 'Send a test notification to verify system notifications are working.',
   'settings.terminal-notifications-test-button': 'Show test notification',
   'settings.terminal-notifications-test-title': 'Goblin test notification',
-  'settings.terminal-notifications-test-body':
-    'If you do not see a top-right notification, check your macOS notification settings.',
+  'settings.terminal-notifications-test-body': 'Notifications are working correctly.',
   'settings.terminal-notifications-test-sent': 'Test notification sent',
-  'settings.terminal-notifications-test-sent-hint':
-    'If you only see the Dock bounce and no top-right notification, check Goblin in macOS notification settings.',
   'settings.terminal-notifications-test-failed': 'Unable to show test notification',
-  'settings.terminal-notifications-test-failed-hint': 'The notification request did not complete successfully. Please try again.',
+  'settings.terminal-notifications-test-failed-hint':
+    'Go to System Settings → Notifications → Goblin and make sure notifications are allowed.',
   'settings.group.general': 'General',
+  'settings.github.title': 'GitHub',
+  'settings.github.body': 'Configure GitHub.com authentication for pull requests and other GitHub features.',
+  'settings.github.token-label': 'Personal access token',
+  'settings.github.token-placeholder': 'ghp_...',
+  'settings.github.token-hint': 'Use a Classic PAT with repo scope. Stored tokens apply to GitHub.com only.',
+  'settings.github.configured-hidden': 'Configured tokens are never shown again.',
+  'settings.github.status-configured': 'configured',
+  'settings.github.status-not-configured': 'not configured',
+  'settings.github.show-token': 'Show token',
+  'settings.github.hide-token': 'Hide token',
+  'settings.github.clear': 'Clear',
+  'settings.github.unavailable': 'Secure storage is unavailable on this system, so GitHub token storage is disabled.',
   'settings.group.apps': 'External apps',
   'settings.group.sync': 'Sync',
   'settings.group.proxy': 'Proxy',
+  'settings.nav.integrations': 'Integrations',
+  'settings.nav.refresh': 'Refresh',
   'settings.nav.shortcuts': 'Shortcuts',
   'settings.about': 'About',
   'settings.terminal': 'Terminal',
@@ -459,12 +469,6 @@ export const en = {
   'settings.proxy.http-example':
     'git config --global http.proxy http://127.0.0.1:7890\n' +
     'git config --global https.proxy http://127.0.0.1:7890',
-  'settings.proxy.gh-title': 'GitHub CLI (`gh`)',
-  'settings.proxy.gh-body':
-    'Goblin only uses `gh auth token` and passes through your launch environment. If `gh` needs a proxy, set `HTTP_PROXY` / `HTTPS_PROXY` before starting Goblin. This does not proxy Goblin GitHub API requests.',
-  'settings.proxy.gh-example':
-    'export HTTP_PROXY=http://127.0.0.1:7890\n' +
-    'export HTTPS_PROXY=http://127.0.0.1:7890',
   'settings.proxy.ssh-title': 'SSH remotes',
   'settings.proxy.ssh-body':
     'If you use SSH remotes, configure ~/.ssh/config. Goblin follows system git/ssh.',

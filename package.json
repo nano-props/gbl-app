@@ -9,12 +9,12 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "concurrently -k -n vite,electron -c blue,green 'vite build --watch --mode development' 'electron .'",
+    "dev": "bun scripts/dev.ts",
     "start": "vite build && electron .",
     "build": "bun scripts/build.ts",
     "build:renderer": "vite build",
     "build:electron": "electron-builder",
-    "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.renderer.json && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "bun scripts/typecheck.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",

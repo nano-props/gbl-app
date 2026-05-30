@@ -1,7 +1,9 @@
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react'
 import { createPortal } from 'react-dom'
 import { tildify } from '#/renderer/lib/paths.ts'
 import type { RepoTabSummary } from '#/renderer/components/repo-tabs/types.ts'
+import { useT } from '#/renderer/stores/i18n.ts'
 
 // --- Types ----------------------------------------------------------------
 
@@ -27,7 +29,7 @@ const TAB_TOOLTIP_SELECTOR = '[data-repo-tab-tooltip-id]'
 const DEFAULT_DELAY_MS = 700
 /** Grace period before hiding after the pointer leaves the tab strip. */
 const GRACE_MS = 100
-const MAX_WIDTH = 320
+const MAX_WIDTH = 420
 const MARGIN = 8
 const OFFSET_Y = 6
 const FADE_TRANSITION = 'opacity 100ms ease-out'
@@ -212,6 +214,7 @@ export function TabTooltipLayer({ repos, delayMs = DEFAULT_DELAY_MS, children, .
 // produces the sliding effect, and only the initial appearance fades in.
 
 function RepoTabTooltip({ tooltip }: { tooltip: TooltipState }) {
+  const t = useT()
   const ref = useRef<HTMLDivElement | null>(null)
   const [mounted, setMounted] = useState(false)
   const [tipWidth, setTipWidth] = useState(MAX_WIDTH)
@@ -236,11 +239,41 @@ function RepoTabTooltip({ tooltip }: { tooltip: TooltipState }) {
     <div
       ref={ref}
       role="tooltip"
-      className="pointer-events-none fixed z-50 w-max rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
+      className="pointer-events-none fixed z-50 w-max rounded-lg border border-border bg-popover px-3 py-2 shadow-lg"
       style={{ left: x, top: y, maxWidth: MAX_WIDTH, opacity: mounted ? 1 : 0, transition: mounted ? SLIDE_TRANSITION : FADE_TRANSITION }}
     >
-      <div className="font-medium text-popover-foreground">{tooltip.repo.name}</div>
-      <div className="mt-0.5 break-all font-mono text-[11px] text-muted-foreground">{tildify(tooltip.repo.id)}</div>
+      <div className="truncate text-xs font-semibold text-foreground">{tooltip.repo.name}</div>
+      <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{tildify(tooltip.repo.id)}</div>
+      {tooltip.repo.remoteDetails.length > 0 && (
+        <div className="mt-2 space-y-1 border-t border-border/40 pt-2">
+          {tooltip.repo.remoteDetails.map((remote) => {
+            const sameUrl = remote.fetchUrl === remote.pushUrl
+            return sameUrl ? (
+              <div key={remote.name} className="flex min-w-0 items-center gap-1.5 text-[11px]">
+                <span className="shrink-0 font-mono text-muted-foreground/80">{remote.name}</span>
+                <span className="shrink-0 font-mono text-muted-foreground/60" aria-hidden>→</span>
+                <span className="min-w-0 truncate font-mono text-muted-foreground/80">{remote.fetchUrl}</span>
+                <ArrowUpDown size={10} className="shrink-0 text-muted-foreground/60" aria-hidden />
+              </div>
+            ) : (
+              <div key={remote.name} className="space-y-0.5 text-[11px]">
+                <div className="font-mono text-muted-foreground/80">{remote.name}</div>
+                <div className="flex min-w-0 items-center gap-1 pl-1">
+                  <ArrowDown size={10} className="shrink-0 text-muted-foreground/60" aria-hidden />
+                  <span className="min-w-0 truncate font-mono text-muted-foreground/80">{remote.fetchUrl}</span>
+                </div>
+                <div className="flex min-w-0 items-center gap-1 pl-1">
+                  <ArrowUp size={10} className="shrink-0 text-muted-foreground/60" aria-hidden />
+                  <span className="min-w-0 truncate font-mono text-muted-foreground/80">{remote.pushUrl}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {tooltip.repo.remoteDetails.length === 0 && (
+        <div className="mt-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground/60">{t('repo-tabs.tooltip.no-remotes')}</div>
+      )}
     </div>,
     document.body,
   )

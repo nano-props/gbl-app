@@ -14,7 +14,6 @@ import { broadcastRpcEvent } from '#/main/events.ts'
 import { setTerminalApp, setEditorApp, setTerminalNotificationsEnabled } from '#/main/settings.ts'
 import { getTerminalActionAvailability, getTerminalAppAvailability, resolveTerminalApp } from '#/main/system/terminals.ts'
 import { getEditorAppAvailability, resolveEditorApp } from '#/main/system/editors.ts'
-import { probeGitHubCli } from '#/main/system/github-cli.ts'
 import type { EditorAppState, ExternalAppsSnapshot, RpcResponse } from '#/shared/rpc.ts'
 
 const ipcHandlers = new Map<string, (_event: unknown, input: any) => Promise<unknown>>()
@@ -184,14 +183,16 @@ vi.mock('#/main/system/editors.ts', () => ({
   ),
 }))
 
-vi.mock('#/main/system/github-cli.ts', () => ({
-  probeGitHubCli: vi.fn((_signal?: AbortSignal, detectedAt = 0) =>
-    Promise.resolve({ available: false, version: null, detectedAt }),
-  ),
-}))
-
 vi.mock('#/main/events.ts', () => ({
   broadcastRpcEvent: vi.fn(),
+}))
+
+vi.mock('#/main/security/credentials.ts', () => ({
+  getCredentialsManager: vi.fn(() => ({
+    snapshot: () => ({ githubTokenConfigured: false, secureStorageAvailable: true }),
+    setGitHubToken: vi.fn(async () => ({ githubTokenConfigured: true, secureStorageAvailable: true })),
+    clearGitHubToken: vi.fn(async () => ({ githubTokenConfigured: false, secureStorageAvailable: true })),
+  })),
 }))
 
 vi.mock('#/main/terminal.ts', () => ({
@@ -397,11 +398,6 @@ describe('main repo rpc cancellation', () => {
   })
 
   test('returns persistable settings without external app detection in settings.get', async () => {
-    vi.mocked(probeGitHubCli).mockImplementation(async (_signal, detectedAt = 0) => ({
-      available: true,
-      version: 'gh version 2.80.0 (2026-05-01)',
-      detectedAt,
-    }))
     vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: true, terminal: true })
     vi.mocked(resolveTerminalApp).mockReturnValue('ghostty')
     vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: false, cursor: true, windsurf: false })
@@ -417,15 +413,9 @@ describe('main repo rpc cancellation', () => {
         editorApp: 'auto',
       }),
     })
-    expect(probeGitHubCli).not.toHaveBeenCalled()
   })
 
   test('returns external app detection from externalApps.get', async () => {
-    vi.mocked(probeGitHubCli).mockImplementation(async (_signal, detectedAt = 0) => ({
-      available: true,
-      version: 'gh version 2.80.0 (2026-05-01)',
-      detectedAt,
-    }))
     vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: true, terminal: true })
     vi.mocked(resolveTerminalApp).mockReturnValue('ghostty')
     vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: false, cursor: true, windsurf: false })
@@ -436,7 +426,6 @@ describe('main repo rpc cancellation', () => {
     expect(result).toEqual({
       ok: true,
       data: {
-        gh: { available: true, version: 'gh version 2.80.0 (2026-05-01)', detectedAt: expect.any(Number) },
         terminal: {
           pref: 'auto',
           resolved: 'ghostty',
@@ -457,11 +446,6 @@ describe('main repo rpc cancellation', () => {
 
   test('assigns monotonic detectedAt values across external app snapshots in the same millisecond', async () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(1_000)
-    vi.mocked(probeGitHubCli).mockImplementation(async (_signal, detectedAt = 0) => ({
-      available: true,
-      version: 'gh version 2.80.0 (2026-05-01)',
-      detectedAt,
-    }))
     vi.mocked(getTerminalActionAvailability).mockReturnValue({ ghostty: false, terminal: true })
     vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: false, terminal: false })
     vi.mocked(resolveTerminalApp).mockReturnValue('terminal')
@@ -475,7 +459,6 @@ describe('main repo rpc cancellation', () => {
       expect(first).toEqual({
         ok: true,
         data: {
-          gh: { available: true, version: 'gh version 2.80.0 (2026-05-01)', detectedAt: expect.any(Number) },
           terminal: {
             pref: 'auto',
             resolved: 'terminal',
@@ -495,7 +478,6 @@ describe('main repo rpc cancellation', () => {
       expect(second).toEqual({
         ok: true,
         data: {
-          gh: { available: true, version: 'gh version 2.80.0 (2026-05-01)', detectedAt: expect.any(Number) },
           terminal: {
             pref: 'auto',
             resolved: 'terminal',
@@ -516,11 +498,9 @@ describe('main repo rpc cancellation', () => {
       if (!first.ok || !second.ok) throw new Error('expected successful RPC responses')
       const firstData = first.data as ExternalAppsSnapshot
       const secondData = second.data as ExternalAppsSnapshot
-      expect(firstData.gh.detectedAt).toBe(firstData.terminal.detectedAt)
       expect(firstData.terminal.detectedAt).toBe(firstData.editor.detectedAt)
-      expect(secondData.gh.detectedAt).toBe(secondData.terminal.detectedAt)
       expect(secondData.terminal.detectedAt).toBe(secondData.editor.detectedAt)
-      expect(secondData.gh.detectedAt).toBeGreaterThan(firstData.gh.detectedAt)
+      expect(secondData.terminal.detectedAt).toBeGreaterThan(firstData.terminal.detectedAt)
     } finally {
       now.mockRestore()
     }
@@ -551,7 +531,6 @@ describe('main repo rpc cancellation', () => {
       appAvailability: { ghostty: true, terminal: true },
       detectedAt: expect.any(Number),
     })
-    expect(probeGitHubCli).not.toHaveBeenCalled()
   })
 
   test('broadcasts terminal notification setting changes', async () => {
@@ -619,7 +598,6 @@ describe('main repo rpc cancellation', () => {
       appAvailability: { vscode: false, cursor: true, windsurf: false },
       detectedAt: expect.any(Number),
     })
-    expect(probeGitHubCli).not.toHaveBeenCalled()
   })
 
   test('assigns monotonic detectedAt values to repeated editor preference changes in the same millisecond', async () => {
@@ -663,11 +641,6 @@ describe('main repo rpc cancellation', () => {
   })
 
   test('refreshes and broadcasts external app detection', async () => {
-    vi.mocked(probeGitHubCli).mockImplementation(async (_signal, detectedAt = 0) => ({
-      available: true,
-      version: 'gh version 2.80.0 (2026-05-01)',
-      detectedAt,
-    }))
     vi.mocked(getTerminalAppAvailability).mockResolvedValue({ ghostty: false, terminal: true })
     vi.mocked(resolveTerminalApp).mockReturnValue('terminal')
     vi.mocked(getEditorAppAvailability).mockReturnValue({ vscode: true, cursor: false, windsurf: false })
@@ -678,7 +651,6 @@ describe('main repo rpc cancellation', () => {
     expect(result).toEqual({
       ok: true,
       data: {
-        gh: { available: true, version: 'gh version 2.80.0 (2026-05-01)', detectedAt: expect.any(Number) },
         terminal: {
           pref: 'auto',
           resolved: 'terminal',
@@ -694,12 +666,6 @@ describe('main repo rpc cancellation', () => {
           detectedAt: expect.any(Number),
         },
       },
-    })
-    expect(broadcastRpcEvent).toHaveBeenCalledWith({
-      type: 'github-cli-changed',
-      available: true,
-      version: 'gh version 2.80.0 (2026-05-01)',
-      detectedAt: expect.any(Number),
     })
     expect(broadcastRpcEvent).toHaveBeenCalledWith({
       type: 'terminal-app-changed',

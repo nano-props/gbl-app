@@ -108,23 +108,23 @@ export function BranchRow({
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
             {branch.isDefault && (
-              <Badge variant="outline" className="font-mono text-muted-foreground">
+              <Badge variant="outline" className="text-muted-foreground">
                 {t('branches.default')}
               </Badge>
             )}
             {hasWorktree && worktreeDirty ? (
-              <Badge variant="attention" className="gap-1 font-mono">
+              <Badge variant="attention" className="gap-1">
                 <FolderTree size={10} />
                 {t('branches.dirty')}
               </Badge>
             ) : isWorktree ? (
-              <Badge variant="outline" className="gap-1 font-mono text-muted-foreground">
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
                 <FolderTree size={10} />
                 {t('branches.worktree')}
               </Badge>
             ) : null}
             {branch.trackingGone && (
-              <Badge variant="attention" className="font-mono">
+              <Badge variant="attention">
                 {t('branches.gone')}
               </Badge>
             )}

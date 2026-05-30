@@ -98,10 +98,6 @@
   background: var(--goblin-terminal-background, var(--color-terminal-background)) !important;
 }
 
-.goblin-managed-terminal-host .xterm-screen {
-  width: max-content;
-}
-
 .goblin-terminal-slot__search {
   position: absolute;
   top: 10px;

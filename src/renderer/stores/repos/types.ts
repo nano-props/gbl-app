@@ -3,6 +3,7 @@ import type {
   BranchSnapshotInfo,
   BrowserRemoteProvider,
   ExecResult,
+  GitRemoteInfo,
   LogEntry,
   PullRequestFetchMode,
   WorktreeStatus,
@@ -85,6 +86,7 @@ export interface RepoCacheState {
 
 export interface RepoRemoteState {
   remotes?: string[]
+  remoteDetails?: GitRemoteInfo[]
   hasRemotes?: boolean
   hasBrowserRemote?: boolean
   browserRemoteProvider?: BrowserRemoteProvider

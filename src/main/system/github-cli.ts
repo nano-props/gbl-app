@@ -1,10 +1,15 @@
 import { execa } from 'execa'
 import path from 'node:path'
-import type { GitHubCliState } from '#/shared/rpc.ts'
 import { hasCommand } from '#/main/system/command.ts'
 
 const GITHUB_CLI_TIMEOUT_MS = 5_000
 export const GITHUB_CLI_EXTRA_PATHS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin']
+
+interface GitHubCliState {
+  available: boolean
+  version: string | null
+  detectedAt: number
+}
 
 export function buildGitHubCliPath(currentPath = process.env.PATH): string {
   const values = [...(currentPath?.split(path.delimiter) ?? []), ...GITHUB_CLI_EXTRA_PATHS]

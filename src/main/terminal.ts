@@ -1,6 +1,9 @@
 import { BrowserWindow, Notification, app, ipcMain } from 'electron'
 import type { WebContents } from 'electron'
 import path from 'node:path'
+import { broadcastRpcEvent } from '#/main/events.ts'
+import { activateMainWindow } from '#/main/window.ts'
+import { t } from '#/main/i18n/index.ts'
 import { getWorktrees } from '#/main/git/worktrees.ts'
 import { resolveKnownWorktree } from '#/main/git/guards.ts'
 import { isValidAbsolutePath, isValidBranch, isValidCwd } from '#/main/ipc/validation.ts'
@@ -75,9 +78,23 @@ export function wireTerminalIpc(): void {
     pruneRepoSessions(event.sender.id, input.repoRoot, input.worktreePaths)
     return true
   })
-  ipcMain.handle('goblin:terminal-notify-bell', (event, input: TerminalNotifyBellInput): TerminalMutationResult => {
+  ipcMain.handle('goblin:terminal-notify-bell', async (event, input: TerminalNotifyBellInput): Promise<TerminalMutationResult> => {
     if (!isTrustedIpcEvent(event) || !isValidTerminalNotifyBellInput(input)) return false
     return notifyTerminalBell(event.sender, input)
+  })
+  ipcMain.handle('goblin:terminal-send-test-notification', async (event): Promise<boolean> => {
+    if (!isTrustedIpcEvent(event)) return false
+    if (!Notification.isSupported()) return false
+    return showNotificationWithResult(
+      t('settings.terminal-notifications-test-title'),
+      t('settings.terminal-notifications-test-body'),
+      null,
+    )
+  })
+  ipcMain.on('goblin:terminal-set-badge', (event, count: unknown): void => {
+    if (!isTrustedIpcEvent(event)) return
+    const n = typeof count === 'number' && Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0
+    if (process.platform === 'darwin') app.dock?.setBadge(n > 0 ? String(n) : '')
   })
 
   wireTerminalSessionCleanup()
@@ -152,10 +169,20 @@ function sessionKey(repoRoot: string, worktreePath: string, terminalId?: string)
   return terminalId ? `${repoRoot}\0${worktreePath}\0${terminalId}` : `${repoRoot}\0${worktreePath}`
 }
 
-function notifyTerminalBell(webContents: WebContents, input: TerminalNotifyBellInput): boolean {
+// How long to wait for a 'show' or 'failed' event before treating the
+// notification as failed. In practice 'show' fires synchronously on macOS,
+// so this only kicks in if neither event fires at all (shouldn't happen in
+// normal operation, but guards against a permanent IPC hang).
+const NOTIFICATION_SHOW_TIMEOUT_MS = 5000
+
+async function notifyTerminalBell(webContents: WebContents, input: TerminalNotifyBellInput): Promise<boolean> {
   const win = BrowserWindow.fromWebContents(webContents)
   if (!win || win.isDestroyed() || webContents.isDestroyed()) return false
   try {
+    // flashFrame and dock bounce are independent attention cues that work even
+    // when system notifications are blocked (e.g. permission denied). They run
+    // unconditionally so background terminal activity is never completely silent
+    // regardless of notification settings.
     if (!win.isFocused()) {
       win.flashFrame(true)
       setTimeout(() => {
@@ -165,10 +192,57 @@ function notifyTerminalBell(webContents: WebContents, input: TerminalNotifyBellI
       }, 1500)
     }
     if (process.platform === 'darwin') app.dock?.bounce('informational')
-    if (Notification.isSupported()) new Notification({ title: input.title, body: input.body, silent: true }).show()
-    return true
+    // flashFrame and dock bounce already delivered the attention cue above.
+    // If system notifications are unsupported we still return true — the user
+    // was notified via those mechanisms, so the bell was not silently dropped.
+    if (!Notification.isSupported()) return true
+    // showNotificationWithResult is async: it waits for the 'show' or 'failed'
+    // event so the caller gets an accurate result instead of an optimistic true.
+    return await showNotificationWithResult(input.title, input.body, input.repoRoot)
   } catch (err) {
     console.warn('[terminal] failed to show bell notification', err)
     return false
   }
+}
+
+// On macOS, Notification.show() is NOT a reliable signal of delivery on its
+// own — calling show() returns immediately regardless of whether the system
+// will actually display the notification.
+//
+// The correct way to detect failure is to listen for the 'failed' event, which
+// Electron emits (via UNUserNotificationCenter's completion handler) when:
+//   - the app binary is unsigned (common in development builds), or
+//   - the user has denied notification permission for this app.
+//
+// We race 'show' vs 'failed' and resolve accordingly. The timeout is a last
+// resort: in practice one of the two events always fires, but it prevents the
+// IPC call from hanging indefinitely if neither does.
+//
+// silent: true suppresses the system sound; the bell audio (if any) is handled
+// separately by the renderer's terminal emulator, not the OS notification.
+function showNotificationWithResult(
+  title: string,
+  body: string,
+  repoRoot: string | null,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const notif = new Notification({ title, body, silent: true })
+    let settled = false
+    const settle = (result: boolean) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(result)
+    }
+    const timer = setTimeout(() => settle(false), NOTIFICATION_SHOW_TIMEOUT_MS)
+    notif.once('show', () => settle(true))
+    notif.once('failed', () => settle(false))
+    notif.once('click', () => {
+      // Bring the window to the foreground, then tell the renderer to switch
+      // to the repo and open the terminal tab (only when repoRoot is known).
+      void activateMainWindow().catch(() => {})
+      if (repoRoot) broadcastRpcEvent({ type: 'terminal-bell-click', repoRoot })
+    })
+    notif.show()
+  })
 }

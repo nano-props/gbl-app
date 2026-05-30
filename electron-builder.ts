@@ -25,6 +25,11 @@ const config: Configuration = {
   mac: {
     category: 'public.app-category.developer-tools',
     extendInfo: {
+      // Required for macOS to show Goblin in System Settings → Notifications
+      // and to allow Banner/Alert style notifications. Without this key the
+      // app either won't appear in the notification list at all, or will be
+      // locked to the silent "None" style with no user-visible controls.
+      NSUserNotificationAlertStyle: 'alert',
       CFBundleDocumentTypes: [
         {
           CFBundleTypeName: 'Folder',

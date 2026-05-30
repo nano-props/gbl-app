@@ -6,6 +6,38 @@
 @import 'tw-animate-css';
 @import './theme/theme.css';
 
+@font-face {
+  font-family: 'Goblin Mono';
+  src: url('./assets/fonts/MapleMono-NF-CN-Regular.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Goblin Mono';
+  src: url('./assets/fonts/MapleMono-NF-CN-Italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Goblin Mono';
+  src: url('./assets/fonts/MapleMono-NF-CN-Bold.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Goblin Mono';
+  src: url('./assets/fonts/MapleMono-NF-CN-BoldItalic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+}
+
 @custom-variant dark (&:where(html[data-theme='dark'] *));
 
 html,

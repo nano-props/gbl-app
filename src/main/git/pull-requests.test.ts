@@ -10,6 +10,12 @@ import {
   pickPullRequest,
 } from '#/main/git/pull-requests.ts'
 
+vi.mock('#/main/security/credentials.ts', () => ({
+  getCredentialsManager: () => ({
+    getGitHubToken: (_host?: string) => null,
+  }),
+}))
+
 const TOKEN_ENV_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN'] as const
 
 let templateRepo: string | null = null
